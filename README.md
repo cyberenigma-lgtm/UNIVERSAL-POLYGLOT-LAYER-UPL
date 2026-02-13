@@ -1,7 +1,7 @@
 # UNIVERSAL POLYGLOT LAYER (UPL) 🛡️🌍🚀
 ## The Universal Omniglot Language of Neuro-OS / El Lenguaje Omníglota Universal de Neuro-OS
 
-![UPL & NUASM Identity](assets/logo_upl_nuasm.png)
+![UPL & NUASM Identity](assets/logo_upl_nuasm.jpg)
 
 ---
 
