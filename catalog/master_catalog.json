@@ -1,0 +1,111 @@
+{
+    "upl_version": "0.2",
+    "project": "Universal Polyglot Layer",
+    "catalog_status": "Global Expansion Initiated",
+    "categories": {
+        "professional": [
+            {
+                "id": "c",
+                "name": "C",
+                "tier": "Sovereign",
+                "status": "Planned"
+            },
+            {
+                "id": "cpp",
+                "name": "C++",
+                "tier": "Sovereign",
+                "status": "Planned"
+            },
+            {
+                "id": "rs",
+                "name": "Rust",
+                "tier": "Sovereign",
+                "status": "Planned"
+            },
+            {
+                "id": "py",
+                "name": "Python",
+                "tier": "High",
+                "status": "In Progress"
+            },
+            {
+                "id": "js",
+                "name": "JavaScript",
+                "tier": "High",
+                "status": "Planned"
+            },
+            {
+                "id": "go",
+                "name": "Go",
+                "tier": "High",
+                "status": "Planned"
+            },
+            {
+                "id": "java",
+                "name": "Java",
+                "tier": "High",
+                "status": "Planned"
+            }
+        ],
+        "educational": [
+            {
+                "id": "bas",
+                "name": "BASIC",
+                "tier": "Bridge",
+                "status": "Planned"
+            },
+            {
+                "id": "pas",
+                "name": "Pascal",
+                "tier": "Bridge",
+                "status": "Planned"
+            },
+            {
+                "id": "logo",
+                "name": "Logo",
+                "tier": "Bridge",
+                "status": "Planned"
+            }
+        ],
+        "legacy_extinct": [
+            {
+                "id": "cob",
+                "name": "COBOL",
+                "tier": "Legacy",
+                "status": "Researching"
+            },
+            {
+                "id": "for",
+                "name": "Fortran",
+                "tier": "Legacy",
+                "status": "Researching"
+            },
+            {
+                "id": "alg",
+                "name": "ALGOL",
+                "tier": "Legacy",
+                "status": "Researching"
+            }
+        ],
+        "neuro_ecosystem": [
+            {
+                "id": "masm",
+                "name": "MultiLang-ASM",
+                "tier": "Core",
+                "status": "Integrated"
+            },
+            {
+                "id": "nuasm",
+                "name": "Neuro-Universal-ASM",
+                "tier": "Core",
+                "status": "Integrated"
+            },
+            {
+                "id": "nwc",
+                "name": "Neurowill-Code",
+                "tier": "Silicon",
+                "status": "Integrated"
+            }
+        ]
+    }
+}

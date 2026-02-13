@@ -1,0 +1,17 @@
+{
+    "category": "Functional (Tier 3)",
+    "languages": [
+        {
+            "id": "hs",
+            "name": "Haskell"
+        },
+        {
+            "id": "lisp",
+            "name": "Lisp"
+        },
+        {
+            "id": "ex",
+            "name": "Elixir"
+        }
+    ]
+}

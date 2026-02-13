@@ -1,0 +1,15 @@
+{
+    "upl_version": "1.0",
+    "project": "Universal Polyglot Layer",
+    "vision": "Unify all programming languages into a single sovereign core.",
+    "catalogs": {
+        "systems": "languages/systems.json",
+        "professional": "languages/professional.json",
+        "functional": "languages/functional.json",
+        "scientific": "languages/scientific.json",
+        "web_scripting": "languages/web_scripting.json",
+        "educational": "languages/educational.json",
+        "obsolete": "languages/obsolete.json",
+        "experimental": "languages/experimental.json"
+    }
+}

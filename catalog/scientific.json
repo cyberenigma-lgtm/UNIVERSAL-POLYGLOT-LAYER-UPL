@@ -1,0 +1,17 @@
+{
+    "category": "Scientific (Tier 4)",
+    "languages": [
+        {
+            "id": "jl",
+            "name": "Julia"
+        },
+        {
+            "id": "r",
+            "name": "R"
+        },
+        {
+            "id": "mat",
+            "name": "MATLAB"
+        }
+    ]
+}

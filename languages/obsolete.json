@@ -1,0 +1,25 @@
+{
+    "category": "Obsolete / Historical",
+    "languages": [
+        {
+            "id": "for",
+            "name": "Fortran",
+            "mapping": "mapping_for.json"
+        },
+        {
+            "id": "cob",
+            "name": "COBOL",
+            "mapping": "mapping_cob.json"
+        },
+        {
+            "id": "ada",
+            "name": "Ada",
+            "mapping": "mapping_ada.json"
+        },
+        {
+            "id": "st",
+            "name": "Smalltalk",
+            "mapping": "mapping_st.json"
+        }
+    ]
+}

@@ -1,0 +1,22 @@
+{
+    "upl_version": "1.0",
+    "project": "Universal Polyglot Layer",
+    "vision": "Unify all programming languages into a single sovereign core.",
+    "catalogs": {
+        "tier0_systems": "catalog/systems.json",
+        "tier1_professional": "catalog/professional.json",
+        "tier2_scripting": "catalog/scripting.json",
+        "tier3_functional": "catalog/functional.json",
+        "tier4_scientific": "catalog/scientific.json",
+        "tier5_educational": "catalog/educational.json",
+        "tier6_experimental": "catalog/experimental.json",
+        "tier7_extinct": "catalog/extinct.json"
+    },
+    "mappings": {
+        "py": "parsers/python/python_parser.py",
+        "c": "parsers/c/c_parser.py",
+        "js": "parsers/js/javascript_parser.py",
+        "rs": "parsers/rust/rust_parser.py",
+        "go": "parsers/go/go_parser.py"
+    }
+}

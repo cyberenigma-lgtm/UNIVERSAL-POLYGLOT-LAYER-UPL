@@ -1,0 +1,40 @@
+{
+    "category": "Systems (Tier 0)",
+    "languages": [
+        {
+            "id": "asm",
+            "name": "Assembly (x86_64, ARM64)",
+            "mapping": "mapping_asm.json"
+        },
+        {
+            "id": "nasm",
+            "name": "NASM",
+            "mapping": "mapping_nasm.json"
+        },
+        {
+            "id": "gas",
+            "name": "GAS",
+            "mapping": "mapping_gas.json"
+        },
+        {
+            "id": "nuasm",
+            "name": "NUASM",
+            "mapping": "mapping_nuasm.json"
+        },
+        {
+            "id": "mlasm",
+            "name": "MultiLang-ASM",
+            "mapping": "mapping_mlasm.json"
+        },
+        {
+            "id": "zig",
+            "name": "Zig",
+            "mapping": "mapping_zig.json"
+        },
+        {
+            "id": "odin",
+            "name": "Odin",
+            "mapping": "mapping_odin.json"
+        }
+    ]
+}

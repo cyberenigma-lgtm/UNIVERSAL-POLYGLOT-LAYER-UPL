@@ -1,0 +1,70 @@
+{
+    "category": "Professional (Tier 1)",
+    "languages": [
+        {
+            "id": "c",
+            "name": "C",
+            "mapping": "mapping_c.json"
+        },
+        {
+            "id": "cpp",
+            "name": "C++",
+            "mapping": "mapping_cpp.json"
+        },
+        {
+            "id": "rs",
+            "name": "Rust",
+            "mapping": "mapping_rs.json"
+        },
+        {
+            "id": "go",
+            "name": "Go",
+            "mapping": "mapping_go.json"
+        },
+        {
+            "id": "java",
+            "name": "Java",
+            "mapping": "mapping_java.json"
+        },
+        {
+            "id": "cs",
+            "name": "C#",
+            "mapping": "mapping_cs.json"
+        },
+        {
+            "id": "swift",
+            "name": "Swift",
+            "mapping": "mapping_swift.json"
+        },
+        {
+            "id": "kt",
+            "name": "Kotlin",
+            "mapping": "mapping_kt.json"
+        },
+        {
+            "id": "ts",
+            "name": "TypeScript",
+            "mapping": "mapping_ts.json"
+        },
+        {
+            "id": "js",
+            "name": "JavaScript",
+            "mapping": "mapping_js.json"
+        },
+        {
+            "id": "py",
+            "name": "Python",
+            "mapping": "mapping_py.json"
+        },
+        {
+            "id": "rb",
+            "name": "Ruby",
+            "mapping": "mapping_rb.json"
+        },
+        {
+            "id": "php",
+            "name": "PHP",
+            "mapping": "mapping_php.json"
+        }
+    ]
+}

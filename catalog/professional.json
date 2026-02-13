@@ -1,0 +1,25 @@
+{
+    "category": "Professional (Tier 1)",
+    "languages": [
+        {
+            "id": "cpp",
+            "name": "C++"
+        },
+        {
+            "id": "java",
+            "name": "Java"
+        },
+        {
+            "id": "go",
+            "name": "Go"
+        },
+        {
+            "id": "cs",
+            "name": "C#"
+        },
+        {
+            "id": "swift",
+            "name": "Swift"
+        }
+    ]
+}

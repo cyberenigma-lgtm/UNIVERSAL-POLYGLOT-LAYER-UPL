@@ -1,0 +1,25 @@
+{
+    "category": "Web / Scripting",
+    "languages": [
+        {
+            "id": "lua",
+            "name": "Lua",
+            "mapping": "mapping_lua.json"
+        },
+        {
+            "id": "pl",
+            "name": "Perl",
+            "mapping": "mapping_pl.json"
+        },
+        {
+            "id": "sh",
+            "name": "Bash",
+            "mapping": "mapping_sh.json"
+        },
+        {
+            "id": "ps1",
+            "name": "PowerShell",
+            "mapping": "mapping_ps1.json"
+        }
+    ]
+}

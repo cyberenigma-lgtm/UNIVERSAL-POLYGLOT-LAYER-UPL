@@ -1,0 +1,21 @@
+{
+    "category": "Scripting (Tier 2)",
+    "languages": [
+        {
+            "id": "py",
+            "name": "Python"
+        },
+        {
+            "id": "js",
+            "name": "JavaScript"
+        },
+        {
+            "id": "rb",
+            "name": "Ruby"
+        },
+        {
+            "id": "php",
+            "name": "PHP"
+        }
+    ]
+}

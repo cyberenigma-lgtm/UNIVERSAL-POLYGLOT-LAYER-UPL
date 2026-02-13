@@ -1,0 +1,17 @@
+{
+    "category": "Extinct / Historical (Tier 7)",
+    "languages": [
+        {
+            "id": "cob",
+            "name": "COBOL"
+        },
+        {
+            "id": "for",
+            "name": "Fortran"
+        },
+        {
+            "id": "ada",
+            "name": "Ada"
+        }
+    ]
+}

@@ -1,0 +1,20 @@
+{
+    "category": "Scientific / Numerical",
+    "languages": [
+        {
+            "id": "jl",
+            "name": "Julia",
+            "mapping": "mapping_jl.json"
+        },
+        {
+            "id": "r",
+            "name": "R",
+            "mapping": "mapping_r.json"
+        },
+        {
+            "id": "mat",
+            "name": "MATLAB",
+            "mapping": "mapping_mat.json"
+        }
+    ]
+}

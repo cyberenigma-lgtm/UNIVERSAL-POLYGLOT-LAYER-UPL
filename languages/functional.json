@@ -1,0 +1,45 @@
+{
+    "category": "Functional",
+    "languages": [
+        {
+            "id": "hs",
+            "name": "Haskell",
+            "mapping": "mapping_hs.json"
+        },
+        {
+            "id": "ex",
+            "name": "Elixir",
+            "mapping": "mapping_ex.json"
+        },
+        {
+            "id": "erl",
+            "name": "Erlang",
+            "mapping": "mapping_erl.json"
+        },
+        {
+            "id": "ml",
+            "name": "OCaml",
+            "mapping": "mapping_ml.json"
+        },
+        {
+            "id": "fs",
+            "name": "F#",
+            "mapping": "mapping_fs.json"
+        },
+        {
+            "id": "lisp",
+            "name": "Lisp",
+            "mapping": "mapping_lisp.json"
+        },
+        {
+            "id": "clj",
+            "name": "Clojure",
+            "mapping": "mapping_clj.json"
+        },
+        {
+            "id": "scm",
+            "name": "Scheme",
+            "mapping": "mapping_scm.json"
+        }
+    ]
+}

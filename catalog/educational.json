@@ -1,0 +1,17 @@
+{
+    "category": "Educational (Tier 5)",
+    "languages": [
+        {
+            "id": "bas",
+            "name": "BASIC"
+        },
+        {
+            "id": "pas",
+            "name": "Pascal"
+        },
+        {
+            "id": "scratch",
+            "name": "Scratch"
+        }
+    ]
+}

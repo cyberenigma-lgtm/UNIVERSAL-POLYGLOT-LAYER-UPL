@@ -1,0 +1,17 @@
+{
+    "category": "Experimental (Tier 6)",
+    "languages": [
+        {
+            "id": "nim",
+            "name": "Nim"
+        },
+        {
+            "id": "cr",
+            "name": "Crystal"
+        },
+        {
+            "id": "mojo",
+            "name": "Mojo"
+        }
+    ]
+}

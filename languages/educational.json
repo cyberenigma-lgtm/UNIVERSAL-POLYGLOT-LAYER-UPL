@@ -1,0 +1,25 @@
+{
+    "category": "Educational",
+    "languages": [
+        {
+            "id": "scratch",
+            "name": "Scratch",
+            "mapping": "mapping_scratch.json"
+        },
+        {
+            "id": "logo",
+            "name": "Logo",
+            "mapping": "mapping_logo.json"
+        },
+        {
+            "id": "bas",
+            "name": "BASIC",
+            "mapping": "mapping_bas.json"
+        },
+        {
+            "id": "pas",
+            "name": "Pascal",
+            "mapping": "mapping_pas.json"
+        }
+    ]
+}

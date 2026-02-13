@@ -1,0 +1,134 @@
+{
+    "en": {
+        "PROC": "PROCEDURE",
+        "RET": "RETURN",
+        "SET": "SET",
+        "ADD": "ADD",
+        "IO_WRITE": "IO_WRITE",
+        "CONSOLE": "CONSOLE",
+        "JUMP": "JUMP",
+        "IF": "IF",
+        "ALLOC": "ALLOC"
+    },
+    "es": {
+        "PROC": "PROCEDIMIENTO",
+        "RET": "RETORNAR",
+        "SET": "ESTABLECER",
+        "ADD": "SUMAR",
+        "IO_WRITE": "IO_ESCRIBIR",
+        "CONSOLE": "CONSOLA",
+        "JUMP": "SALTAR",
+        "IF": "SI",
+        "ALLOC": "ASIGNAR_MEMORIA"
+    },
+    "fr": {
+        "PROC": "PROCÉDURE",
+        "RET": "RETOURNER",
+        "SET": "ÉTABLIR",
+        "ADD": "AJOUTER",
+        "IO_WRITE": "IO_ÉCRIRE",
+        "CONSOLE": "CONSOLE",
+        "JUMP": "SAUTER",
+        "IF": "SI",
+        "ALLOC": "ALLOC_MÉMOIRE"
+    },
+    "de": {
+        "PROC": "PROZEDUR",
+        "RET": "ZURÜCK",
+        "SET": "SETZEN",
+        "ADD": "ADDIEREN",
+        "IO_WRITE": "IO_SCHREIBEN",
+        "CONSOLE": "KONSOLE",
+        "JUMP": "SPRINGEN",
+        "IF": "WENN",
+        "ALLOC": "SPEICHER_ZUTOEREN"
+    },
+    "ru": {
+        "PROC": "ПРОЦЕДУРА",
+        "RET": "ВЕРНУТЬ",
+        "SET": "УСТАНОВИТЬ",
+        "ADD": "СЛОЖИТЬ",
+        "IO_WRITE": "ВВОД_ВЫВОД_ЗАПИСАТЬ",
+        "CONSOLE": "КОНСОЛЬ",
+        "JUMP": "ПРЫЖОК",
+        "IF": "ЕСЛИ",
+        "ALLOC": "ВЫДЕЛИТЬ_ПАМЯТЬ"
+    },
+    "zh": {
+        "PROC": "过程",
+        "RET": "返回",
+        "SET": "设置",
+        "ADD": "加",
+        "IO_WRITE": "IO写入",
+        "CONSOLE": "控制台",
+        "JUMP": "跳转",
+        "IF": "如果",
+        "ALLOC": "分配内存"
+    },
+    "ja": {
+        "PROC": "プロシージャ",
+        "RET": "戻る",
+        "SET": "設定",
+        "ADD": "足す",
+        "IO_WRITE": "IO書込",
+        "CONSOLE": "コンソール",
+        "JUMP": "ジャンプ",
+        "IF": "もし",
+        "ALLOC": "メモリ割当"
+    },
+    "ko": {
+        "PROC": "프로시저",
+        "RET": "반환",
+        "SET": "설정",
+        "ADD": "더하기",
+        "IO_WRITE": "IO쓰기",
+        "CONSOLE": "콘솔",
+        "JUMP": "점프",
+        "IF": "만약",
+        "ALLOC": "메모리할당"
+    },
+    "ar": {
+        "PROC": "إجراء",
+        "RET": "عودة",
+        "SET": "تعيين",
+        "ADD": "جمع",
+        "IO_WRITE": "كتابة_دخل_خرج",
+        "CONSOLE": "وحدة_تحكم",
+        "JUMP": "قفز",
+        "IF": "إذا",
+        "ALLOC": "تخصيص_ذاكرة"
+    },
+    "hi": {
+        "PROC": "प्रक्रिया",
+        "RET": "वापस",
+        "SET": "सेट",
+        "ADD": "जोड़ें",
+        "IO_WRITE": "IO_लिखें",
+        "CONSOLE": "कंसोल",
+        "JUMP": "कूदें",
+        "IF": "यदि",
+        "ALLOC": "मेमोरी_आवंटित"
+    },
+    "it": {
+        "PROC": "PROCEDURA",
+        "RET": "RITORNA",
+        "SET": "IMPOSTA",
+        "ADD": "AGGIUNGE",
+        "IO_WRITE": "IO_SCRIVI",
+        "CONSOLE": "CONSOLE",
+        "JUMP": "SALTA",
+        "IF": "SE",
+        "ALLOC": "ALLOC_MEMORIA"
+    },
+    "pt": {
+        "PROC": "PROCEDIMENTO",
+        "RET": "RETORNAR",
+        "SET": "DEFINIR",
+        "ADD": "SOMAR",
+        "IO_WRITE": "IO_ESCREVER",
+        "CONSOLE": "CONSOLE",
+        "JUMP": "PULAR",
+        "IF": "SE",
+        "ALLOC": "ALOCAR_MEMORIA"
+    }
+}

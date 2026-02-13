@@ -1,0 +1,30 @@
+{
+    "category": "Experimental / Modern",
+    "languages": [
+        {
+            "id": "nim",
+            "name": "Nim",
+            "mapping": "mapping_nim.json"
+        },
+        {
+            "id": "cr",
+            "name": "Crystal",
+            "mapping": "mapping_cr.json"
+        },
+        {
+            "id": "mojo",
+            "name": "Mojo",
+            "mapping": "mapping_mojo.json"
+        },
+        {
+            "id": "carbon",
+            "name": "Carbon",
+            "mapping": "mapping_carbon.json"
+        },
+        {
+            "id": "vale",
+            "name": "Vale",
+            "mapping": "mapping_vale.json"
+        }
+    ]
+}

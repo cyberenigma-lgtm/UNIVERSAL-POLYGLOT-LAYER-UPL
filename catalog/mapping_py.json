@@ -1,0 +1,38 @@
+{
+    "language": "Python",
+    "id": "py",
+    "version": "0.1",
+    "syntax_map": {
+        "keywords": {
+            "def": "PROC",
+            "return": "RET",
+            "if": "IF",
+            "else": "LABEL",
+            "for": "LOOP_FINITE",
+            "while": "LOOP_WHILE",
+            "print": "IO_WRITE CONSOLE",
+            "import": "LOAD_MODULE"
+        },
+        "operators": {
+            "=": "ASSIGN",
+            "+": "ADD",
+            "-": "SUB",
+            "*": "MUL",
+            "/": "DIV",
+            "==": "CMP_EQ",
+            "!=": "CMP_NE"
+        },
+        "types": {
+            "int": "I64",
+            "float": "F64",
+            "str": "STR",
+            "list": "SOB_ARRAY",
+            "dict": "SOB_MAP"
+        }
+    },
+    "patterns": {
+        "function_declaration": "def {name}({args}):",
+        "assignment": "{var} = {val}",
+        "io_print": "print({val})"
+    }
+}

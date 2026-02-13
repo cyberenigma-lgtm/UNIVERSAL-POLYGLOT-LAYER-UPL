@@ -1,0 +1,21 @@
+{
+    "category": "Systems (Tier 0)",
+    "languages": [
+        {
+            "id": "asm",
+            "name": "Assembly (x86_64, ARM64)"
+        },
+        {
+            "id": "c",
+            "name": "C"
+        },
+        {
+            "id": "zig",
+            "name": "Zig"
+        },
+        {
+            "id": "rs-sys",
+            "name": "Rust-systems"
+        }
+    ]
+}
