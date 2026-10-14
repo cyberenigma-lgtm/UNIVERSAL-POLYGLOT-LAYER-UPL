@@ -1,9 +1,14 @@
-# UNIVERSAL POLYGLOT LAYER (UPL) 🛡️🌍🚀
-## Standalone Sovereign Programming Language & Systems Toolchain
-### Lenguaje de Programación Soberano de Sistemas y Cadena de Herramientas de Bajo Nivel
+# 🛡️ UPL: EL NUEVO LENGUAJE DE PROGRAMACIÓN AVANZADO DEL SIGLO XXI
+## Universal Polyglot Layer (UPL) — Un Lenguaje de Programación de Sistemas Totalmente Nuevo
+### Standalone Next-Generation Sovereign Programming Language & Toolchain
 
-> **ACTUALIZACIÓN GENERACIONAL & SOBERANÍA INTELECTUAL**  
-> *Esta versión constituye la actualización evolutiva oficial del repositorio **Universal Polyglot Layer (UPL)**. Conforme al registro canónico en **SafeCreative**, todas las innovaciones, compiladores, arquitecturas y módulos aquí presentados quedan amparados bajo la misma protección registral y autoridad soberana de propiedad intelectual preexistente.*
+[![SafeCreative Protected](https://img.shields.io/badge/SafeCreative-Obra%20Protegida-blue.svg)](https://www.safecreative.org)
+[![Language](https://img.shields.io/badge/Language-UPL%20v1.0%20Sovereign-green.svg)](docs/GUIA_OFICIAL_SINTAXIS_Y_COMANDOS_UPL.md)
+[![Backends](https://img.shields.io/badge/Backends-ANSI%20C99%20%7C%20x86__64%20NASM%20Ring--0-orange.svg)](#-pipeline-de-compilaci%C3%B3n)
+[![Languages](https://img.shields.io/badge/Localization-57%20World%20Languages-purple.svg)](multilang/)
+
+> **COMUNICADO OFICIAL DE ACTUALIZACIÓN GENERACIONAL Y PROPIEDAD INTELECTUAL:**  
+> *Este repositorio presenta la transformación evolutiva oficial de **UPL**: ha dejado de ser únicamente una capa de interoperabilidad para convertirse formalmente en un **LENGUAJE DE PROGRAMACIÓN AVANZADO TOTALMENTE NUEVO**. Todas las gramáticas, compiladores nativos, directivas de silicio y arquitecturas están registradas y protegidas bajo la misma titularidad y amparo legal preexistente de **SafeCreative**.*
 
 ---
 
@@ -11,76 +16,83 @@
 
 ---
 
-## 🇪🇸 [Español] - Resumen de la Actualización Generacional
+## 🇪🇸 [Español] - Presentación del Nuevo Lenguaje
 
-### 1. De Capa Políglota a Lenguaje de Programación Soberano
-**UPL** ha evolucionado de una capa de unificación a un **lenguaje de programación de sistemas autónomo y de primera clase**, diseñado para superar las limitaciones de memoria de C/C++ y los bloqueos irreversibles (`panic!`) de Rust mediante una arquitectura de **Landing-Pads de Silicio y Puntos de Control Atómicos**.
+### 💎 ¿Qué es UPL?
+**UPL (Universal Polyglot Layer)** es un **lenguaje de programación de sistemas totalmente nuevo, autónomo e independiente**, diseñado desde cero para superar los tres grandes problemas del software contemporáneo:
+1. **Supera la fragilidad de C y C++:** Elimina los desbordamientos de búfer mediante **Landing-Pads en silicio** y verificación de paridad canónica (`0xAA30`).
+2. **Supera el bloqueo destructivo de Rust:** Rust responde ante fallos no recuperables con `panic!`, abortando el proceso o tirando el sistema. UPL introduce **Puntos de Control Atómicos (`@snapshot`) y Auto-Sanación**, restaurando el estado en nanosegundos sin interrupción de servicio.
+3. **Supera la lentitud y pérdida de precisión de lenguajes tradicionales:** Incorpora tipos nativos decimales **NeuroCOBOL (`comp3`)** empaquetados en BCD, eliminando los errores de redondeo de coma flotante de IEEE-754.
 
-### 2. Pilares de la Nueva Versión
-* **Compilador Nativo Dual-Backend (`uplc` / `upl`):**
-  - **Backend C99 Soberano:** Emisión de código ANSI C99 ultra-optimizado con estructuras empaquetadas e inlining de alto rendimiento.
-  - **Backend Ensamblador x86_64 Puro (NASM):** Emisión directa de código máquina Long Mode para **Ring 0 / Bare-Metal**, sin runtime ni dependencias de sistemas operativos anfitriones.
-* **Soberanía Bilingüe Real:**
-  - Sintaxis programable tanto en inglés universal (`fn`, `let`, `mut`, `struct`, `if`, `return`) como en español técnico (`funcion`, `sea`, `mutable`, `estructura`, `si`, `retornar`).
-* **Aritmética Exacta NeuroCOBOL (`comp3` / `decimal`):**
-  - Soporte nativo de aritmética decimal empaquetada BCD con sello canónico `0x4A4D4D43`, eliminando cualquier error de precisión en finanzas y computación crítica.
-* **Aceleración Vectorial DVTRGAS-30:**
-  - Rendimiento certificado a **52.80 GB/s** con sellos de paridad de doble dominio (`0x55` par / `0xAA` impar) y Landing-Pads de aterrizaje con 6 ceros.
-* **Inmunidad Zero-Bug y Auto-Sanación:**
-  - Intercepción de excepciones de CPU (`#DE`, `#UD`, `#GP`, `#PF`) y rollback atómico al último snapshot válido en nanosegundos sin caída de servicio.
-* **Diagnóstico Multi-Plataforma en 57 Idiomas:**
-  - Integración exhaustiva de **MultiLang-ASM** y **NeuroUniversalASM**, traduciendo al vuelo códigos de error de múltiples plataformas y excepciones de CPU x86_64.
-* **Capacidad de Silicio Directo y Modo Bare-Metal:**
-  - Control nativo de hardware, controladores de periféricos, buses de baja latencia y conmutadores de memoria con directivas de compilación `@baremetal` y `@guarded`.
+### 🚀 Características Clave del Lenguaje UPL
+* **Compilador Nativo Propio (`uplc` / `upl`):** No es un script ni un intérprete secundario. Cuenta con su propio tokenizador, parser de descenso recursivo, árbol AST fuertemente tipado y doble generador de código:
+  * **Backend ANSI C99:** Código portable ultra-optimizado con estructuras empaquetadas.
+  * **Backend Ensamblador x86_64 Long Mode (NASM):** Código máquina puro para **Ring 0 / Bare-Metal** sin runtime ni librerías del sistema anfitrión.
+* **Soberanía Bilingüe Real (Español / Inglés):** Puedes programar usando palabras clave nativas en español (`funcion`, `sea`, `mutable`, `estructura`, `si`, `mientras`, `retornar`) o en inglés universal (`fn`, `let`, `mut`, `struct`, `if`, `while`, `return`).
+* **Consola Interactiva Avanzada (REPL Soberano):** Permite escribir código UPL al vuelo e inspeccionar en tiempo real el C99 (`:c`), el ensamblador (`:asm`) o cambiar a 57 idiomas (`:lang ja`).
+* **Diagnóstico Multi-Plataforma en 57 Idiomas:** Motor inteligente que traduce códigos de error NTSTATUS de Windows, señales POSIX de Linux y excepciones físicas de CPU x86_64.
 
 ---
 
-## 🇬🇧 [English] - Generational Upgrade Overview
+## 🇬🇧 [English] - Introducing the New Advanced Language
 
-### 1. From Polyglot Layer to Sovereign Programming Language
-**UPL** has evolved into a **standalone, first-class systems programming language**, engineered to surpass C/C++ memory vulnerabilities and Rust's catastrophic panics through **Hardware Landing-Pads and Atomic Checkpoints**.
-
-### 2. Upgraded Architecture Pillars
-* **Native Dual-Backend Compiler (`uplc` / `upl`):**
-  - High-performance C99 code emission.
-  - System V / Bare-Metal x86_64 Long Mode NASM assembly for Ring 0 and embedded targets.
-* **Bilingual Native Grammar:** First language with first-class Spanish and English syntax parity.
-* **NeuroCOBOL Exact Decimal Math (`comp3`):** Zero IEEE-754 floating-point error, sealed with `0x4A4D4D43`.
-* **DVTRGAS-30 Vector Engine:** 52.80 GB/s throughput with dual-domain parity protection.
-* **Zero-Bug Self-Healing:** Automatic fault recovery via atomic snapshots instead of system aborts.
-* **Multi-Platform Diagnostics in 57 Languages:** Real-time decoding of multi-OS status codes, POSIX signals, and CPU traps.
-* **Direct Silicon Control & Bare-Metal Mode:** Native hardware access, peripheral drivers, and zero-copy buses with `@baremetal` and `@guarded` directives.
+### 💎 What is UPL?
+**UPL** is a **brand-new, next-generation systems programming language** built from scratch to provide uncompromising safety, extreme bare-metal performance, and total linguistic sovereignty:
+1. **Memory Safety without Borrow-Checker Hell:** Employs hardware landing-pads and canonical parity (`0xAA30`) to prevent memory corruption at the silicon level.
+2. **Zero-Bug Self-Healing (Surpassing Rust):** Unlike Rust’s fatal `panic!`, UPL intercepts faults and triggers atomic checkpoint rollbacks (`@snapshot`), keeping critical systems running uninterrupted.
+3. **Exact Decimal Arithmetic:** Native NeuroCOBOL `comp3` BCD types eliminate IEEE 754 rounding inaccuracies in mission-critical applications.
 
 ---
 
-## 🏗️ Pipeline de Compilación / Compilation Pipeline
+## 🏛️ Estructura del Repositorio / Repository Layout
 
-```mermaid
-graph TD
-    A[Código Fuente / Source Code .upl] --> B[upl_lexer.py\nTokenizador Bilingüe / Bilingual Lexer]
-    B --> C[upl_parser.py\nÁrbol AST Tipado / Typed AST]
-    C --> D{Selección de Target}
-    D -->|Target: C| E[upl_codegen_c.py\nANSI C99 con Landing-Pads]
-    D -->|Target: ASM| F[upl_codegen_asm.py\nx86_64 Long Mode NASM Ring 0]
-    E --> G[Binario Nativo / Shared Library .dll .so]
-    F --> H[Binario Bare-Metal / Firmware / Microkernel]
+```
+UNIVERSAL-POLYGLOT-LAYER-UPL/
+├── compiler/                  # Compilador nativo UPL (Lexer, Parser, AST, Backends C y ASM)
+├── docs/                      # Manuales oficiales, especificación de gramática y diagnósticos
+├── examples/                  # Programas de demostración en código fuente .upl
+├── multilang/                 # Dicionarios de 57 idiomas para localización y ensamblador
+├── dvtrgas30_engine/          # Acelerador vectorial de paridad 0xAA30
+├── neurocobol_engine/         # Motor de aritmética exacta BCD COMP-3
+├── wiki/                      # Wiki técnica completa (Español / English)
+├── upl.py                     # CLI principal del compilador (run, build, repl, diag)
+├── upl.bat                    # Lanzador rápido para Windows
+├── upl.sh                     # Lanzador rápido para Linux / macOS
+└── README.md                  # Este documento oficial
 ```
 
 ---
 
-## 🛠️ Comandos de la Suite UPL / Toolchain Commands
+## ⚡ Comandos Rápidos del Compilador / Quickstart
 
-| Comando / Command | Función / Description |
-|---|---|
-| `upl run <archivo.upl>` | Compila y ejecuta el programa nativamente al instante. |
-| `upl build <archivo.upl> -t c` | Genera código fuente ANSI C99 optimizado. |
-| `upl build <archivo.upl> -t asm --baremetal` | Genera Ensamblador x86_64 puro para Ring 0 / Bare-Metal. |
-| `upl repl` | Inicia la Consola Interactiva con comandos `:c`, `:asm` y `:lang`. |
-| `upl diag <codigo> -l <idioma>` | Diagnostica códigos de error en 57 idiomas. |
+```bash
+# 1. Compilar y ejecutar un programa UPL al instante
+upl run examples/ejemplo_soberano.upl
+
+# 2. Compilar a código fuente ANSI C99 optimizado
+upl build examples/ejemplo_soberano.upl -t c -o salida.c
+
+# 3. Compilar a Ensamblador x86_64 puro para Ring 0 (Bare-Metal / Firmware)
+upl build examples/ejemplo_soberano.upl -t asm --baremetal -o kernel.asm
+
+# 4. Iniciar la Consola Interactiva Avanzada (REPL)
+upl repl
+
+# 5. Diagnosticar un código de excepción de Windows o CPU en tu idioma
+upl diag 0xC0000005 -l es
+```
 
 ---
 
-## 📜 Certificación y Propiedad Intelectual / SafeCreative Registration
+## 📖 Documentación y Wiki Oficial
+* **[Guía Oficial de Sintaxis y Comandos](docs/GUIA_OFICIAL_SINTAXIS_Y_COMANDOS_UPL.md)**
+* **[Diccionario Maestro de Errores Multi-SO (57 Idiomas)](docs/DICCIONARIO_MAESTRO_CODIGOS_ERROR_MULTI_SO.md)**
+* **[Manifiesto del Lenguaje UPL para el Siglo XXI](docs/MANIFIESTO_LENGUAJE_UPL_SIGLO_XXI.md)**
+* **[Portal de la Wiki Soberana](wiki/INDEX.md)**
+
+---
+
+## 📜 Certificación y Propiedad Intelectual
 * **Amparo Legal:** Obra registrada y protegida en SafeCreative.
-* **Continuidad Registral:** Las extensiones, compiladores, especificaciones gramaticales y arquitecturas del lenguaje UPL aquí incorporadas forman parte de la misma unidad de obra y actualización evolutiva de la titularidad original.
-* **Licencia Soberana:** Consulta el archivo [`LICENSE`](LICENSE) para los términos de uso, patentes defensivas y distribución soberana.
+* **Continuidad Registral:** Este compilador, gramática y herramientas constituyen la actualización evolutiva oficial de la misma unidad de obra registrada.
+* **Licencia:** Consulta el archivo [LICENSE](LICENSE) para patentes defensivas y términos de uso soberano.

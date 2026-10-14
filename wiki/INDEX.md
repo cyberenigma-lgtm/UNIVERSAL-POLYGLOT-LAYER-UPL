@@ -1,38 +1,37 @@
-# 🌎 UPL GLOBAL WIKI PORTAL
-## Sovereign Knowledge for a Polyglot World
+# 🌎 PORTAL OFICIAL DE LA WIKI: LENGUAJE DE PROGRAMACIÓN UPL
+## Documentación Oficial del Nuevo Lenguaje Soberano de Sistemas
 
-Welcome to the **Universal Polyglot Layer (UPL)** official Wiki. This is a multilingual repository of knowledge designed to empower developers across all cultures and regions with standalone linguistic and systems sovereignty.
-
-### 🗺️ Select Your Sovereignty (Language)
-Click on your preferred language to access the dedicated documentation.
-
-| Language | Entry Point | Status |
-| :--- | :--- | :--- |
-| 🇪🇸 **Español** | [Wiki Inicio (ES)](es/INICIO.md) | **100% Operational** |
-| 🇺🇸 **English** | [Wiki Home (EN)](en/HOME.md) | **100% Operational** |
-| 🇷🇺 **Русский** | [Wiki Главная (RU)](ru/HOME.md) | **Operational** |
-| 🇨🇳 **中文 (Mandarin)** | [Wiki 首页 (ZH)](zh/HOME.md) | **Operational** |
-| 🇯🇵 **日本語** | [Wiki ホーム (JA)](ja/HOME.md) | **Operational** |
-| 🇰🇷 **한국어** | [Wiki 홈 (KO)](ko/HOME.md) | **Operational** |
-| 🇸🇦 **العربية** | [Wiki الصفحة الرئيسية (AR)](ar/HOME.md) | **Operational** |
-| 🇮🇳 **हिन्दी** | [Wiki होम (HI)](hi/HOME.md) | **Operational** |
-| 🇫🇷 **Français** | [Wiki Accueil (FR)](fr/HOME.md) | **Operational** |
-| 🇩🇪 **Deutsch** | [Wiki Home (DE)](de/HOME.md) | **Operational** |
-| 🇮🇹 **Italiano** | [Wiki Inizio (IT)](it/HOME.md) | **Operational** |
-| 🇧🇷 **Português** | [Wiki Início (PT)](pt/HOME.md) | **Operational** |
-
-> [!NOTE]
-> For the other 45+ languages supported by NUASM, basic technical documentation is available via the [Universal Syntax Map](../docs/UNIVERSAL_SYNTAX_MAP.md).
+Bienvenido al centro neurálgico de documentación del **Lenguaje de Programación UPL (Universal Polyglot Layer)**. Esta wiki detalla la arquitectura, sintaxis, compilador, diagnósticos y herramientas del nuevo lenguaje para desarrolladores de todo el mundo.
 
 ---
 
-### 📚 General Sections
-Independent of language, these sections are critical for mastery of UPL:
+### 🗺️ Selecciona tu Idioma / Select Language
 
-1.  **[🚀 Multilingual Examples](es/EJEMPLOS.md)**: Proof of work in Python, C, Rust, Go, JS, and more.
-2.  **[🔧 AI-Drive Corrections](es/CORRECCIONES.md)**: How the sovereign engine fixes your code.
-3.  **[⚠️ Troubleshooting & Errors](es/ERRORES_SOLUCIONES.md)**: Solutions for the most common unification errors.
+| Idioma | Entrada a la Wiki | Contenido Disponible |
+|---|---|---|
+| 🇪🇸 **Español** | **[Wiki en Español](es/INICIO.md)** | **Completo 100%:** Sintaxis, Compilador, Diagnósticos, Ejemplos |
+| 🇬🇧 **English** | **[English Wiki](en/HOME.md)** | **Full 100%:** Syntax, Compiler Architecture, Error Dictionary, Examples |
 
 ---
-**Universal Polyglot Layer (UPL) - Core Architecture.**
-*"United by code, sovereign by language."*
+
+### 📚 Secciones Principales de la Documentación (Español)
+
+1. **[Guía de Inicio Rápido](es/INICIO.md):** Qué es UPL, instalación del compilador y primer programa.
+2. **[Manual de Sintaxis y Gramática](es/SINTAXIS_Y_GRAMATICA.md):** Palabras clave bilingües, tipos primitivos, `comp3`, estructuras y control de flujo.
+3. **[Arquitectura del Compilador](es/COMPILADOR_Y_ARQUITECTURA.md):** Cómo viaja el código desde el Lexer y Parser hasta C99 y Ensamblador x86_64.
+4. **[Diccionario de Diagnóstico y Errores](es/DICCIONARIO_ERRORES.md):** Resolución de fallos en Windows, Linux y Bare-Metal CPU en 57 idiomas.
+5. **[Galería de Ejemplos](es/EJEMPLOS.md):** Programas de cálculo exacto, control de hardware Ring 0 y resiliencia con Landing-Pads.
+
+---
+
+### 📚 Main Documentation Sections (English)
+
+1. **[Quickstart Guide](en/HOME.md):** What is UPL, toolchain setup, and your first sovereign program.
+2. **[Syntax & Grammar Reference](en/SYNTAX_AND_GRAMMAR.md):** Dual-language keywords, primitive types, `comp3`, structs, and pointers.
+3. **[Compiler Architecture](en/COMPILER_ARCHITECTURE.md):** Pipeline breakdown (Lexer, Parser, AST, C99 and x86_64 NASM backends).
+4. **[Multi-OS Error Dictionary](en/ERROR_DICTIONARY.md):** Decoding Windows NTSTATUS, POSIX signals, and CPU exceptions in 57 languages.
+5. **[Example Gallery](en/EXAMPLES.md):** Bare-metal drivers, exact math routines, and zero-bug landing pads.
+
+---
+
+**Universal Polyglot Layer (UPL) — Propiedad Intelectual Registrada en SafeCreative.**

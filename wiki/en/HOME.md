@@ -1,35 +1,60 @@
-# 📖 HOME - UPL Wiki (English Sovereignty)
+# 🚀 UPL PROGRAMMING LANGUAGE - QUICKSTART
+## The Next-Generation Sovereign Systems Language
 
-Welcome to the official documentation of the **Universal Polyglot Layer (UPL)**. This guide will help you master omniglot and sovereign systems development.
-
-## 🛡️ What is UPL?
-UPL is a linguistic unification layer that allows any developer to program in their preferred language (Python, C, Rust, etc.) and unify all that logic into a single sovereign execution flow.
-
-## 🚀 Usage Modes
-
-### 1. UPL Studio (Professional IDE)
-The most visual and powerful way to interact with UPL.
-- **Access**: Run `python studio/upl_studio.py`.
-- **Key Features**: Multi-tabbing, Autocompletion, Native Terminal, and Global Unicity Panel.
-
-### 2. UPL CLI (Command Line Interface)
-For pro users and automation.
-- **Access**: `python upl.py [file.upl]`.
-- **Useful Commands**:
-  - `-l [language]`: Changes the Mother Language sovereignty (es, en, ja, etc.).
-  - `-o [output]`: Generates an `.asm` file with the result.
-
-## 🏗️ The Mother Language (UPL-IR)
-UPL translates all languages into an Intermediate Representation (IR). When selecting **English** sovereignty, you will see mnemonics such as:
-- `PROCEDURE` (instead of PROC)
-- `SET` (Standard)
-- `RETURN` (instead of RET)
+Welcome to the official documentation of **UPL (Universal Polyglot Layer)**. UPL is a **brand-new, independent, first-class systems programming language** designed from the ground up for extreme hardware performance, bilingual sovereignty, and self-healing resilience superior to Rust and C++.
 
 ---
-### 🔗 Quick Links
-- [Polyglot Examples](../es/EJEMPLOS.md)
-- [Correction Guide](../es/CORRECCIONES.md)
-- [Troubleshooting](../es/ERRORES_SOLUCIONES.md)
+
+### 🌟 Why is UPL a Completely New Language?
+
+1. **Dedicated Native Compiler (`uplc`):** Built with its own lexical scanner, recursive-descent parser, typed Abstract Syntax Tree (AST), and dual code generators for ANSI C99 and x86_64 NASM Long Mode.
+2. **First-Class Dual Syntax:** The first language worldwide with full native syntax parity between Spanish and English.
+3. **Silicon Landing-Pads (DVTRGAS-30 0xAA30):** Automatic boundary guard pages with canonical parity checks that prevent buffer overflows before execution touches adjacent memory.
+4. **Self-Healing Resilience (`@snapshot`):** Unlike Rust’s process-killing `panic!`, UPL captures atomic state checkpoints and rolls back execution in nanoseconds without service downtime.
+5. **Exact Decimal Math (`comp3`):** Native BCD packed decimals that completely eliminate floating-point IEEE-754 rounding inaccuracies in financial and critical computations.
 
 ---
-**Universal Polyglot Layer (UPL) - Sovereign Systems Architecture.**
+
+### 📦 Your First UPL Program
+
+Save as `hello_sovereign.upl`:
+
+```rust
+module demo;
+
+pub fn main() -> i32 {
+    let mut counter: i32 = 0;
+    while counter < 5 {
+        counter = counter + 1;
+    }
+    return counter;
+}
+```
+
+---
+
+### ⚡ Running & Compiling
+
+From the root directory:
+
+```bash
+# Direct one-step execution
+python upl.py run hello_sovereign.upl
+
+# Compile to optimized C99 source code
+python upl.py build hello_sovereign.upl -t c -o output.c
+
+# Compile to pure x86_64 Long Mode Assembly for Ring 0 (Bare-Metal / Firmware)
+python upl.py build hello_sovereign.upl -t asm --baremetal -o output.asm
+
+# Launch the Advanced Interactive REPL
+python upl.py repl
+```
+
+---
+
+### 📚 Wiki Sections
+* **[Syntax & Grammar Reference](SYNTAX_AND_GRAMMAR.md)**
+* **[Compiler Pipeline & Architecture](COMPILER_ARCHITECTURE.md)**
+* **[Multi-OS Error Dictionary (57 Languages)](ERROR_DICTIONARY.md)**
+* **[Code Examples Gallery](EXAMPLES.md)**
