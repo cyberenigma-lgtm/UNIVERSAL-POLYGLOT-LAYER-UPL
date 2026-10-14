@@ -45,3 +45,28 @@ AUDITORIA_CLI.upl
 # Assets/Binary
 *.exe
 *.bin
+*.iso
+*.qcow2
+*.vmdk
+*.img
+
+# Security & Private Credentials Prevention
+*.env
+*.pem
+*.key
+*.secret
+*credentials*
+*token*
+*.gxp.bak
+
+# Backups and Heavy Archives
+*.zip
+*.tar
+*.gz
+*.7z
+checkpoints_backup/
+
+# Confidential In-Development OS Prototypes (Strict Non-Disclosure)
+upl_expansion/neuro_os_upl/
+*Prototipo*
+*prototipo*

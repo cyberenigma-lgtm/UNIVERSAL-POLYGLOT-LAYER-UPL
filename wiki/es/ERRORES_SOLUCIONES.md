@@ -26,4 +26,4 @@ En esta sección encontrarás los errores más comunes al trabajar con la **Univ
 
 ---
 **¿No encuentras la solución?**
-Consulta el manual avanzado de **NUASM** o contacta con la Comunidad Intelectual de **Neuro-OS Genesis**.
+Consulta el manual avanzado de **NUASM** o contacta con la Comunidad Intelectual de **UPL Core Architecture**.

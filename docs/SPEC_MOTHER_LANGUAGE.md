@@ -1,6 +1,6 @@
 # Especificación UPL: LENGUAJE MADRE (v1.1)
 
-El **Lenguaje Madre** es la representación intermedia (IR) universal del ecosistema Neuro-OS. Diseñado para la soberanía técnica y la independencia del hardware.
+El **Lenguaje Madre** es la representación intermedia (IR) universal de la suite UPL. Diseñado para la soberanía técnica y la independencia del hardware.
 
 ## 🛠️ Set de Instrucciones Universales
 
@@ -23,8 +23,8 @@ El **Lenguaje Madre** es la representación intermedia (IR) universal del ecosis
 - `CALL <TARGET>, [<ARGS>]`: Invocación de procedimiento.
 - `RET <VAL>`: Retorno de valor.
 
-### 4. Interfaz de Sistema (Neuro-Layer)
-- `SYSCALL <ID>, [<ARGS>]`: Llamada directa a servicios del kernel Neuro-OS.
+### 4. Interfaz de Sistema (Systems-Layer)
+- `SYSCALL <ID>, [<ARGS>]`: Llamada directa a servicios del kernel / microkernel.
 - `IO_WRITE <STREAM>, <SRC>`: Salida de datos universal.
 
 ## 📁 Tipos de Datos UPL

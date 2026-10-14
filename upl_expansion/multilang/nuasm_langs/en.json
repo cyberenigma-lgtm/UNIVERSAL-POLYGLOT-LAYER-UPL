@@ -1,0 +1,113 @@
+{
+    "meta": {
+        "code": "en",
+        "name": "Unknown",
+        "version": "1.0"
+    },
+    "instructions": {
+        "mov": [
+            "mov",
+            "put",
+            "copy",
+            "load"
+        ],
+        "xchg": [
+            "xchg",
+            "swap"
+        ],
+        "add": [
+            "add",
+            "sum"
+        ],
+        "sub": [
+            "sub",
+            "take"
+        ],
+        "mul": [
+            "mul"
+        ],
+        "div": [
+            "div"
+        ],
+        "inc": [
+            "inc"
+        ],
+        "dec": [
+            "dec"
+        ],
+        "xor": [
+            "xor"
+        ],
+        "and": [
+            "and"
+        ],
+        "or": [
+            "or"
+        ],
+        "push": [
+            "push"
+        ],
+        "pop": [
+            "pop"
+        ],
+        "call": [
+            "call"
+        ],
+        "ret": [
+            "ret",
+            "return"
+        ],
+        "jmp": [
+            "jmp",
+            "jump"
+        ],
+        "syscall": [
+            "syscall",
+            "look",
+            "show"
+        ],
+        "section": [
+            "section"
+        ],
+        "global": [
+            "global",
+            "globl"
+        ],
+        "extern": [
+            "extern"
+        ],
+        "db": [
+            "db",
+            "defb",
+            "byte",
+            "define_byte"
+        ],
+        "dw": [
+            "dw",
+            "defw",
+            "word",
+            "define_word"
+        ],
+        "resb": [
+            "resb",
+            "reserve_byte"
+        ],
+        "movaps": [
+            "movaps"
+        ],
+        "addps": [
+            "addps"
+        ],
+        "subps": [
+            "subps"
+        ]
+    },
+    "comments": {
+        "prefix": ";"
+    },
+    "errors": {
+        "ERR_UNKNOWN_OPCODE": "Unknown instruction: '{0}'",
+        "ERR_INVALID_OPERAND": "Invalid operand for '{0}'",
+        "ERR_FILE_NOT_FOUND": "File not found: '{0}'"
+    }
+}

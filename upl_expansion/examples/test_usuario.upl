@@ -1,0 +1,22 @@
+// Demostración de UPL en modo Hosted / Aplicación
+module test_usuario;
+
+pub fn calcular_fibonacci(n: i32) -> i32 {
+    if n <= 1 {
+        return n
+    }
+    return calcular_fibonacci(n - 1) + calcular_fibonacci(n - 2)
+}
+
+pub fn main() -> i32 {
+    let mut i: i32 = 0
+    let mut total: i32 = 0
+    
+    while i < 10 {
+        total = total + calcular_fibonacci(i)
+        i = i + 1
+    }
+
+    salto_logico_guardar("punto_fibonacci_completado.gxp")
+    return total
+}

@@ -1,7 +1,7 @@
 # 🌎 UPL GLOBAL WIKI PORTAL
 ## Sovereign Knowledge for a Polyglot World
 
-Welcome to the **Universal Polyglot Layer (UPL)** official Wiki. This is a multilingual repository of knowledge designed to empower developers across all cultures and regions within the **Neuro-OS Genesis** ecosystem.
+Welcome to the **Universal Polyglot Layer (UPL)** official Wiki. This is a multilingual repository of knowledge designed to empower developers across all cultures and regions with standalone linguistic and systems sovereignty.
 
 ### 🗺️ Select Your Sovereignty (Language)
 Click on your preferred language to access the dedicated documentation.
@@ -34,5 +34,5 @@ Independent of language, these sections are critical for mastery of UPL:
 3.  **[⚠️ Troubleshooting & Errors](es/ERRORES_SOLUCIONES.md)**: Solutions for the most common unification errors.
 
 ---
-**Neuro-OS Genesis - Linguistic Sovereignty Department.**
+**Universal Polyglot Layer (UPL) - Core Architecture.**
 *"United by code, sovereign by language."*

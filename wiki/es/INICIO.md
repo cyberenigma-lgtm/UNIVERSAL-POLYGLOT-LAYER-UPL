@@ -1,6 +1,6 @@
 # 📖 INICIO - Wiki UPL (Soberanía Española)
 
-Bienvenido a la documentación oficial de la **Universal Polyglot Layer (UPL)**. Este manual está diseñado para guiarte en el dominio del desarrollo omníglota dentro de **Neuro-OS Genesis**.
+Bienvenido a la documentación oficial de la **Universal Polyglot Layer (UPL)**. Este manual está diseñado para guiarte en el dominio del desarrollo omníglota y de sistemas autónomos.
 
 ## 🛡️ ¿Qué es UPL?
 UPL es la capa de unificación lingüística que permite a cualquier desarrollador programar en su lenguaje preferido (Python, C, Rust, etc.) y unificar toda esa lógica en un único flujo de ejecución soberano.
@@ -32,4 +32,4 @@ UPL traduce todos los lenguajes a una Representación Intermedia (IR). Al selecc
 - [Resolución de Errores](ERRORES_SOLUCIONES.md)
 
 ---
-**Neuro-OS Genesis - Departamento de Soberanía Lingüística.**
+**Universal Polyglot Layer (UPL) - Arquitectura de Sistemas Soberanos.**

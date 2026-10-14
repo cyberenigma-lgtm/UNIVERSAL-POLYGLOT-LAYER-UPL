@@ -7,7 +7,7 @@ A diferencia de cualquier otro IDE o compilador actual, UPL logra tres hitos sim
 
 1.  **Atemporalidad Hidráulica**: Puedes mezclar un lenguaje de 1959 (**COBOL**) con uno de 2024 (**Mojo/Zig**) en el mismo archivo.
 2.  **Soberanía Lingüística**: El desarrollador puede elegir ver el código intermedio en su idioma natal (Español, Inglés, etc.), eliminando la barrera del inglés técnico.
-3.  **Un núcleo, Infinitas Voces**: Una sola representación intermedia (**UPL-IR**) que garantiza que cualquier lógica, sin importar su origen, termine siendo un binario optimizado de Neuro-OS.
+3.  **Un núcleo, Infinitas Voces**: Una sola representación intermedia (**UPL-IR**) que garantiza que cualquier lógica, sin importar su origen, termine siendo un binario nativo optimizado.
 
 ## 📊 Cobertura de Tiers (Roadmap v1.1)
 - **Sistemas**: ASM, C, Zig, Rust.

@@ -1,6 +1,6 @@
 # 📖 HOME - UPL Wiki (English Sovereignty)
 
-Welcome to the official documentation of the **Universal Polyglot Layer (UPL)**. This guide will help you master omniglot development within the **Neuro-OS Genesis** ecosystem.
+Welcome to the official documentation of the **Universal Polyglot Layer (UPL)**. This guide will help you master omniglot and sovereign systems development.
 
 ## 🛡️ What is UPL?
 UPL is a linguistic unification layer that allows any developer to program in their preferred language (Python, C, Rust, etc.) and unify all that logic into a single sovereign execution flow.
@@ -32,4 +32,4 @@ UPL translates all languages into an Intermediate Representation (IR). When sele
 - [Troubleshooting](../es/ERRORES_SOLUCIONES.md)
 
 ---
-**Neuro-OS Genesis - Linguistic Sovereignty Department.**
+**Universal Polyglot Layer (UPL) - Sovereign Systems Architecture.**
