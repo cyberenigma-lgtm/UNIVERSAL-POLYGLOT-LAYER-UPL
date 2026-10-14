@@ -85,6 +85,7 @@ upl diag 0xC0000005 -l es
 ---
 
 ## 📖 Documentación y Wiki Oficial
+* **[Catálogo Completo de Lenguajes e Idiomas Soportados](docs/CATALOGO_COMPLETO_LENGUAJES_UPL.md)**
 * **[Guía Oficial de Sintaxis y Comandos](docs/GUIA_OFICIAL_SINTAXIS_Y_COMANDOS_UPL.md)**
 * **[Diccionario Maestro de Errores Multi-SO (57 Idiomas)](docs/DICCIONARIO_MAESTRO_CODIGOS_ERROR_MULTI_SO.md)**
 * **[Manifiesto del Lenguaje UPL para el Siglo XXI](docs/MANIFIESTO_LENGUAJE_UPL_SIGLO_XXI.md)**
