@@ -197,14 +197,36 @@ Ejemplos de uso en cualquier Sistema Operativo:
     p_run.add_argument("-l", "--lang", default="es", help="Idioma para diagnósticos y mensajes (es, en, ru, zh, etc.)")
     p_run.set_defaults(func=cmd_run)
 
-    # Subcomando: build
-    p_build = subparsers.add_parser("build", help="Construir ejecutable o código fuente")
-    p_build.add_argument("file", help="Archivo .upl a compilar")
-    p_build.add_argument("-o", "--output", help="Ruta del archivo de salida")
-    p_build.add_argument("-t", "--target", default="bin", choices=["bin", "c", "asm"], help="Formato de salida (bin, c, asm)")
-    p_build.add_argument("-l", "--lang", default="es", help="Idioma para diagnósticos y mensajes (es, en, ru, zh, etc.)")
-    p_build.add_argument("--baremetal", action="store_true", help="Modo Bare-Metal / Ring-0 (sin librerías de usuario)")
-    p_build.set_defaults(func=cmd_build)
+    # Subcomando: diag
+    def cmd_diag(args):
+        from compiler.upl_error_dictionary import diagnosticar_codigo
+        val_str = args.code.strip()
+        try:
+            if val_str.lower().startswith("0x"):
+                raw_val = int(val_str, 16)
+                if raw_val >= 0x80000000:
+                    val = raw_val - 0x100000000
+                else:
+                    val = raw_val
+            else:
+                val = int(val_str)
+        except ValueError:
+            print(f"❌ Código inválido: {args.code}")
+            return
+        
+        info = diagnosticar_codigo(val, locale=args.lang)
+        print(f"\n🔍 [DIAGNÓSTICO SOBERANO UPL - {info.get('idioma', 'ES')}]")
+        print(f"   ► Estado / Tipo:  {info.get('tipo', 'DESCONOCIDO')}")
+        print(f"   ► Hexadecimal:    {info.get('hex', hex(val))}")
+        print(f"   ► Categoría:      {info.get('categoria', 'General')}")
+        print(f"   ► Título:         {info.get('titulo', '')}")
+        print(f"   ► Causa:          {info.get('descripcion', '')}")
+        print(f"   ► Solución:       {info.get('solucion', '')}\n")
+
+    p_diag = subparsers.add_parser("diag", help="Diagnosticar un código de error de SO o CPU en 57 idiomas")
+    p_diag.add_argument("code", help="Código de error en hexadecimal (ej: 0xC0000005) o decimal")
+    p_diag.add_argument("-l", "--lang", default="es", help="Idioma para la explicación (es, en, ja, de, etc.)")
+    p_diag.set_defaults(func=cmd_diag)
 
     args = parser.parse_args()
     args.func(args)

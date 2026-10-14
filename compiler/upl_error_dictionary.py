@@ -49,13 +49,13 @@ DB_ERRORS = {
             "titulo": "Instrucción Privilegiada (Conflicto de Ring-0 en Ring-3)",
             "categoria": "Silicio / Privilegios de CPU",
             "descripcion": "Intentaste ejecutar una instrucción que solo puede correr en Ring 0 (Modo Núcleo / Silicio), como 'cli', 'sti', 'inb', 'outb', 'hlt' o manipular 'cr3', dentro del espacio de usuario normal de Windows.",
-            "solucion": "Esta lógica pertenece al Microkernel de Neuro-OS. Compílala con 'upl build archivo.upl --target=asm --baremetal' para arrancar directamente en silicio."
+            "solucion": "Esta lógica pertenece al modo Ring 0 / Bare-Metal. Compílala con 'upl build archivo.upl --target=asm --baremetal' para arrancar directamente en silicio."
         },
         "en": {
             "titulo": "Privileged Instruction (Ring-0 Conflict in Ring-3 Userland)",
             "categoria": "Silicon / CPU Privileges",
             "descripcion": "Attempted to execute an instruction reserved exclusively for Ring 0 (Kernel/Silicon Mode), such as 'cli', 'sti', 'inb', 'outb', 'hlt' or 'cr3' access, inside Windows userland.",
-            "solucion": "This code belongs to the Neuro-OS Microkernel. Compile it with 'upl build file.upl --target=asm --baremetal' to run natively on hardware."
+            "solucion": "This code belongs to Ring 0 / Bare-Metal systems. Compile it with 'upl build file.upl --target=asm --baremetal' to run natively on hardware."
         }
     },
     -1073741795: { # 0xC000001D
