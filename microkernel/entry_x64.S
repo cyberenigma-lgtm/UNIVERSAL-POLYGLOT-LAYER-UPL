@@ -1,7 +1,7 @@
 /* =========================================================
  * NEURO-OS GENESIS: 64-BIT LONG MODE TRAMPOLINE (entry_x64.S)
  * Multiboot 1 / 2 Entry -> PML4 Paging -> 64-Bit x86_64
- * Autor: José Manuel Moreno Cano (Noxferion)
+ * Autor: José Manuel Moreno (Noxferion)
  * ========================================================= */
 
 .section .mboot, "a"

@@ -78,7 +78,9 @@ def cmd_run(args):
             f.write(c_code)
 
         # 3. Compilar con GCC / Clang
-        if compilador in ("gcc", "clang", "tcc"):
+        if compilador in ("gcc", "clang"):
+            compile_cmd = [compilador, "-O2", "-masm=intel", c_temp, "-o", exe_temp]
+        elif compilador == "tcc":
             compile_cmd = [compilador, "-O2", c_temp, "-o", exe_temp]
         else: # MSVC cl
             compile_cmd = ["cl", "/O2", c_temp, f"/Fe:{exe_temp}"]
@@ -160,7 +162,11 @@ def cmd_build(args):
         if not out_file:
             out_file = os.path.splitext(source_file)[0] + (".exe" if os.name == "nt" else "")
 
-        res = subprocess.run([compilador, "-O2", temp_c, "-o", out_file], capture_output=True, text=True)
+        build_flags = ["-O2"]
+        if compilador in ("gcc", "clang"):
+            build_flags.append("-masm=intel")
+        compile_cmd = [compilador] + build_flags + [temp_c, "-o", out_file]
+        res = subprocess.run(compile_cmd, capture_output=True, text=True)
         if os.path.exists(temp_c): os.remove(temp_c)
 
         if res.returncode != 0:
@@ -196,6 +202,14 @@ Ejemplos de uso en cualquier Sistema Operativo:
     p_run.add_argument("file", help="Archivo .upl a ejecutar")
     p_run.add_argument("-l", "--lang", default="es", help="Idioma para diagnósticos y mensajes (es, en, ru, zh, etc.)")
     p_run.set_defaults(func=cmd_run)
+
+    # Subcomando: build
+    p_build = subparsers.add_parser("build", help="Compilar archivo .upl a C99, Ensamblador NASM x86_64 o binario nativo")
+    p_build.add_argument("file", help="Archivo .upl a compilar")
+    p_build.add_argument("-o", "--output", default=None, help="Ruta del archivo de salida generado")
+    p_build.add_argument("-t", "--target", default="c", choices=["c", "c99", "asm", "x64", "nasm", "bin", "exe"], help="Target de compilación ('c', 'asm', 'bin')")
+    p_build.add_argument("--baremetal", action="store_true", help="Modo Bare-Metal puro sin librerías estándar ni libc (para SO Ring-0)")
+    p_build.set_defaults(func=cmd_build)
 
     # Subcomando: diag
     def cmd_diag(args):

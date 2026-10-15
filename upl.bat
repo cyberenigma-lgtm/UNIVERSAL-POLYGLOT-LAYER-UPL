@@ -1,2 +1,2 @@
 @echo off
-python "%~dp0upl.py" %*
+"%~dp0dist\upl\upl.exe" %*

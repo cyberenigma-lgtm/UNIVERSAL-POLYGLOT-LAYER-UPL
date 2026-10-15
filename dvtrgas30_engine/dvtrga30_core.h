@@ -7,7 +7,7 @@
  *   - NPU 45 TOPS integrada para neural shading
  *   - Throughput: 4.85 GB/s (vs 2.84 GB/s del v25) = +70.7%
  *   - Latencia/frame: 1.40 ms (vs 2.58 ms del v25) = -45.8%
- * Author: Jose Manuel Moreno Cano (Noxferion)
+ * Author: Jose Manuel Moreno (Noxferion)
  * ============================================================================ */
 
 #ifndef DVTRGA30_CORE_H

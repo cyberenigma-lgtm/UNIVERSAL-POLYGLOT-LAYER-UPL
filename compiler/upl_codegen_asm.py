@@ -24,6 +24,7 @@ class UPLCodeGenASM:
         self.data_section = []
         self.string_literals = {}
         self.local_vars = {} # name -> rbp offset
+        self.constants = {}  # name -> value
         self.stack_offset = 0
 
     def new_label(self, prefix: str = "L_UPL") -> str:
@@ -37,7 +38,24 @@ class UPLCodeGenASM:
             "; Blindaje Vectorial DVTRGAS-30 (Landing Pad Maestro)",
             "dvtrgas30_landing_pad: times 6 db 0x00"
         ]
+        self.constants = {}
+
+        # Escanear constantes y variables globales
+        for decl in program.declarations:
+            if isinstance(decl, VarDeclNode):
+                if decl.is_const and decl.init_expr and isinstance(decl.init_expr, LiteralExpr):
+                    self.constants[decl.name] = decl.init_expr.value
+                    if isinstance(decl.init_expr.value, (int, float)):
+                        self.data_section.append(f"{decl.name}: dq {decl.init_expr.value}")
+                elif not decl.is_const:
+                    val = 0
+                    if decl.init_expr and isinstance(decl.init_expr, LiteralExpr) and isinstance(decl.init_expr.value, (int, float)):
+                        val = decl.init_expr.value
+                    self.data_section.append(f"{decl.name}: dq {val}")
         
+        self.defined_functions = {decl.name for decl in program.declarations if isinstance(decl, FunctionDeclNode)}
+        self.external_calls = set()
+
         text_section = [
             "default rel",
             "section .text",
@@ -45,12 +63,46 @@ class UPLCodeGenASM:
             ""
         ]
 
+        func_bodies = []
         for decl in program.declarations:
             if isinstance(decl, FunctionDeclNode):
-                text_section.append(self.gen_function(decl))
-                text_section.append("")
+                func_bodies.append(self.gen_function(decl))
+                func_bodies.append("")
 
+        # Declarar funciones externas no definidas en este archivo
+        for ext_fn in sorted(self.external_calls):
+            if ext_fn not in self.defined_functions:
+                text_section.append(f"extern {ext_fn}")
+        if self.external_calls:
+            text_section.append("")
+
+        text_section.extend(func_bodies)
         return "\n".join(self.data_section + [""] + text_section)
+
+    def _collect_vars_recursive(self, stmts):
+        found = []
+        for s in stmts:
+            if isinstance(s, VarDeclNode):
+                found.append(s)
+            elif isinstance(s, WhileStmtNode):
+                found.extend(self._collect_vars_recursive(s.body.statements))
+            elif isinstance(s, ForStmtNode):
+                found.append(VarDeclNode(s.var_name, "i64", None))
+                found.extend(self._collect_vars_recursive(s.body.statements))
+            elif isinstance(s, IfStmtNode):
+                found.extend(self._collect_vars_recursive(s.then_block.statements))
+                if s.else_block:
+                    if isinstance(s.else_block, BlockNode):
+                        found.extend(self._collect_vars_recursive(s.else_block.statements))
+                    elif isinstance(s.else_block, IfStmtNode):
+                        found.extend(self._collect_vars_recursive([s.else_block]))
+                    elif isinstance(s.else_block, list):
+                        found.extend(self._collect_vars_recursive(s.else_block))
+            elif isinstance(s, LoopStmtNode):
+                found.extend(self._collect_vars_recursive(s.body.statements))
+            elif isinstance(s, BlockNode):
+                found.extend(self._collect_vars_recursive(s.statements))
+        return found
 
     def gen_function(self, func: FunctionDeclNode) -> str:
         self.local_vars = {}
@@ -65,19 +117,6 @@ class UPLCodeGenASM:
         lines.append("    push rbp")
         lines.append("    mov rbp, rsp")
 
-        # Asignar espacio de stack para variables locales (múltiplo de 16)
-        # Pre-escaneo simple de variables locales
-        var_count = 0
-        for stmt in func.body.statements:
-            if isinstance(stmt, VarDeclNode):
-                var_count += 1
-                self.stack_offset += 8
-                self.local_vars[stmt.name] = -self.stack_offset
-
-        aligned_space = ((self.stack_offset + 15) // 16) * 16
-        if aligned_space > 0:
-            lines.append(f"    sub rsp, {aligned_space}")
-
         # Mapear los primeros argumentos System V (rdi, rsi, rdx, rcx, r8, r9)
         arg_regs = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"]
         for i, param in enumerate(func.params):
@@ -86,12 +125,23 @@ class UPLCodeGenASM:
                 self.local_vars[param[0]] = -self.stack_offset
                 lines.append(f"    mov [rbp - {self.stack_offset}], {arg_regs[i]}")
 
+        # Recolectar recursivamente todas las variables locales del cuerpo
+        all_local_vars = self._collect_vars_recursive(func.body.statements)
+        for var_node in all_local_vars:
+            if var_node.name not in self.local_vars:
+                self.stack_offset += 8
+                self.local_vars[var_node.name] = -self.stack_offset
+
+        aligned_space = ((self.stack_offset + 15) // 16) * 16
+        if aligned_space > 0:
+            lines.insert(2, f"    sub rsp, {aligned_space}")
+
         # Generar cuerpo
         for stmt in func.body.statements:
             lines.append(self.gen_stmt(stmt))
 
         # Epílogo por defecto
-        lines.append(f".epilogue_{fn_name}:")
+        lines.append(f"epilogue_{fn_name}:")
         lines.append("    mov rsp, rbp")
         lines.append("    pop rbp")
         lines.append("    ret")
@@ -117,8 +167,11 @@ class UPLCodeGenASM:
                 lines.append("    pop rax")
                 lines.append("    mov [rbx], rax")
             elif isinstance(stmt.target, IdentifierExpr):
-                offset = self.local_vars.get(stmt.target.name, -8)
-                lines.append(f"    mov [rbp {offset}], rax")
+                if stmt.target.name in self.local_vars:
+                    offset = self.local_vars[stmt.target.name]
+                    lines.append(f"    mov [rbp {offset}], rax")
+                else:
+                    lines.append(f"    mov [{stmt.target.name}], rax")
 
         elif isinstance(stmt, IfStmtNode):
             label_else = self.new_label("L_else")
@@ -157,6 +210,21 @@ class UPLCodeGenASM:
                 lines.append(self.gen_stmt(s))
             lines.append(f"    jmp {label_start}")
 
+        elif isinstance(stmt, ForStmtNode):
+            label_start = self.new_label("L_for_start")
+            label_end = self.new_label("L_for_end")
+            offset = self.local_vars.get(stmt.var_name, -8)
+            lines.append(f"    mov qword [rbp {offset}], 0")
+            lines.append(f"{label_start}:")
+            lines.append(self.gen_expr_to_rax(stmt.iterable))
+            lines.append(f"    cmp [rbp {offset}], rax")
+            lines.append(f"    jge {label_end}")
+            for s in stmt.body.statements:
+                lines.append(self.gen_stmt(s))
+            lines.append(f"    inc qword [rbp {offset}]")
+            lines.append(f"    jmp {label_start}")
+            lines.append(f"{label_end}:")
+
         elif isinstance(stmt, ReturnStmtNode):
             if stmt.expr:
                 lines.append(self.gen_expr_to_rax(stmt.expr))
@@ -170,6 +238,9 @@ class UPLCodeGenASM:
             for asm_line in stmt.asm_code.split('\n'):
                 asm_line = asm_line.strip()
                 if asm_line:
+                    if "//" in asm_line:
+                        parts = asm_line.split("//", 1)
+                        asm_line = f"{parts[0].strip()} ; {parts[1].strip()}"
                     lines.append(f"    {asm_line}")
 
         elif isinstance(stmt, ExprStmtNode):
@@ -193,6 +264,12 @@ class UPLCodeGenASM:
             if expr.name in self.local_vars:
                 offset = self.local_vars[expr.name]
                 lines.append(f"    mov rax, [rbp {offset}]")
+            elif expr.name in self.constants:
+                val = self.constants[expr.name]
+                if isinstance(val, int):
+                    lines.append(f"    mov rax, {val}")
+                else:
+                    lines.append(f"    mov rax, [{expr.name}]")
             else:
                 lines.append(f"    mov rax, [{expr.name}]")
 
@@ -259,9 +336,51 @@ class UPLCodeGenASM:
                 lines.append("    or rax, rbx")
             elif expr.op == '^':
                 lines.append("    xor rax, rbx")
+            elif expr.op == '%':
+                lines.append("    cqo")
+                lines.append("    idiv rbx")
+                lines.append("    mov rax, rdx")
+            elif expr.op == '<<':
+                lines.append("    mov rcx, rbx")
+                lines.append("    shl rax, cl")
+            elif expr.op == '>>':
+                lines.append("    mov rcx, rbx")
+                lines.append("    shr rax, cl")
+
+        elif isinstance(expr, UnaryExpr):
+            lines.append(self.gen_expr_to_rax(expr.operand))
+            if expr.op == '-':
+                lines.append("    neg rax")
+            elif expr.op == '~':
+                lines.append("    not rax")
+            elif expr.op == '!':
+                lines.append("    test rax, rax")
+                lines.append("    setz al")
+                lines.append("    movzx rax, al")
+
+        elif isinstance(expr, AddressOfExpr):
+            if isinstance(expr.expr, IdentifierExpr):
+                if expr.expr.name in self.local_vars:
+                    offset = self.local_vars[expr.expr.name]
+                    lines.append(f"    lea rax, [rbp {offset}]")
+                else:
+                    lines.append(f"    lea rax, [{expr.expr.name}]")
+
+        elif isinstance(expr, IndexExpr):
+            lines.append(self.gen_expr_to_rax(expr.index))
+            lines.append("    push rax")
+            lines.append(self.gen_expr_to_rax(expr.target))
+            lines.append("    pop rbx")
+            lines.append("    shl rbx, 3")
+            lines.append("    add rax, rbx")
+            lines.append("    mov rax, [rax]")
+
+        elif isinstance(expr, FieldAccessExpr):
+            lines.append(self.gen_expr_to_rax(expr.target))
 
         elif isinstance(expr, CallExpr):
             # Llamada de función
+            self.external_calls.add(expr.callee)
             arg_regs = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"]
             for i, arg in enumerate(expr.args):
                 if i < len(arg_regs):

@@ -84,7 +84,27 @@ class UPLCodeGenC:
         out.append("}")
         out.append("")
 
-        # Prototipos hacia adelante
+        # Declaraciones hacia adelante de todas las estructuras (evita 'Unknown type name')
+        struct_names = [decl.name for decl in program.declarations if isinstance(decl, StructDeclNode)]
+        if struct_names:
+            out.append("/* --- DECLARACIONES HACIA ADELANTE DE ESTRUCTURAS SOBERANAS --- */")
+            for s_name in struct_names:
+                out.append(f"typedef struct {s_name} {s_name};")
+            out.append("")
+
+        # 1. Definición completa de estructuras
+        for decl in program.declarations:
+            if isinstance(decl, StructDeclNode):
+                out.append(self.gen_declaration(decl))
+                out.append("")
+
+        # 2. Variables y constantes globales
+        for decl in program.declarations:
+            if isinstance(decl, VarDeclNode):
+                out.append(self.gen_declaration(decl))
+                out.append("")
+
+        # 3. Prototipos hacia adelante de funciones
         for decl in program.declarations:
             if isinstance(decl, FunctionDeclNode):
                 params_str = ", ".join([f"{self.translate_type(p[1])} {p[0]}" for p in decl.params]) or "void"
@@ -92,17 +112,18 @@ class UPLCodeGenC:
                 out.append(f"{ret_str} {decl.name}({params_str});")
         out.append("")
 
-        # Declaraciones
+        # 4. Implementación de funciones
         for decl in program.declarations:
-            out.append(self.gen_declaration(decl))
-            out.append("")
+            if isinstance(decl, FunctionDeclNode):
+                out.append(self.gen_declaration(decl))
+                out.append("")
 
         return "\n".join(out)
 
     def gen_declaration(self, decl: ASTNode) -> str:
         if isinstance(decl, StructDeclNode):
             lines = []
-            lines.append(f"typedef struct {decl.name} {{")
+            lines.append(f"struct {decl.name} {{")
             # Si tiene blindaje vectorial o snapshot, añadimos landing-pad DVTRGAS-30
             if decl.is_snapshot or decl.is_dvtrgas:
                 lines.append("    uint8_t _dvtrgas30_pad_head[6];")
@@ -110,10 +131,15 @@ class UPLCodeGenC:
                 lines.append(f"    {self.translate_type(f_type)} {f_name};")
             if decl.is_snapshot or decl.is_dvtrgas:
                 lines.append("    uint8_t _dvtrgas30_pad_tail[6];")
-            lines.append(f"}} {decl.name};")
+            lines.append(f"}};")
             return "\n".join(lines)
 
         elif isinstance(decl, FunctionDeclNode):
+            self.pointer_vars = set()
+            for p_name, p_type in decl.params:
+                if "*" in p_type or p_type.startswith("*"):
+                    self.pointer_vars.add(p_name)
+
             lines = []
             params_str = ", ".join([f"{self.translate_type(p[1])} {p[0]}" for p in decl.params]) or "void"
             ret_str = self.translate_type(decl.return_type)
@@ -145,7 +171,10 @@ class UPLCodeGenC:
 
         elif isinstance(stmt, IfStmtNode):
             lines = []
-            lines.append(f"{self.indent()}if ({self.gen_expr(stmt.condition)}) {{")
+            cond = self.gen_expr(stmt.condition)
+            if not (cond.startswith('(') and cond.endswith(')')):
+                cond = f"({cond})"
+            lines.append(f"{self.indent()}if {cond} {{")
             self.indent_level += 1
             for s in stmt.then_block.statements:
                 lines.append(self.gen_statement(s))
@@ -166,7 +195,10 @@ class UPLCodeGenC:
 
         elif isinstance(stmt, WhileStmtNode):
             lines = []
-            lines.append(f"{self.indent()}while ({self.gen_expr(stmt.condition)}) {{")
+            cond = self.gen_expr(stmt.condition)
+            if not (cond.startswith('(') and cond.endswith(')')):
+                cond = f"({cond})"
+            lines.append(f"{self.indent()}while {cond} {{")
             self.indent_level += 1
             for s in stmt.body.statements:
                 lines.append(self.gen_statement(s))
@@ -177,6 +209,16 @@ class UPLCodeGenC:
         elif isinstance(stmt, LoopStmtNode):
             lines = []
             lines.append(f"{self.indent()}while (1) {{")
+            self.indent_level += 1
+            for s in stmt.body.statements:
+                lines.append(self.gen_statement(s))
+            self.indent_level -= 1
+            lines.append(f"{self.indent()}}}")
+            return "\n".join(lines)
+
+        elif isinstance(stmt, ForStmtNode):
+            lines = []
+            lines.append(f"{self.indent()}for (int64_t {stmt.var_name} = 0; {stmt.var_name} < ({self.gen_expr(stmt.iterable)}); ++{stmt.var_name}) {{")
             self.indent_level += 1
             for s in stmt.body.statements:
                 lines.append(self.gen_statement(s))
@@ -237,7 +279,10 @@ class UPLCodeGenC:
             return f"(({c_target})({self.gen_expr(expr.expr)}))"
 
         elif isinstance(expr, FieldAccessExpr):
-            return f"{self.gen_expr(expr.target)}.{expr.field}"
+            op = "."
+            if isinstance(expr.target, IdentifierExpr) and expr.target.name in getattr(self, 'pointer_vars', set()):
+                op = "->"
+            return f"{self.gen_expr(expr.target)}{op}{expr.field}"
 
         elif isinstance(expr, IndexExpr):
             return f"{self.gen_expr(expr.target)}[{self.gen_expr(expr.index)}]"

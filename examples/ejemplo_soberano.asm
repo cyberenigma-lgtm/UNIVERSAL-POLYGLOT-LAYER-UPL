@@ -8,12 +8,14 @@ default rel
 section .text
 global _start_upl_microkernel
 
+extern salto_logico_guardar
+
 ; === FUNCIÓN BARE-METAL / RING 0: inicializar_hardware ===
 global inicializar_hardware
+    sub rsp, 16
 inicializar_hardware:
     push rbp
     mov rbp, rsp
-    sub rsp, 16
     mov rax, 462
     mov [rbp -8], rax
     mov rax, 65
@@ -25,16 +27,16 @@ inicializar_hardware:
     mov rsp, rbp
     pop rbp
     ret
-.epilogue_inicializar_hardware:
+epilogue_inicializar_hardware:
     mov rsp, rbp
     pop rbp
     ret
 
 global main
 main:
+    sub rsp, 16
     push rbp
     mov rbp, rsp
-    sub rsp, 16
     mov rax, 0
     mov [rbp -8], rax
     mov rax, 1
@@ -77,7 +79,7 @@ L_while_end_2:
     mov rsp, rbp
     pop rbp
     ret
-.epilogue_main:
+epilogue_main:
     mov rsp, rbp
     pop rbp
     ret

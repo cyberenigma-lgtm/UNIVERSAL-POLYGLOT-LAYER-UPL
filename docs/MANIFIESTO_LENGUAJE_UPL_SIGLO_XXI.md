@@ -1,6 +1,6 @@
 # 🛡️ MANIFIESTO Y ESPECIFICACIÓN: EL LENGUAJE SOBERANO UPL (SIGLO XXI)
 ## Universal Polyglot Layer (UPL) — El Lenguaje Madre Definitivo
-**Autor:** José Manuel Moreno Cano (Noxferion)  
+**Autor:** José Manuel Moreno (Noxferion)  
 **Ecosistema:** Universal Polyglot Layer (UPL) Sovereign Toolchain  
 **Licencia:** Soberana v1.0  
 

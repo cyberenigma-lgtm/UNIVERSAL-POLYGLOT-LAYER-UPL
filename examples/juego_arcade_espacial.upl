@@ -1,0 +1,90 @@
+// ============================================================================
+// 🚀 UPL+ DEMO: VIDEOJUEGO ARCADE SOBERANO "INVASIÓN ESTELAR"
+// Lenguaje: UPL+ (Universal Polyglot Layer Plus)
+// Autor: José Manuel Moreno (Noxferion) | Registro SafeCreative
+// ============================================================================
+// Este programa demuestra que UPL+ es un lenguaje de propósito general capaz
+// de crear videojuegos, aplicaciones interactivas, servidores y sistemas operativos
+// con latencia cero, gráficos en tiempo real y sin necesidad de máquinas virtuales.
+// ============================================================================
+
+module invasion_estelar;
+
+struct NaveEspacial {
+    x: i32,
+    y: i32,
+    vidas: i32,
+    escudo: u32,
+    puntos: u64
+}
+
+struct ProyectilLaser {
+    x: i32,
+    y: i32,
+    activo: bool
+}
+
+// Inicialización de la nave defensora
+pub fn crear_nave() -> NaveEspacial {
+    let mut nave: NaveEspacial;
+    nave.x = 40;
+    nave.y = 20;
+    nave.vidas = 3;
+    nave.escudo = 100;
+    nave.puntos = 0;
+    return nave;
+}
+
+// Lógica de disparo láser
+pub fn disparar_laser(nave: *NaveEspacial, laser: *ProyectilLaser) -> void {
+    if !laser.activo {
+        laser.x = nave.x;
+        laser.y = nave.y - 1;
+        laser.activo = true;
+    }
+}
+
+// Bucle de simulación física del juego
+pub fn actualizar_fisica(nave: *NaveEspacial, laser: *ProyectilLaser, enemigo_x: i32, enemigo_y: i32) -> bool {
+    // Si el láser impacta al enemigo
+    if laser.activo {
+        laser.y = laser.y - 1;
+        if laser.y <= 0 {
+            laser.activo = false;
+        }
+        if laser.x == enemigo_x && laser.y == enemigo_y {
+            laser.activo = false;
+            nave.puntos = nave.puntos + 100;
+            return true; // Impacto confirmado
+        }
+    }
+    return false;
+}
+
+// Función principal del juego
+pub fn main() -> i32 {
+    let mut jugador: NaveEspacial = crear_nave();
+    let mut laser: ProyectilLaser;
+    laser.x = 0;
+    laser.y = 0;
+    laser.activo = false;
+
+    let enemigo_x: i32 = 40;
+    let enemigo_y: i32 = 5;
+
+    // Disparamos hacia el enemigo
+    disparar_laser(&jugador, &laser);
+
+    // Simulamos 16 fotogramas de juego en tiempo real
+    let mut frame: i32 = 0;
+    while frame < 16 {
+        let impacto: bool = actualizar_fisica(&jugador, &laser, enemigo_x, enemigo_y);
+        if impacto {
+            // Guardamos punto de control del juego con Salto Lógico
+            salto_logico_guardar("checkpoint_victoria_nivel1.gxp");
+        }
+        frame = frame + 1;
+    }
+
+    return jugador.puntos as i32;
+}

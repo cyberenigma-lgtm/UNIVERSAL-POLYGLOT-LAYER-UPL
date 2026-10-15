@@ -1,7 +1,7 @@
 /* =========================================================
  * NEURO-OS GENESIS: PUENTE ENSAMBLADOR NATIVO 64-BITS (boot_x64.S)
  * Transición Bare-Metal 32-Bit -> PML4 4-Niveles -> 64-Bit x86_64
- * Autor: José Manuel Moreno Cano (Noxferion)
+ * Autor: José Manuel Moreno (Noxferion)
  * ========================================================= */
 
 .section .mboot, "a"

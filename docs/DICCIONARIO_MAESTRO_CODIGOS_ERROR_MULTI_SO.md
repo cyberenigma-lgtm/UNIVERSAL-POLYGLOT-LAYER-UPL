@@ -1,6 +1,6 @@
 # 📖 DICCIONARIO MAESTRO DE CÓDIGOS DE ERROR, SEÑALES Y DIAGNÓSTICO MULTI-SO
 ## Ecosistema Soberano Universal Polyglot Layer (UPL)
-**Autor:** José Manuel Moreno Cano (Noxferion)  
+**Autor:** José Manuel Moreno (Noxferion)  
 **Cobertura:** Windows (NTSTATUS), Linux / POSIX (Signals), Bare-Metal x86_64 Ring-0 (Microkernels y Firmware) y UPLC Compiler.
 
 ---

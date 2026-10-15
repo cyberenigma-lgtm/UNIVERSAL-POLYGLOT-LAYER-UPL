@@ -330,6 +330,8 @@ class UPLParser:
     def parse_term(self) -> ASTNode:
         expr = self.parse_factor()
         while self.peek().type in (TokenType.OP_PLUS, TokenType.OP_MINUS):
+            if self.cursor > 0 and self.peek().line > self.tokens[self.cursor - 1].line:
+                break
             op = self.advance().value
             right = self.parse_factor()
             expr = BinaryExpr(expr, op, right)
@@ -338,6 +340,8 @@ class UPLParser:
     def parse_factor(self) -> ASTNode:
         expr = self.parse_cast()
         while self.peek().type in (TokenType.OP_STAR, TokenType.OP_SLASH, TokenType.OP_PERCENT):
+            if self.cursor > 0 and self.peek().line > self.tokens[self.cursor - 1].line:
+                break
             op = self.advance().value
             right = self.parse_cast()
             expr = BinaryExpr(expr, op, right)
