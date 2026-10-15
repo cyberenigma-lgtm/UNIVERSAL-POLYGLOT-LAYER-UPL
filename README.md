@@ -27,9 +27,10 @@
 3. **Supera la lentitud y pérdida de precisión de lenguajes tradicionales:** Incorpora tipos nativos decimales **NeuroCOBOL (`comp3`)** empaquetados en BCD, eliminando los errores de redondeo de coma flotante de IEEE-754.
 
 ### 🚀 Características Clave de la Toolchain UPL+
-* **Compilador Nativo Propio (`uplc` / `upl`):** Binario independiente sin dependencias. Cuenta con su propio tokenizador, parser de descenso recursivo, árbol AST fuertemente tipado y doble generador de código:
-  * **Backend ANSI C99:** Código portable ultra-optimizado con estructuras empaquetadas.
-  * **Backend Ensamblador x86_64 Long Mode (NASM):** Código máquina puro para **Ring 0 / Bare-Metal** sin runtime ni librerías del sistema anfitrión.
+* **Compilador 100% Auto-Hospedado (Self-Hosted):** El núcleo del compilador de UPL+ está implementado en el propio lenguaje UPL+ ([`compiler/uplc_soberano.upl`](compiler/uplc_soberano.upl)), compilando a binario nativo independiente (`uplc` / `upl.exe`). Cero dependencias de Python o máquinas virtuales en ejecución.
+* **Backend Doble Nativo:**
+  * **ANSI C99:** Código portable ultra-optimizado con estructuras empaquetadas.
+  * **Ensamblador x86_64 Long Mode (NASM):** Código máquina puro para **Ring 0 / Bare-Metal** sin runtime ni librerías del sistema anfitrión.
 * **Soberanía Bilingüe Real (Español / Inglés):** Puedes programar usando palabras clave nativas en español (`funcion`, `sea`, `mutable`, `estructura`, `si`, `mientras`, `retornar`) o en inglés universal (`fn`, `let`, `mut`, `struct`, `if`, `while`, `return`).
 * **Consola Interactiva Avanzada (REPL Soberano):** Permite escribir código UPL+ al vuelo e inspeccionar en tiempo real el C99 (`:c`), el ensamblador (`:asm`) o cambiar a 57 idiomas (`:lang ja`).
 * **Diagnóstico Multi-Plataforma en 57 Idiomas:** Motor inteligente que traduce códigos de error NTSTATUS de Windows, señales POSIX de Linux y excepciones físicas de CPU x86_64.
@@ -40,9 +41,10 @@
 
 ### 💎 What is UPL+?
 **UPL+** is a **brand-new, next-generation systems programming language and bare-metal toolchain** built from scratch to provide uncompromising safety, extreme performance, and total linguistic sovereignty:
-1. **Memory Safety without Borrow-Checker Hell:** Employs hardware landing-pads and canonical parity (`0xAA30`) to prevent memory corruption at the silicon level.
-2. **Zero-Bug Self-Healing (Surpassing Rust):** Unlike Rust’s fatal `panic!`, UPL+ intercepts faults and triggers atomic checkpoint rollbacks (`@snapshot`), keeping critical systems running uninterrupted.
-3. **Exact Decimal Arithmetic:** Native NeuroCOBOL `comp3` BCD types eliminate IEEE 754 rounding inaccuracies in mission-critical applications.
+1. **100% Self-Hosted & Native:** The core compiler is written in UPL+ itself ([`compiler/uplc_soberano.upl`](compiler/uplc_soberano.upl)), producing standalone native binaries with 0% Python or VM runtime dependencies.
+2. **Memory Safety without Borrow-Checker Hell:** Employs hardware landing-pads and canonical parity (`0xAA30`) to prevent memory corruption at the silicon level.
+3. **Zero-Bug Self-Healing (Surpassing Rust):** Unlike Rust’s fatal `panic!`, UPL+ intercepts faults and triggers atomic checkpoint rollbacks (`@snapshot`), keeping critical systems running uninterrupted.
+4. **Exact Decimal Arithmetic:** Native NeuroCOBOL `comp3` BCD types eliminate IEEE 754 rounding inaccuracies in mission-critical applications.
 
 ---
 
@@ -50,16 +52,15 @@
 
 ```
 UNIVERSAL-POLYGLOT-LAYER-UPL/
-├── compiler/                  # Compilador nativo UPL (Lexer, Parser, AST, Backends C y ASM)
+├── compiler/                  # Compilador UPL+ (uplc_soberano.upl nativo, Lexer, Parser, Backends)
 ├── docs/                      # Manuales oficiales, especificación de gramática y diagnósticos
-├── examples/                  # Programas de demostración en código fuente .upl
-├── multilang/                 # Dicionarios de 57 idiomas para localización y ensamblador
+├── examples/                  # Programas y juegos de demostración en código fuente .upl
+├── multilang/                 # Diccionarios de 57 idiomas para localización y ensamblador
 ├── dvtrgas30_engine/          # Acelerador vectorial de paridad 0xAA30
 ├── neurocobol_engine/         # Motor de aritmética exacta BCD COMP-3
 ├── wiki/                      # Wiki técnica completa (Español / English)
-├── upl.py                     # CLI principal del compilador (run, build, repl, diag)
-├── upl.bat                    # Lanzador rápido para Windows
-├── upl.sh                     # Lanzador rápido para Linux / macOS
+├── upl.bat                    # Lanzador nativo independiente para Windows
+├── upl.sh                     # Lanzador nativo independiente para Linux / macOS
 └── README.md                  # Este documento oficial
 ```
 
