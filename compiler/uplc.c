@@ -1519,7 +1519,22 @@ int main(int argc, char **argv) {
     printf("[UPLC] Ejecutando '%s' (Compilador Nativo: %s)...\n", source_file, cc);
     printf("--- [SALIDA DE '%s'] ---\n", source_file);
 
-    int exit_code = system(out_exe);
+#ifdef _WIN32
+    for (char *p = out_exe; *p; ++p) {
+        if (*p == '/') *p = '\\';
+    }
+    char run_cmd[1024];
+    snprintf(run_cmd, sizeof(run_cmd), "\"%s\"", out_exe);
+    int exit_code = system(run_cmd);
+#else
+    char run_cmd[1024];
+    if (out_exe[0] != '/' && out_exe[0] != '.') {
+        snprintf(run_cmd, sizeof(run_cmd), "./%s", out_exe);
+    } else {
+        snprintf(run_cmd, sizeof(run_cmd), "%s", out_exe);
+    }
+    int exit_code = system(run_cmd);
+#endif
 
     printf("--- [PROGRAMA FINALIZADO CON CODIGO: %d] ---\n", exit_code);
     if (exit_code == 0) {

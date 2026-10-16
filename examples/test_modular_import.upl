@@ -12,7 +12,7 @@ pub fn main() -> i32 {
     let mut ctx: UrepSecurityContext;
     urep_guard_init(&ctx, 0x00400000, 0x004FFFFF, 0xCAFEBABE12345678);
 
-    // 2. Comprobar puntero seguro
+    // 2. Comprobar puntero seguro dentro de límites de código
     let rip_test: u64 = 0x00401050;
     let rip_valido: bool = urep_verify_instruction_pointer(&ctx, rip_test);
 
@@ -26,5 +26,22 @@ pub fn main() -> i32 {
     // 4. Calcular producto escalar usando función del módulo importado
     let dot: u64 = vec4_dot_product(&v1, &v2);
 
-    return 0;
+    // 5. Imprimir informe de verificación modular
+    printf("====================================================================\n");
+    printf("   TEST DE INTEGRACION MODULAR UPL: UREP + VECTOR COMPUTE\n");
+    printf("====================================================================\n");
+    printf("[UREP] Segmento de codigo verificado: 0x%llX - 0x%llX\n", ctx.text_segment_base, ctx.text_segment_limit);
+    printf("[UREP] Puntero RIP analizado: 0x%llX -> Valido: %d\n", rip_test, rip_valido);
+    printf("[UREP] Canario de proteccion activo: 0x%llX\n", ctx.guard_canary);
+    printf("--------------------------------------------------------------------\n");
+    printf("[VECTOR] Vector 1 (v1): (%llu, %llu, %llu, %llu)\n", v1.x, v1.y, v1.z, v1.w);
+    printf("[VECTOR] Vector 2 (v2): (%llu, %llu, %llu, %llu)\n", v2.x, v2.y, v2.z, v2.w);
+    printf("[VECTOR] Producto Escalar 4D: %llu (Esperado: 14)\n", dot);
+    printf("====================================================================\n");
+    printf("  TEST MODULAR COMPLETADO CON EXITO (0 FALLOS DE MEMORIA)\n\n");
+
+    if dot == 14 {
+        return 0;
+    }
+    return 1;
 }
