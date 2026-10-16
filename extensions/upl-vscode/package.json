@@ -1,0 +1,50 @@
+{
+    "name": "upl-lang",
+    "displayName": "Universal Polyglot Layer (UPL)",
+    "description": "Soporte oficial de lenguaje para Universal Polyglot Layer (UPL): sintaxis bilingüe, módulos de sistemas, decoradores y compilador nativo UPLC.",
+    "version": "1.5.0",
+    "publisher": "noxferion",
+    "engines": {
+        "vscode": "^1.75.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "keywords": [
+        "upl",
+        "systems programming",
+        "native",
+        "c99",
+        "nasm",
+        "polyglot"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "upl",
+                "aliases": [
+                    "UPL",
+                    "upl",
+                    "Universal Polyglot Layer"
+                ],
+                "extensions": [
+                    ".upl"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "upl",
+                "scopeName": "source.upl",
+                "path": "./syntaxes/upl.tmLanguage.json"
+            }
+        ],
+        "snippets": [
+            {
+                "language": "upl",
+                "path": "./snippets/upl.json"
+            }
+        ]
+    }
+}

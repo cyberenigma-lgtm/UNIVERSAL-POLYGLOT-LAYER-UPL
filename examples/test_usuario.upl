@@ -17,6 +17,9 @@ pub fn main() -> i32 {
         i = i + 1
     }
 
-    salto_logico_guardar("punto_fibonacci_completado.gxp")
-    return total
+    checkpoint_guardar("punto_fibonacci_completado.bin")
+    if total == 88 {
+        return 0
+    }
+    return 1
 }

@@ -1,0 +1,30 @@
+// ============================================================================
+// TEST: IMPORTACIÓN MODULAR Y SISTEMA MULTI-MÓDULO UPL
+// ============================================================================
+
+module test_modular;
+
+import urep_guard;
+import vector_ops;
+
+pub fn main() -> i32 {
+    // 1. Inicializar contexto de seguridad UREP importado de modules/urep/urep_guard.upl
+    let mut ctx: UrepSecurityContext;
+    urep_guard_init(&ctx, 0x00400000, 0x004FFFFF, 0xCAFEBABE12345678);
+
+    // 2. Comprobar puntero seguro
+    let rip_test: u64 = 0x00401050;
+    let rip_valido: bool = urep_verify_instruction_pointer(&ctx, rip_test);
+
+    // 3. Crear vectores 4D importados de modules/compute/vector_ops.upl
+    let mut v1: Vector4D;
+    vec4_init(&v1, 2, 3, 4, 5);
+
+    let mut v2: Vector4D;
+    vec4_init(&v2, 1, 1, 1, 1);
+
+    // 4. Calcular producto escalar usando función del módulo importado
+    let dot: u64 = vec4_dot_product(&v1, &v2);
+
+    return 0;
+}

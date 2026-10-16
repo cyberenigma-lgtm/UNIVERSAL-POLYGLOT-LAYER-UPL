@@ -1,0 +1,56 @@
+{
+    "Main Function": {
+        "prefix": "main",
+        "body": [
+            "pub fn main() -> i32 {",
+            "    $0",
+            "    return 0;",
+            "}"
+        ],
+        "description": "Función principal de entrada UPL"
+    },
+    "Module Declaration": {
+        "prefix": "mod",
+        "body": [
+            "module ${1:nombre_modulo};",
+            "",
+            "$0"
+        ],
+        "description": "Declaración de módulo UPL"
+    },
+    "Import Module": {
+        "prefix": "imp",
+        "body": [
+            "import ${1:urep_guard};$0"
+        ],
+        "description": "Importar módulo del sistema"
+    },
+    "Public Function": {
+        "prefix": "fn",
+        "body": [
+            "pub fn ${1:nombre}(${2:params}) -> ${3:i32} {",
+            "    $0",
+            "}"
+        ],
+        "description": "Declarar función pública"
+    },
+    "Struct Declaration": {
+        "prefix": "struct",
+        "body": [
+            "@snapshot",
+            "struct ${1:NombreEstructura} {",
+            "    ${2:campo}: ${3:u32}",
+            "}$0"
+        ],
+        "description": "Estructura con protección de memoria @snapshot"
+    },
+    "Inline Assembly": {
+        "prefix": "asm",
+        "body": [
+            "asm {",
+            "    ${1:nop}",
+            "}$0"
+        ],
+        "description": "Bloque de ensamblador x86_64 directo"
+    }
+}

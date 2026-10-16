@@ -28,6 +28,7 @@
 typedef enum {
     TOK_EOF,
     TOK_MODULE,
+    TOK_IMPORT,
     TOK_STRUCT,
     TOK_PUB,
     TOK_FN,
@@ -200,20 +201,21 @@ static int lexer_tokenize(Lexer *l) {
             buf[bi] = '\0';
 
             UPLTokenType tt = TOK_IDENT;
-            if (strcmp(buf, "module") == 0) tt = TOK_MODULE;
-            else if (strcmp(buf, "struct") == 0) tt = TOK_STRUCT;
-            else if (strcmp(buf, "pub") == 0) tt = TOK_PUB;
-            else if (strcmp(buf, "fn") == 0) tt = TOK_FN;
-            else if (strcmp(buf, "let") == 0) tt = TOK_LET;
+            if (strcmp(buf, "module") == 0 || strcmp(buf, "modulo") == 0) tt = TOK_MODULE;
+            else if (strcmp(buf, "import") == 0 || strcmp(buf, "importar") == 0 || strcmp(buf, "use") == 0 || strcmp(buf, "usar") == 0) tt = TOK_IMPORT;
+            else if (strcmp(buf, "struct") == 0 || strcmp(buf, "estructura") == 0) tt = TOK_STRUCT;
+            else if (strcmp(buf, "pub") == 0 || strcmp(buf, "publico") == 0) tt = TOK_PUB;
+            else if (strcmp(buf, "fn") == 0 || strcmp(buf, "funcion") == 0) tt = TOK_FN;
+            else if (strcmp(buf, "let") == 0 || strcmp(buf, "sea") == 0) tt = TOK_LET;
             else if (strcmp(buf, "mut") == 0) tt = TOK_MUT;
-            else if (strcmp(buf, "const") == 0) tt = TOK_CONST;
-            else if (strcmp(buf, "if") == 0) tt = TOK_IF;
-            else if (strcmp(buf, "else") == 0) tt = TOK_ELSE;
-            else if (strcmp(buf, "while") == 0) tt = TOK_WHILE;
-            else if (strcmp(buf, "for") == 0) tt = TOK_FOR;
-            else if (strcmp(buf, "return") == 0) tt = TOK_RETURN;
-            else if (strcmp(buf, "asm") == 0) tt = TOK_ASM;
-            else if (strcmp(buf, "as") == 0) tt = TOK_AS;
+            else if (strcmp(buf, "const") == 0 || strcmp(buf, "constante") == 0) tt = TOK_CONST;
+            else if (strcmp(buf, "if") == 0 || strcmp(buf, "si") == 0) tt = TOK_IF;
+            else if (strcmp(buf, "else") == 0 || strcmp(buf, "sino") == 0) tt = TOK_ELSE;
+            else if (strcmp(buf, "while") == 0 || strcmp(buf, "mientras") == 0) tt = TOK_WHILE;
+            else if (strcmp(buf, "for") == 0 || strcmp(buf, "para") == 0) tt = TOK_FOR;
+            else if (strcmp(buf, "return") == 0 || strcmp(buf, "retornar") == 0) tt = TOK_RETURN;
+            else if (strcmp(buf, "asm") == 0 || strcmp(buf, "ensamblador") == 0) tt = TOK_ASM;
+            else if (strcmp(buf, "as") == 0 || strcmp(buf, "como") == 0) tt = TOK_AS;
 
             lexer_add_token(l, tt, buf, start_line, start_col);
             continue;
@@ -521,6 +523,13 @@ static int transpile_upl_to_c(Lexer *l, FILE *out, bool is_baremetal) {
         }
 
         if (tok->type == TOK_MODULE) {
+            cursor++;
+            if (cursor < l->token_count) cursor++;
+            if (cursor < l->token_count && l->tokens[cursor].type == TOK_SEMICOLON) cursor++;
+            continue;
+        }
+
+        if (tok->type == TOK_IMPORT) {
             cursor++;
             if (cursor < l->token_count) cursor++;
             if (cursor < l->token_count && l->tokens[cursor].type == TOK_SEMICOLON) cursor++;
@@ -845,16 +854,18 @@ static int transpile_upl_to_c(Lexer *l, FILE *out, bool is_baremetal) {
 /* Transpilador Directo UPL -> Ensamblador NASM x86_64 */
 static int transpile_upl_to_nasm(Lexer *l, FILE *out) {
     fprintf(out, "; ============================================================================\n");
-    fprintf(out, "; CÓDIGO GENERADO AUTOMÁTICAMENTE POR EL COMPILADOR SOBERANO UPLC (NASM x86_64)\n");
+    fprintf(out, "; CODIGO GENERADO AUTOMATICAMENTE POR EL COMPILADOR NATIVO UPLC (NASM x86_64)\n");
     fprintf(out, "; ============================================================================\n\n");
     fprintf(out, "default rel\n");
     fprintf(out, "global main\n");
+    fprintf(out, "global checkpoint_guardar\n");
     fprintf(out, "extern printf\n");
     fprintf(out, "extern ExitProcess\n\n");
     fprintf(out, "section .data\n");
-    fprintf(out, "    msg_checkpoint db \"[SALTO_LOGICO] Punto de control guardado: %%s\", 10, 0\n\n");
+    fprintf(out, "    msg_checkpoint db \"[CHECKPOINT] Punto de control guardado: %%s\", 10, 0\n\n");
     fprintf(out, "section .text\n\n");
 
+    fprintf(out, "checkpoint_guardar:\n");
     fprintf(out, "salto_logico_guardar:\n");
     fprintf(out, "    sub rsp, 40\n");
     fprintf(out, "    mov rdx, rcx\n");
@@ -1072,6 +1083,210 @@ static int package_apk(const char *base_path, const char *bin_exe, const char *o
     return 0;
 }
 
+/* ============================================================================ */
+/* SISTEMA DE RUTAS Y RESOLUCIÓN MODULAR (import / importar / use)               */
+/* ============================================================================ */
+#define MAX_SEARCH_PATHS 32
+#define MAX_LOADED_MODULES 64
+
+static char g_search_paths[MAX_SEARCH_PATHS][512];
+static int g_search_path_count = 0;
+
+static char g_loaded_modules[MAX_LOADED_MODULES][256];
+static int g_loaded_module_count = 0;
+
+static void add_search_path(const char *path) {
+    if (!path || strlen(path) == 0) return;
+    for (int i = 0; i < g_search_path_count; ++i) {
+        if (strcmp(g_search_paths[i], path) == 0) return;
+    }
+    if (g_search_path_count < MAX_SEARCH_PATHS) {
+        strncpy(g_search_paths[g_search_path_count++], path, 511);
+    }
+}
+
+static void init_default_search_paths(const char *source_file) {
+    g_search_path_count = 0;
+    g_loaded_module_count = 0;
+
+    char dir[512] = ".";
+    const char *last_slash = strrchr(source_file, '/');
+    const char *last_bslash = strrchr(source_file, '\\');
+    const char *sep = last_slash > last_bslash ? last_slash : last_bslash;
+    if (sep) {
+        size_t len = sep - source_file;
+        if (len < 512) {
+            strncpy(dir, source_file, len);
+            dir[len] = '\0';
+        }
+    }
+    add_search_path(dir);
+    add_search_path(".");
+    add_search_path("modules");
+    add_search_path("modules/urep");
+    add_search_path("modules/compute");
+    add_search_path("modules/emulator");
+    add_search_path("modules/multilang_asm");
+    add_search_path("../modules");
+    add_search_path("../modules/urep");
+    add_search_path("../modules/compute");
+    add_search_path("../modules/emulator");
+    add_search_path("../modules/multilang_asm");
+}
+
+static bool is_module_already_loaded(const char *mod_name) {
+    for (int i = 0; i < g_loaded_module_count; ++i) {
+        if (strcmp(g_loaded_modules[i], mod_name) == 0) return true;
+    }
+    return false;
+}
+
+static void mark_module_loaded(const char *mod_name) {
+    if (g_loaded_module_count < MAX_LOADED_MODULES) {
+        strncpy(g_loaded_modules[g_loaded_module_count++], mod_name, 255);
+    }
+}
+
+static bool resolve_module_path(const char *mod_name, char *out_path, size_t out_size) {
+    if (strstr(mod_name, ".upl") || strchr(mod_name, '/') || strchr(mod_name, '\\')) {
+        FILE *f = fopen(mod_name, "r");
+        if (f) {
+            fclose(f);
+            snprintf(out_path, out_size, "%s", mod_name);
+            return true;
+        }
+    }
+
+    char candidate[1024];
+    for (int i = 0; i < g_search_path_count; ++i) {
+        snprintf(candidate, sizeof(candidate), "%s/%s.upl", g_search_paths[i], mod_name);
+        FILE *f = fopen(candidate, "r");
+        if (f) {
+            fclose(f);
+            snprintf(out_path, out_size, "%s", candidate);
+            return true;
+        }
+    }
+    return false;
+}
+
+static char* read_and_resolve_source(const char *filepath, int depth) {
+    if (depth > 16) {
+        fprintf(stderr, "❌ Error: Limite de recursion de importacion excedido (> 16 niveles) en '%s'.\n", filepath);
+        return NULL;
+    }
+
+    FILE *f = fopen(filepath, "rb");
+    if (!f) return NULL;
+    fseek(f, 0, SEEK_END);
+    long fsize = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    char *raw = (char*)malloc(fsize + 1);
+    if (!raw) { fclose(f); return NULL; }
+    fread(raw, 1, fsize, f);
+    raw[fsize] = '\0';
+    fclose(f);
+
+    size_t cap = fsize * 4 + 65536;
+    size_t len = 0;
+    char *result = (char*)malloc(cap);
+    if (!result) { free(raw); return NULL; }
+    result[0] = '\0';
+
+    char *line = raw;
+    while (*line) {
+        char *next_line = strchr(line, '\n');
+        if (next_line) {
+            *next_line = '\0';
+            next_line++;
+        } else {
+            next_line = line + strlen(line);
+        }
+
+        char *trim = line;
+        while (*trim == ' ' || *trim == '\t') trim++;
+
+        bool is_import = false;
+        if (strncmp(trim, "import ", 7) == 0) {
+            is_import = true;
+            trim += 7;
+        } else if (strncmp(trim, "importar ", 9) == 0) {
+            is_import = true;
+            trim += 9;
+        } else if (strncmp(trim, "use ", 4) == 0) {
+            is_import = true;
+            trim += 4;
+        } else if (strncmp(trim, "usar ", 5) == 0) {
+            is_import = true;
+            trim += 5;
+        }
+
+        if (is_import) {
+            while (*trim == ' ' || *trim == '\t' || *trim == '"') trim++;
+            char mod_ident[256] = "";
+            int mi = 0;
+            while (*trim && *trim != ';' && *trim != ' ' && *trim != '\t' && *trim != '\r' && *trim != '"') {
+                if (mi < 255) mod_ident[mi++] = *trim;
+                trim++;
+            }
+            mod_ident[mi] = '\0';
+
+            if (strlen(mod_ident) > 0) {
+                if (is_module_already_loaded(mod_ident)) {
+                    char comment[512];
+                    snprintf(comment, sizeof(comment), "// [Modulo ya cargado previamente: %s]\n", mod_ident);
+                    size_t clen = strlen(comment);
+                    if (len + clen + 1 < cap) {
+                        strcat(result, comment);
+                        len += clen;
+                    }
+                } else {
+                    mark_module_loaded(mod_ident);
+                    char resolved[1024];
+                    if (resolve_module_path(mod_ident, resolved, sizeof(resolved))) {
+                        char *mod_content = read_and_resolve_source(resolved, depth + 1);
+                        if (mod_content) {
+                            char banner[512];
+                            snprintf(banner, sizeof(banner), "\n// ===== [INICIO MODULO IMPORTADO: %s (%s)] =====\n", mod_ident, resolved);
+                            size_t blen = strlen(banner);
+                            size_t mlen = strlen(mod_content);
+                            const char *footer = "\n// ===== [FIN MODULO IMPORTADO] =====\n";
+                            size_t flen = strlen(footer);
+
+                            while (len + blen + mlen + flen + 1024 >= cap) {
+                                cap *= 2;
+                                result = (char*)realloc(result, cap);
+                            }
+                            strcat(result, banner);
+                            strcat(result, mod_content);
+                            strcat(result, footer);
+                            len += blen + mlen + flen;
+                            free(mod_content);
+                        }
+                    } else {
+                        fprintf(stderr, "⚠️ [UPLC] Advertencia: No se encontro el modulo '%s' en las rutas de busqueda.\n", mod_ident);
+                    }
+                }
+            }
+        } else {
+            size_t llen = strlen(line);
+            if (len + llen + 2 >= cap) {
+                cap = (len + llen + 2) * 2;
+                result = (char*)realloc(result, cap);
+            }
+            strcat(result, line);
+            strcat(result, "\n");
+            len += llen + 1;
+        }
+
+        line = next_line;
+    }
+
+    free(raw);
+    return result;
+}
+
 static void imprimir_banner() {
     printf("====================================================================\n");
     printf("  UPLC: Universal Polyglot Layer Compiler v%s\n", UPLC_VERSION);
@@ -1083,13 +1298,15 @@ static void imprimir_banner() {
 static void imprimir_ayuda(const char *prog) {
     imprimir_banner();
     printf("Uso:\n");
-    printf("  %s run   <archivo.upl>             Compila y ejecuta directamente el programa\n", prog);
+    printf("  %s run   <archivo.upl> [opciones]   Compila y ejecuta directamente el programa\n", prog);
     printf("  %s build <archivo.upl> [opciones]   Genera el codigo objeto o binario final\n", prog);
+    printf("  %s list / modules                  Lista los modulos del sistema disponibles\n", prog);
     printf("  %s --version                       Muestra la version del compilador\n", prog);
     printf("  %s --help                          Muestra esta ayuda\n\n", prog);
-    printf("Opciones de build:\n");
-    printf("  -t, --target <c|asm|bin|exe|deb|rpm|app|apk>  Formato de compilacion o empaquetado (defecto: bin)\n");
+    printf("Opciones de compilacion y empaquetado:\n");
+    printf("  -t, --target <c|asm|bin|exe|deb|rpm|app|apk>  Formato de salida (defecto: bin)\n");
     printf("  -o, --output <archivo>                        Ruta del archivo o paquete de salida\n");
+    printf("  -I <directorio>                               Anade una ruta de busqueda para 'import'\n");
     printf("  --baremetal                                   Modo bare-metal independiente sin libc\n\n");
 }
 
@@ -1110,9 +1327,29 @@ int main(int argc, char **argv) {
         return 0;
     }
 
+    if (strcmp(argv[1], "modules") == 0 || strcmp(argv[1], "list") == 0) {
+        printf("====================================================================\n");
+        printf("📦 UPLC: REGISTRO DE MODULOS DE SISTEMAS DEL ECOSISTEMA\n");
+        printf("====================================================================\n");
+        printf("  [Modulo]               [Ruta]                                [Proposito]\n");
+        printf("  --------------------------------------------------------------------\n");
+        printf("  urep_guard             modules/urep/urep_guard.upl           Control Flow Integrity (CFI) y Canarios\n");
+        printf("  urep_arch              modules/urep/urep_arch.upl            Punteros Multi-Arquitectura y Segmentos\n");
+        printf("  urep_hw                modules/urep/urep_hw.upl              MMIO, VGA, HPET y Perifericos de Silicio\n");
+        printf("  masm_table             modules/multilang_asm/masm_table.upl  Mnemonicos de Ensamblador Poliglotas\n");
+        printf("  cpu_runner             modules/emulator/cpu_runner.upl       Maquina de Estados y Emulador de CPU\n");
+        printf("  vector_ops             modules/compute/vector_ops.upl        Algebra Vectorial 4D y Producto Escalar\n");
+        printf("====================================================================\n");
+        printf("Para usar cualquiera de estos modulos en tu codigo .upl, simplemente escribe:\n");
+        printf("    import urep_guard;\n");
+        printf("o en espanol:\n");
+        printf("    importar urep_guard;\n\n");
+        return 0;
+    }
+
     const char *subcmd = argv[1];
     if (strcmp(subcmd, "run") != 0 && strcmp(subcmd, "build") != 0) {
-        fprintf(stderr, "❌ Error: Comando desconocido '%s'. Opciones válidas: run, build, --version, --help\n", subcmd);
+        fprintf(stderr, "❌ Error: Comando desconocido '%s'. Opciones validas: run, build, list, modules, --version, --help\n", subcmd);
         return 1;
     }
 
@@ -1126,40 +1363,34 @@ int main(int argc, char **argv) {
     const char *output_file = NULL;
     bool is_baremetal = false;
 
+    init_default_search_paths(source_file);
+
     for (int i = 3; i < argc; ++i) {
         if ((strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--target") == 0) && i + 1 < argc) {
             target = argv[++i];
         } else if ((strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0) && i + 1 < argc) {
             output_file = argv[++i];
+        } else if (strcmp(argv[i], "-I") == 0 && i + 1 < argc) {
+            add_search_path(argv[++i]);
+        } else if (strncmp(argv[i], "-I", 2) == 0 && strlen(argv[i]) > 2) {
+            add_search_path(argv[i] + 2);
         } else if (strcmp(argv[i], "--baremetal") == 0) {
             is_baremetal = true;
         }
     }
 
-    /* Leer archivo fuente */
-    FILE *f = fopen(source_file, "rb");
-    if (!f) {
-        fprintf(stderr, "❌ Error: No se pudo abrir el archivo fuente '%s'.\n", source_file);
-        return 1;
-    }
-    fseek(f, 0, SEEK_END);
-    long fsize = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    char *source_code = (char*)malloc(fsize + 1);
+    /* Leer y resolver archivo fuente con todos sus imports */
+    char *source_code = read_and_resolve_source(source_file, 0);
     if (!source_code) {
-        fclose(f);
-        fprintf(stderr, "❌ Error de memoria al leer '%s'.\n", source_file);
+        fprintf(stderr, "❌ Error: No se pudo abrir o procesar el archivo fuente '%s'.\n", source_file);
         return 1;
     }
-    fread(source_code, 1, fsize, f);
-    source_code[fsize] = '\0';
-    fclose(f);
+    size_t fsize = strlen(source_code);
 
     /* Análisis Léxico en Heap para evitar desbordamiento de pila */
     Lexer *lexer = (Lexer*)malloc(sizeof(Lexer));
     if (!lexer) {
-        fprintf(stderr, "❌ Error de memoria al inicializar analizador léxico.\n");
+        fprintf(stderr, "❌ Error de memoria al inicializar analizador lexico.\n");
         free(source_code);
         return 1;
     }
