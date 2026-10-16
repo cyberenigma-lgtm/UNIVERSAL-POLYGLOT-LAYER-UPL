@@ -38,17 +38,14 @@ pub fn main() -> i32 {
 From the root directory:
 
 ```bash
-# Direct one-step execution
-python upl.py run hello_sovereign.upl
+# Direct one-step native execution (Windows: upl.bat / Linux: ./upl.sh)
+upl run hello_sovereign.upl
 
 # Compile to optimized C99 source code
-python upl.py build hello_sovereign.upl -t c -o output.c
+upl build hello_sovereign.upl -t c -o output.c
 
 # Compile to pure x86_64 Long Mode Assembly for Ring 0 (Bare-Metal / Firmware)
-python upl.py build hello_sovereign.upl -t asm --baremetal -o output.asm
-
-# Launch the Advanced Interactive REPL
-python upl.py repl
+upl build hello_sovereign.upl -t asm --baremetal -o output.asm
 ```
 
 ---

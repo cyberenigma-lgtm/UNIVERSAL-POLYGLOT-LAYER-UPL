@@ -1,0 +1,73 @@
+// ============================================================================
+// EJEMPLO: UREP MULTI-ARQUITECTURA Y NORMALIZACION DE DIRECCIONES
+// ============================================================================
+
+module ejemplo_urep_multiarquitectura;
+
+const ARCH_BITS_16: u32 = 16;
+const ARCH_BITS_32: u32 = 32;
+const ARCH_BITS_64: u32 = 64;
+
+@snapshot
+struct ArchAddressConversion {
+    source_address: u64,
+    from_bits: u32,
+    to_bits: u32,
+    converted_address: u64,
+    overflow_detected: bool,
+    real_mode_segment: u32,
+    real_mode_offset: u32
+}
+
+@baremetal
+pub fn urep_arch_init(conv: *ArchAddressConversion) -> void {
+    conv.source_address = 0;
+    conv.from_bits = 64;
+    conv.to_bits = 64;
+    conv.converted_address = 0;
+    conv.overflow_detected = false;
+    conv.real_mode_segment = 0;
+    conv.real_mode_offset = 0;
+}
+
+@baremetal
+pub fn urep_arch_convert(conv: *ArchAddressConversion, addr: u64, from_bits: u32, to_bits: u32) -> bool {
+    conv.source_address = addr;
+    conv.from_bits = from_bits;
+    conv.to_bits = to_bits;
+    conv.overflow_detected = false;
+
+    if to_bits == ARCH_BITS_16 {
+        if addr > 65535 {
+            conv.overflow_detected = true;
+            conv.converted_address = addr - ((addr / 65536) * 65536);
+            return false;
+        }
+        conv.converted_address = addr;
+        return true;
+    }
+
+    conv.converted_address = addr;
+    return true;
+}
+
+@baremetal
+pub fn urep_arch_calculate_segmented(conv: *ArchAddressConversion, addr: u64) -> void {
+    conv.real_mode_segment = addr / 16;
+    conv.real_mode_offset = addr - (conv.real_mode_segment * 16);
+}
+
+pub fn main() -> i32 {
+    let mut conv: ArchAddressConversion;
+    urep_arch_init(&conv);
+
+    // Caso 1: Direccion lineal a modo real segment:offset
+    let dir_lineal: u64 = 0x11140;
+    urep_arch_calculate_segmented(&conv, dir_lineal);
+
+    // Caso 2: Comprobacion de rango de 16 bits
+    let ok_16: bool = urep_arch_convert(&conv, 0x8000, 64, 16);
+    let overflow_16: bool = urep_arch_convert(&conv, 0x120000, 64, 16);
+
+    return 0;
+}

@@ -1,24 +1,18 @@
 # ============================================================================
 # 🛡️ GITHUB LINGUIST OVERRIDES - REPOSITORIO OFICIAL UPL+
 # ============================================================================
-# Declarar UPL+ como el lenguaje primario del repositorio.
-# Los archivos de bootstrapping histórico se marcan como vendored para que
-# GitHub no clasifique el proyecto erróneamente como un script de Python.
+# Declarar UPL+ como el lenguaje primario y soberano del repositorio.
+# El código de bootstrapping histórico (fase 0) queda aislado en bootstrap/
+# y marcado como vendored para garantizar 100% pureza soberana en GitHub.
 # ============================================================================
 
 # Lenguaje Soberano Detectable
 *.upl linguist-detectable=true
 *.upl linguist-language=Rust
 
-# Código de bootstrapping y transpilación marcado como Vendored / Terceros
+# Bootstrapping histórico aislado
+bootstrap/** linguist-vendored=true
+bootstrap/** linguist-documentation=true
 *.py linguist-vendored=true
 *.c linguist-vendored=true
 *.asm linguist-vendored=true
-
-compiler/*.py linguist-vendored=true
-core/*.py linguist-vendored=true
-parsers/*.py linguist-vendored=true
-multilang/*.py linguist-vendored=true
-mixer/*.py linguist-vendored=true
-studio/*.py linguist-vendored=true
-catalog/*.py linguist-vendored=true

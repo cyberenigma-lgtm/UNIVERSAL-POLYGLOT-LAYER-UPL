@@ -1,90 +1,168 @@
 // ============================================================================
-// 🚀 UPL+ DEMO: VIDEOJUEGO ARCADE SOBERANO "INVASIÓN ESTELAR"
-// Lenguaje: UPL+ (Universal Polyglot Layer Plus)
-// Autor: José Manuel Moreno (Noxferion) | Registro SafeCreative
-// ============================================================================
-// Este programa demuestra que UPL+ es un lenguaje de propósito general capaz
-// de crear videojuegos, aplicaciones interactivas, servidores y sistemas operativos
-// con latencia cero, gráficos en tiempo real y sin necesidad de máquinas virtuales.
+// UPL+ ARCADE GAME: INVASION ESTELAR (PANTALLA COMPLETA 30 FPS)
+// Arquitectura: Doble buffer, renderizado de matriz, pantalla completa y teclado asincrono
+// Autor: Jose Manuel Moreno (Noxferion)
 // ============================================================================
 
 module invasion_estelar;
 
-struct NaveEspacial {
-    x: i32,
-    y: i32,
+struct EstadoJuego {
+    jugador_x: i32,
+    jugador_y: i32,
+    laser_x: i32,
+    laser_y: i32,
+    laser_activo: bool,
+    alien_x: i32,
+    alien_y: i32,
+    alien_dir: i32,
+    alien_vivo: bool,
+    puntos: i32,
     vidas: i32,
-    escudo: u32,
-    puntos: u64
+    escudo: i32,
+    en_ejecucion: bool
 }
 
-struct ProyectilLaser {
-    x: i32,
-    y: i32,
-    activo: bool
+pub fn juego_iniciar(g: *EstadoJuego) -> void {
+    g.jugador_x = 26;
+    g.jugador_y = 14;
+    g.laser_x = 0;
+    g.laser_y = 0;
+    g.laser_activo = false;
+    g.alien_x = 10;
+    g.alien_y = 3;
+    g.alien_dir = 1;
+    g.alien_vivo = true;
+    g.puntos = 0;
+    g.vidas = 3;
+    g.escudo = 100;
+    g.en_ejecucion = true;
 }
 
-// Inicialización de la nave defensora
-pub fn crear_nave() -> NaveEspacial {
-    let mut nave: NaveEspacial;
-    nave.x = 40;
-    nave.y = 20;
-    nave.vidas = 3;
-    nave.escudo = 100;
-    nave.puntos = 0;
-    return nave;
-}
-
-// Lógica de disparo láser
-pub fn disparar_laser(nave: *NaveEspacial, laser: *ProyectilLaser) -> void {
-    if !laser.activo {
-        laser.x = nave.x;
-        laser.y = nave.y - 1;
-        laser.activo = true;
-    }
-}
-
-// Bucle de simulación física del juego
-pub fn actualizar_fisica(nave: *NaveEspacial, laser: *ProyectilLaser, enemigo_x: i32, enemigo_y: i32) -> bool {
-    // Si el láser impacta al enemigo
-    if laser.activo {
-        laser.y = laser.y - 1;
-        if laser.y <= 0 {
-            laser.activo = false;
-        }
-        if laser.x == enemigo_x && laser.y == enemigo_y {
-            laser.activo = false;
-            nave.puntos = nave.puntos + 100;
-            return true; // Impacto confirmado
-        }
-    }
-    return false;
-}
-
-// Función principal del juego
 pub fn main() -> i32 {
-    let mut jugador: NaveEspacial = crear_nave();
-    let mut laser: ProyectilLaser;
-    laser.x = 0;
-    laser.y = 0;
-    laser.activo = false;
+    let mut juego: EstadoJuego;
+    juego_iniciar(&juego);
 
-    let enemigo_x: i32 = 40;
-    let enemigo_y: i32 = 5;
+    // 1. Activar pantalla completa y ocultar cursor
+    upl_setup_console_fullscreen();
 
-    // Disparamos hacia el enemigo
-    disparar_laser(&jugador, &laser);
+    let mut tick: i32 = 0;
 
-    // Simulamos 16 fotogramas de juego en tiempo real
-    let mut frame: i32 = 0;
-    while frame < 16 {
-        let impacto: bool = actualizar_fisica(&jugador, &laser, enemigo_x, enemigo_y);
-        if impacto {
-            // Guardamos punto de control del juego con Salto Lógico
-            salto_logico_guardar("checkpoint_victoria_nivel1.gxp");
+    while juego.en_ejecucion {
+        // 2. Procesamiento de Teclado No Bloqueante
+        if upl_kbhit() != 0 {
+            let tecla: i32 = upl_getch();
+            if tecla == 97 || tecla == 65 {
+                // A / a: Mover Izquierda
+                if juego.jugador_x > 3 {
+                    juego.jugador_x = juego.jugador_x - 3;
+                }
+            } else if tecla == 100 || tecla == 68 {
+                // D / d: Mover Derecha
+                if juego.jugador_x < 50 {
+                    juego.jugador_x = juego.jugador_x + 3;
+                }
+            } else if tecla == 32 {
+                // Espacio: Disparar laser
+                if !juego.laser_activo {
+                    juego.laser_activo = true;
+                    juego.laser_x = juego.jugador_x + 3;
+                    juego.laser_y = juego.jugador_y - 1;
+                }
+            } else if tecla == 113 || tecla == 81 || tecla == 27 {
+                // Q / q / ESC: Salir
+                juego.en_ejecucion = false;
+            }
         }
-        frame = frame + 1;
+
+        // 3. Fisica de Proyectiles y Enemigos
+        if juego.laser_activo {
+            juego.laser_y = juego.laser_y - 1;
+            if juego.laser_y <= 1 {
+                juego.laser_activo = false;
+            }
+            if juego.alien_vivo {
+                if juego.laser_y == juego.alien_y {
+                    if juego.laser_x >= juego.alien_x && juego.laser_x <= juego.alien_x + 6 {
+                        juego.alien_vivo = false;
+                        juego.laser_activo = false;
+                        juego.puntos = juego.puntos + 100;
+                        checkpoint_guardar("checkpoint_arcade_victoria.gxp");
+                    }
+                }
+            }
+        }
+
+        // Patrulla del alienigena
+        if tick % 2 == 0 && juego.alien_vivo {
+            juego.alien_x = juego.alien_x + juego.alien_dir;
+            if juego.alien_x >= 48 {
+                juego.alien_dir = -1;
+            } else if juego.alien_x <= 3 {
+                juego.alien_dir = 1;
+            }
+        }
+
+        // 4. Renderizado Completo en Pantalla (Buffer Atomico)
+        upl_clear_screen();
+
+        printf("================================================================================\n");
+        printf("  >>> UPL+ ARCADE: INVASION ESTELAR (TIEMPO REAL 30 FPS) <<<                    \n");
+        printf("  PUNTOS: [ %d ]   VIDAS: [ %d ]   ESCUDO: [ %d%% ]   ESTADO: ACTIVO             \n", juego.puntos, juego.vidas, juego.escudo);
+        printf("  Controles: [A] Izquierda | [D] Derecha | [ESPACIO] Fuego | [Q] Salir          \n");
+        printf("================================================================================\n");
+
+        let mut fila: i32 = 0;
+        while fila < 16 {
+            printf("| ");
+            let mut col: i32 = 0;
+            while col < 58 {
+                if fila == juego.jugador_y && col == juego.jugador_x {
+                    printf("<==[A]==>");
+                    col = col + 9;
+                } else if juego.alien_vivo && fila == juego.alien_y && col == juego.alien_x {
+                    printf("<[oWo]>");
+                    col = col + 7;
+                } else if !juego.alien_vivo && fila == juego.alien_y && col == juego.alien_x {
+                    printf("*!BOOM!*");
+                    col = col + 8;
+                } else if juego.laser_activo && fila == juego.laser_y && col == juego.laser_x {
+                    printf("^");
+                    col = col + 1;
+                } else {
+                    if (fila * 7 + col + tick) % 23 == 0 {
+                        printf(".");
+                    } else if (fila * 3 + col * 5 + tick) % 47 == 0 {
+                        printf("*");
+                    } else {
+                        printf(" ");
+                    }
+                    col = col + 1;
+                }
+            }
+            printf(" |\n");
+            fila = fila + 1;
+        }
+
+        printf("================================================================================\n");
+
+        if !juego.alien_vivo {
+            printf("  *** ¡VICTORIA! CRUCERO ALIENIGENA DESTRUIDO | PUNTUACION: %d PTS ***         \n", juego.puntos);
+            printf("  [Punto de control de partida guardado exitosamente]                          \n");
+        } else {
+            printf("  [MISION]: Neutralice al crucero invasor antes de que alcance la base terrestre\n");
+            printf("                                                                                \n");
+        }
+
+        upl_sleep_ms(35);
+        tick = tick + 1;
+
+        if tick >= 600 {
+            juego.en_ejecucion = false;
+        }
     }
 
-    return jugador.puntos as i32;
+    printf("\n  [Partida finalizada. Presione ENTER para salir...]\n");
+    getchar();
+
+    return 0;
 }

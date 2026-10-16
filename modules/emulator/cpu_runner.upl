@@ -1,0 +1,66 @@
+// ============================================================================
+// UPL CPU RUNNER: USER-SPACE INSTRUCTION SET SIMULATOR
+// Architecture: 64-Bit Register State Machine & Cycle Dispatcher
+// Standard: UPL-v5 Native Core Specification
+// ============================================================================
+
+module cpu_runner;
+
+const CPU_OP_NOP: u32  = 0x00;
+const CPU_OP_MOV: u32  = 0x01;
+const CPU_OP_ADD: u32  = 0x02;
+const CPU_OP_SUB: u32  = 0x03;
+const CPU_OP_CMP: u32  = 0x04;
+const CPU_OP_HALT: u32 = 0xFF;
+
+@snapshot
+struct CpuRegisterState {
+    rax: u64,
+    rbx: u64,
+    rcx: u64,
+    rdx: u64,
+    rip: u64,
+    rsp: u64,
+    flags_zero: bool,
+    halted: bool,
+    cycles_executed: u64
+}
+
+@baremetal
+pub fn cpu_init(cpu: *CpuRegisterState, stack_top: u64) -> void {
+    cpu.rax = 0;
+    cpu.rbx = 0;
+    cpu.rcx = 0;
+    cpu.rdx = 0;
+    cpu.rip = 0;
+    cpu.rsp = stack_top;
+    cpu.flags_zero = false;
+    cpu.halted = false;
+    cpu.cycles_executed = 0;
+}
+
+@baremetal
+pub fn cpu_step(cpu: *CpuRegisterState, opcode: u32, oper_dst: u64, oper_src: u64) -> void {
+    if cpu.halted {
+        return;
+    }
+
+    if opcode == CPU_OP_MOV {
+        cpu.rax = oper_src;
+    } else if opcode == CPU_OP_ADD {
+        cpu.rax = cpu.rax + oper_src;
+    } else if opcode == CPU_OP_SUB {
+        cpu.rax = cpu.rax - oper_src;
+    } else if opcode == CPU_OP_CMP {
+        if cpu.rax == oper_src {
+            cpu.flags_zero = true;
+        } else {
+            cpu.flags_zero = false;
+        }
+    } else if opcode == CPU_OP_HALT {
+        cpu.halted = true;
+    }
+
+    cpu.rip = cpu.rip + 1;
+    cpu.cycles_executed = cpu.cycles_executed + 1;
+}

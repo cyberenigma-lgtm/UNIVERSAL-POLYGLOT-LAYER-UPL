@@ -71,3 +71,13 @@ upl_expansion/
 *Prototipo*
 *prototipo*
 *.spec
+
+# Package Generation Build Artifacts
+*_deb_pkg/
+*_rpm_pkg/
+*_apk_bundle/
+*.app/
+*.deb
+*.rpm
+*.apk
+

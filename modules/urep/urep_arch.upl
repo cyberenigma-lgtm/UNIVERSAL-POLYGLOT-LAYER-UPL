@@ -1,0 +1,83 @@
+// ============================================================================
+// UREP: MULTI-ARCHITECTURE ADDRESS TRANSLATION MODULE
+// Architecture: Linear, Segmented & Multi-Word Pointer Normalization
+// Standard: UPL-v5 Native Core Specification
+// ============================================================================
+
+module urep_arch;
+
+const ARCH_BITS_16: u32  = 16;
+const ARCH_BITS_32: u32  = 32;
+const ARCH_BITS_64: u32  = 64;
+const ARCH_BITS_128: u32 = 128;
+
+const ARCH_MAX_16: u64 = 0xFFFF;
+const ARCH_MAX_32: u64 = 0xFFFFFFFF;
+
+@snapshot
+struct ArchAddressConversion {
+    source_address: u64,
+    from_bits: u32,
+    to_bits: u32,
+    converted_address: u64,
+    overflow_detected: bool,
+    real_mode_segment: u32,
+    real_mode_offset: u32
+}
+
+@baremetal
+pub fn urep_arch_init(conv: *ArchAddressConversion) -> void {
+    conv.source_address = 0;
+    conv.from_bits = 64;
+    conv.to_bits = 64;
+    conv.converted_address = 0;
+    conv.overflow_detected = false;
+    conv.real_mode_segment = 0;
+    conv.real_mode_offset = 0;
+}
+
+@baremetal
+pub fn urep_arch_convert(conv: *ArchAddressConversion, addr: u64, from_bits: u32, to_bits: u32) -> bool {
+    conv.source_address = addr;
+    conv.from_bits = from_bits;
+    conv.to_bits = to_bits;
+    conv.overflow_detected = false;
+
+    if to_bits == ARCH_BITS_16 {
+        if addr > ARCH_MAX_16 {
+            conv.overflow_detected = true;
+            conv.converted_address = addr - ((addr / 65536) * 65536);
+            return false;
+        }
+        conv.converted_address = addr;
+        return true;
+    }
+
+    if to_bits == ARCH_BITS_32 {
+        if addr > ARCH_MAX_32 {
+            conv.overflow_detected = true;
+            conv.converted_address = addr;
+            return false;
+        }
+        conv.converted_address = addr;
+        return true;
+    }
+
+    conv.converted_address = addr;
+    return true;
+}
+
+@baremetal
+pub fn urep_arch_calculate_segmented(conv: *ArchAddressConversion, addr: u64) -> void {
+    conv.real_mode_segment = addr / 16;
+    conv.real_mode_offset = addr - (conv.real_mode_segment * 16);
+}
+
+@baremetal
+pub fn urep_arch_align_boundary(addr: u64, alignment: u64) -> u64 {
+    if alignment == 0 {
+        return addr;
+    }
+    let quotient: u64 = addr / alignment;
+    return quotient * alignment;
+}

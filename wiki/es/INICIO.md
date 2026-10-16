@@ -52,17 +52,14 @@ funcion principal() -> i32 {
 Desde la terminal en el directorio raíz de UPL:
 
 ```bash
-# Ejecución directa e inmediata
-python upl.py run hola_soberano.upl
+# Ejecución directa e inmediata nativa (Windows: upl.bat / Linux: ./upl.sh)
+upl run hola_soberano.upl
 
 # Compilación a código C99 optimizado
-python upl.py build hola_soberano.upl -t c -o salida.c
+upl build hola_soberano.upl -t c -o salida.c
 
 # Compilación a Ensamblador x86_64 Long Mode (Bare-Metal / Ring 0)
-python upl.py build hola_soberano.upl -t asm --baremetal -o salida.asm
-
-# Entrar a la Consola Interactiva
-python upl.py repl
+upl build hola_soberano.upl -t asm --baremetal -o salida.asm
 ```
 
 ---

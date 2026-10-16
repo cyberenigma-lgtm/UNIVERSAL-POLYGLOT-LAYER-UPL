@@ -36,7 +36,7 @@ graph TD
 
 ### 3. Modos de Uso del Compilador CLI
 
-El compilador dispone de comandos unificados accesibles mediante `python upl.py` o los ejecutables `upl.bat` (Windows) y `upl.sh` (Linux):
+El compilador dispone de comandos unificados 100% nativos mediante `upl.bat` (Windows) y `upl.sh` (Linux/POSIX), o directamente `./bin/uplc`:
 
 * **`upl run <archivo.upl>`**: Compila y ejecuta el programa de inmediato.
 * **`upl build <archivo.upl> -t c`**: Genera el código C99 correspondiente.

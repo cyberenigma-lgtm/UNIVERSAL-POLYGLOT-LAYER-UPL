@@ -1,0 +1,76 @@
+// ============================================================================
+// EJEMPLO: UPL CPU RUNNER - SIMULADOR DE INSTRUCCIONES
+// ============================================================================
+
+module ejemplo_cpu_runner;
+
+const CPU_OP_NOP: u32  = 0x00;
+const CPU_OP_MOV: u32  = 0x01;
+const CPU_OP_ADD: u32  = 0x02;
+const CPU_OP_SUB: u32  = 0x03;
+const CPU_OP_HALT: u32 = 0xFF;
+
+@snapshot
+struct CpuRegisterState {
+    rax: u64,
+    rbx: u64,
+    rcx: u64,
+    rdx: u64,
+    rip: u64,
+    rsp: u64,
+    flags_zero: bool,
+    halted: bool,
+    cycles_executed: u64
+}
+
+@baremetal
+pub fn cpu_init(cpu: *CpuRegisterState, stack_top: u64) -> void {
+    cpu.rax = 0;
+    cpu.rbx = 0;
+    cpu.rcx = 0;
+    cpu.rdx = 0;
+    cpu.rip = 0;
+    cpu.rsp = stack_top;
+    cpu.flags_zero = false;
+    cpu.halted = false;
+    cpu.cycles_executed = 0;
+}
+
+@baremetal
+pub fn cpu_step(cpu: *CpuRegisterState, opcode: u32, oper_dst: u64, oper_src: u64) -> void {
+    if cpu.halted {
+        return;
+    }
+
+    if opcode == CPU_OP_MOV {
+        cpu.rax = oper_src;
+    } else if opcode == CPU_OP_ADD {
+        cpu.rax = cpu.rax + oper_src;
+    } else if opcode == CPU_OP_SUB {
+        cpu.rax = cpu.rax - oper_src;
+    } else if opcode == CPU_OP_HALT {
+        cpu.halted = true;
+    }
+
+    cpu.rip = cpu.rip + 1;
+    cpu.cycles_executed = cpu.cycles_executed + 1;
+}
+
+pub fn main() -> i32 {
+    let mut cpu: CpuRegisterState;
+    cpu_init(&cpu, 0x7FFFFFFF);
+
+    // 1. Cargar valor 100 en RAX
+    cpu_step(&cpu, CPU_OP_MOV, 0, 100);
+
+    // 2. Sumar 50 a RAX -> 150
+    cpu_step(&cpu, CPU_OP_ADD, 0, 50);
+
+    // 3. Restar 30 de RAX -> 120
+    cpu_step(&cpu, CPU_OP_SUB, 0, 30);
+
+    // 4. Detener simulador
+    cpu_step(&cpu, CPU_OP_HALT, 0, 0);
+
+    return 0;
+}

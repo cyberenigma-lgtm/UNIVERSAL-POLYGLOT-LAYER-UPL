@@ -1,0 +1,66 @@
+// ============================================================================
+// EJEMPLO: UREP EXECUTION GUARD & CONTROL FLOW INTEGRITY (CFI)
+// ============================================================================
+
+module ejemplo_urep_seguridad;
+
+@snapshot
+struct UrepSecurityContext {
+    active: bool,
+    text_segment_base: u64,
+    text_segment_limit: u64,
+    guard_canary: u64,
+    violations_detected: u32,
+    mitigated_events: u32
+}
+
+@baremetal
+pub fn urep_guard_init(ctx: *UrepSecurityContext, base: u64, limit: u64, canary: u64) -> void {
+    ctx.active = true;
+    ctx.text_segment_base = base;
+    ctx.text_segment_limit = limit;
+    ctx.guard_canary = canary;
+    ctx.violations_detected = 0;
+    ctx.mitigated_events = 0;
+}
+
+@baremetal
+pub fn urep_verify_instruction_pointer(ctx: *UrepSecurityContext, instruction_pointer: u64) -> bool {
+    if !ctx.active {
+        return true;
+    }
+
+    if instruction_pointer >= ctx.text_segment_base and instruction_pointer <= ctx.text_segment_limit {
+        return true;
+    }
+
+    ctx.violations_detected = ctx.violations_detected + 1;
+    ctx.mitigated_events = ctx.mitigated_events + 1;
+    return false;
+}
+
+@baremetal
+pub fn urep_verify_stack_canary(expected_canary: u64, current_canary: u64) -> bool {
+    if expected_canary == current_canary {
+        return true;
+    }
+    return false;
+}
+
+pub fn main() -> i32 {
+    let mut ctx: UrepSecurityContext;
+    urep_guard_init(&ctx, 0x400000, 0x40FFFF, 0xDEADBEEFCAFE1234);
+
+    // Test 1: Puntero valido dentro de .text
+    let rip_valido: u64 = 0x401020;
+    let es_valido: bool = urep_verify_instruction_pointer(&ctx, rip_valido);
+
+    // Test 2: Puntero fuera de limite (intento de ejecucion en heap/stack)
+    let rip_invalido: u64 = 0x7FFF0010;
+    let es_invalido: bool = urep_verify_instruction_pointer(&ctx, rip_invalido);
+
+    // Test 3: Canario de pila
+    let canario_ok: bool = urep_verify_stack_canary(ctx.guard_canary, 0xDEADBEEFCAFE1234);
+
+    return 0;
+}

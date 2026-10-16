@@ -1,0 +1,62 @@
+// ============================================================================
+// MULTILANG-ASM: POLYGLOT ASSEMBLY MNEMONIC NORMALIZER
+// Architecture: Multi-Lingual Natural Language to x86_64 NASM Mapping
+// Standard: UPL-v5 Native Core Specification
+// ============================================================================
+
+module multilang_asm;
+
+const OP_CANONICAL_NOP: u32  = 0x90;
+const OP_CANONICAL_MOV: u32  = 0x01;
+const OP_CANONICAL_ADD: u32  = 0x02;
+const OP_CANONICAL_SUB: u32  = 0x03;
+const OP_CANONICAL_CMP: u32  = 0x04;
+const OP_CANONICAL_JMP: u32  = 0x05;
+const OP_CANONICAL_CALL: u32 = 0x06;
+const OP_CANONICAL_RET: u32  = 0x07;
+const OP_CANONICAL_PUSH: u32 = 0x08;
+const OP_CANONICAL_POP: u32  = 0x09;
+
+const LANG_CODE_EN: u32 = 1;
+const LANG_CODE_ES: u32 = 2;
+const LANG_CODE_FR: u32 = 3;
+const LANG_CODE_PT: u32 = 4;
+
+@snapshot
+struct MnemonicMapping {
+    canonical_opcode: u32,
+    language_id: u32,
+    is_valid: bool
+}
+
+@baremetal
+pub fn masm_resolve_mnemonic_id(language_id: u32, token_id: u32) -> u32 {
+    // Standard English Pass-through (1:1 with NASM)
+    if language_id == LANG_CODE_EN {
+        return token_id;
+    }
+
+    // Spanish Mappings (Mover -> MOV, Sumar -> ADD, Restar -> SUB, etc.)
+    if language_id == LANG_CODE_ES {
+        if token_id == 101 { return OP_CANONICAL_MOV; }  // mover
+        if token_id == 102 { return OP_CANONICAL_ADD; }  // sumar
+        if token_id == 103 { return OP_CANONICAL_SUB; }  // restar
+        if token_id == 104 { return OP_CANONICAL_CMP; }  // comparar
+        if token_id == 105 { return OP_CANONICAL_JMP; }  // saltar
+        if token_id == 106 { return OP_CANONICAL_CALL; } // llamar
+        if token_id == 107 { return OP_CANONICAL_RET; }  // retornar
+        if token_id == 108 { return OP_CANONICAL_PUSH; } // apilar
+        if token_id == 109 { return OP_CANONICAL_POP; }  // desapilar
+    }
+
+    // French Mappings (Deplacer -> MOV, Ajouter -> ADD, etc.)
+    if language_id == LANG_CODE_FR {
+        if token_id == 201 { return OP_CANONICAL_MOV; }  // deplacer
+        if token_id == 202 { return OP_CANONICAL_ADD; }  // ajouter
+        if token_id == 203 { return OP_CANONICAL_SUB; }  // soustraire
+        if token_id == 205 { return OP_CANONICAL_JMP; }  // sauter
+        if token_id == 207 { return OP_CANONICAL_RET; }  // retour
+    }
+
+    return OP_CANONICAL_NOP;
+}

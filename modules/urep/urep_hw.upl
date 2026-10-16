@@ -1,0 +1,58 @@
+// ============================================================================
+// UREP: HARDWARE INTROSPECTION & MMIO PERIPHERAL REGISTRY
+// Architecture: Freestanding / Bare-Metal Hardware Probing
+// Standard: UPL-v5 Native Core Specification
+// ============================================================================
+
+module urep_hw;
+
+const PERIPHERAL_TYPE_VGA: u32     = 0;
+const PERIPHERAL_TYPE_VESA: u32    = 1;
+const PERIPHERAL_TYPE_STORAGE: u32 = 2;
+const PERIPHERAL_TYPE_NETWORK: u32 = 3;
+const PERIPHERAL_TYPE_TIMER: u32   = 4;
+
+const VGA_FRAMEBUFFER_ADDR: u64 = 0x000A0000;
+const VGA_FRAMEBUFFER_SIZE: u64 = 64000;
+const HPET_BASE_ADDR: u64       = 0xFED00000;
+
+@snapshot
+struct PeripheralDescriptor {
+    device_id: u32,
+    device_type: u32,
+    mmio_base: u64,
+    mmio_size: u64,
+    is_available: bool
+}
+
+@snapshot
+struct HardwareRegistry {
+    devices_registered: u32,
+    primary_video: PeripheralDescriptor,
+    primary_timer: PeripheralDescriptor
+}
+
+@baremetal
+pub fn urep_hw_init(registry: *HardwareRegistry) -> void {
+    registry.devices_registered = 2;
+
+    registry.primary_video.device_id = 1;
+    registry.primary_video.device_type = PERIPHERAL_TYPE_VGA;
+    registry.primary_video.mmio_base = VGA_FRAMEBUFFER_ADDR;
+    registry.primary_video.mmio_size = VGA_FRAMEBUFFER_SIZE;
+    registry.primary_video.is_available = true;
+
+    registry.primary_timer.device_id = 2;
+    registry.primary_timer.device_type = PERIPHERAL_TYPE_TIMER;
+    registry.primary_timer.mmio_base = HPET_BASE_ADDR;
+    registry.primary_timer.mmio_size = 1024;
+    registry.primary_timer.is_available = true;
+}
+
+@baremetal
+pub fn urep_hw_get_framebuffer(registry: *HardwareRegistry) -> u64 {
+    if registry.primary_video.is_available {
+        return registry.primary_video.mmio_base;
+    }
+    return 0;
+}

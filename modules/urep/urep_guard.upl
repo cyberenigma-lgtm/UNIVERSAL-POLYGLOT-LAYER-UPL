@@ -1,0 +1,55 @@
+// ============================================================================
+// UREP: UNIVERSAL RUNTIME EXECUTION PROTECTION (GUARD)
+// Architecture: Control Flow Integrity (CFI) & Memory Boundary Verification
+// Standard: UPL-v5 Native Core Specification
+// ============================================================================
+
+module urep_guard;
+
+const UREP_STATUS_OK: u32        = 0x00000000;
+const UREP_ERR_CFI_VIOLATION: u32 = 0x00000001;
+const UREP_ERR_STACK_CORRUPT: u32 = 0x00000002;
+const UREP_ERR_NX_FAULT: u32      = 0x00000004;
+
+@snapshot
+struct UrepSecurityContext {
+    active: bool,
+    text_segment_base: u64,
+    text_segment_limit: u64,
+    guard_canary: u64,
+    violations_detected: u32,
+    mitigated_events: u32
+}
+
+@baremetal
+pub fn urep_guard_init(ctx: *UrepSecurityContext, base: u64, limit: u64, canary: u64) -> void {
+    ctx.active = true;
+    ctx.text_segment_base = base;
+    ctx.text_segment_limit = limit;
+    ctx.guard_canary = canary;
+    ctx.violations_detected = 0;
+    ctx.mitigated_events = 0;
+}
+
+@baremetal
+pub fn urep_verify_instruction_pointer(ctx: *UrepSecurityContext, instruction_pointer: u64) -> bool {
+    if !ctx.active {
+        return true;
+    }
+
+    if instruction_pointer >= ctx.text_segment_base and instruction_pointer <= ctx.text_segment_limit {
+        return true;
+    }
+
+    ctx.violations_detected = ctx.violations_detected + 1;
+    ctx.mitigated_events = ctx.mitigated_events + 1;
+    return false;
+}
+
+@baremetal
+pub fn urep_verify_stack_canary(expected_canary: u64, current_canary: u64) -> bool {
+    if expected_canary == current_canary {
+        return true;
+    }
+    return false;
+}

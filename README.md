@@ -1,16 +1,16 @@
-# 🛡️ UPL+ : The Sovereign Polyglot Programming Language & Baremetal Toolchain
-## UPL+ (Evolución de Universal Polyglot Layer) — Toolchain de Programación de Sistemas del Siglo XXI
-### Next-Generation Sovereign Programming Language, Native Compiler & Silicon Toolchain
+# UPL+: Universal Polyglot Layer Plus — Systems Programming Language & Toolchain
+## Lenguaje de Programación de Sistemas de Alto Rendimiento y Toolchain Nativa Independiente
+### High-Performance Systems Language, Standalone Native Compiler & Bare-Metal Toolchain
 **Autor:** José Manuel Moreno (Noxferion)
 
 [![SafeCreative Protected](https://img.shields.io/badge/SafeCreative-Obra%20Protegida-blue.svg)](https://www.safecreative.org)
-[![Language](https://img.shields.io/badge/Language-UPL%2B%20v1.0%20Sovereign-green.svg)](docs/GUIA_OFICIAL_SINTAXIS_Y_COMANDOS_UPL.md)
-[![Toolchain](https://img.shields.io/badge/Toolchain-UPL%2B%20Native%20x86__64-blue.svg)](#-pipeline-de-compilaci%C3%B3n)
-[![Backends](https://img.shields.io/badge/Backends-ANSI%20C99%20%7C%20x86__64%20NASM%20Ring--0-orange.svg)](#-pipeline-de-compilaci%C3%B3n)
-[![Languages](https://img.shields.io/badge/Localization-57%20World%20Languages-purple.svg)](multilang/)
+[![Language](https://img.shields.io/badge/Language-UPL%2B%20v1.5-green.svg)](docs/GUIA_OFICIAL_SINTAXIS_Y_COMANDOS_UPL.md)
+[![Toolchain](https://img.shields.io/badge/Toolchain-Native%20x86__64-blue.svg)](#-pipeline-de-compilaci%C3%B3n)
+[![Backends](https://img.shields.io/badge/Backends-ANSI%20C99%20%7C%20x86__64%20NASM-orange.svg)](#-pipeline-de-compilaci%C3%B3n)
+[![Localization](https://img.shields.io/badge/Localization-57%20Languages-purple.svg)](multilang/)
 
-> **COMUNICADO OFICIAL DE MARCA Y PROPIEDAD INTELECTUAL:**  
-> ***UPL+*** *(UPL Plus / UPL Sovereign Toolchain) es la suite, lenguaje evolucionado y toolchain oficial derivado de la obra protegida **Universal Polyglot Layer (UPL)**. Todas las gramáticas, compiladores nativos (`uplc` / `upl`), directivas de silicio (`@snapshot`, `@baremetal`), motores decimales exactos y arquitecturas están registradas y blindadas bajo la misma titularidad y amparo legal preexistente de **SafeCreative**.*
+> **COMUNICADO DE PROPIEDAD INTELECTUAL:**  
+> ***UPL+*** *(Universal Polyglot Layer Plus)* es la suite y compilador oficial derivado de la obra protegida **Universal Polyglot Layer (UPL)**. Todas las especificaciones gramaticales, compiladores nativos (`uplc` / `upl`), directivas de bajo nivel (`@snapshot`, `@baremetal`), motores decimales exactos y arquitecturas asociadas están registradas bajo el amparo legal de **SafeCreative**.
 
 ---
 
@@ -18,33 +18,31 @@
 
 ---
 
-## 🇪🇸 [Español] - Presentación del Lenguaje y Toolchain UPL+
+## 🇪🇸 [Español] - Especificación Técnica de UPL+
 
-### 💎 ¿Qué es UPL+?
-**UPL+ (Universal Polyglot Layer Plus)** es un **lenguaje de programación de sistemas totalmente nuevo, autónomo e independiente**, diseñado desde cero para superar los tres grandes problemas del software contemporáneo:
-1. **Supera la fragilidad de C y C++:** Elimina los desbordamientos de búfer mediante **Landing-Pads en silicio** y verificación de paridad canónica (`0xAA30`).
-2. **Supera el bloqueo destructivo de Rust:** Rust responde ante fallos no recuperables con `panic!`, abortando el proceso o tirando el sistema. UPL+ introduce **Puntos de Control Atómicos (`@snapshot`) y Auto-Sanación**, restaurando el estado en nanosegundos sin interrupción de servicio.
-3. **Supera la lentitud y pérdida de precisión de lenguajes tradicionales:** Incorpora tipos nativos decimales **NeuroCOBOL (`comp3`)** empaquetados en BCD, eliminando los errores de redondeo de coma flotante de IEEE-754.
+### ¿Qué es UPL+?
+**UPL+ (Universal Polyglot Layer Plus)** es un **lenguaje de programación de sistemas compilado, determinista y de alto rendimiento**, diseñado para desarrollo de sistemas operativos, motores embebidos, firmware bare-metal y aplicaciones de misión crítica.
 
-### 🚀 Características Clave de la Toolchain UPL+
-* **Compilador 100% Auto-Hospedado (Self-Hosted):** El núcleo del compilador de UPL+ está implementado en el propio lenguaje UPL+ ([`compiler/uplc_soberano.upl`](compiler/uplc_soberano.upl)), compilando a binario nativo independiente (`uplc` / `upl.exe`). Cero dependencias de Python o máquinas virtuales en ejecución.
-* **Backend Doble Nativo:**
-  * **ANSI C99:** Código portable ultra-optimizado con estructuras empaquetadas.
-  * **Ensamblador x86_64 Long Mode (NASM):** Código máquina puro para **Ring 0 / Bare-Metal** sin runtime ni librerías del sistema anfitrión.
-* **Soberanía Bilingüe Real (Español / Inglés):** Puedes programar usando palabras clave nativas en español (`funcion`, `sea`, `mutable`, `estructura`, `si`, `mientras`, `retornar`) o en inglés universal (`fn`, `let`, `mut`, `struct`, `if`, `while`, `return`).
-* **Consola Interactiva Avanzada (REPL Soberano):** Permite escribir código UPL+ al vuelo e inspeccionar en tiempo real el C99 (`:c`), el ensamblador (`:asm`) o cambiar a 57 idiomas (`:lang ja`).
-* **Diagnóstico Multi-Plataforma en 57 Idiomas:** Motor inteligente que traduce códigos de error NTSTATUS de Windows, señales POSIX de Linux y excepciones físicas de CPU x86_64.
+### Pilares de Ingeniería de Software
+1. **Seguridad de Memoria Determinista:** Incorpora canarios de protección de memoria (`guard canaries`) en estructuras de datos y soporte nativo para puntos de control de estado (`@snapshot`), permitiendo aislamiento de fallos sin sobrecarga de recolector de basura (GC).
+2. **Acceso Directo a Silicio y Modo Bare-Metal:** La directiva `@baremetal` y bloques `asm { ... }` permiten generar código máquina para Ring 0, controlando registros de CPU, interrupciones y periféricos sin librerías del sistema operativo anfitrión.
+3. **Aritmética Decimal Exacta (Fixed-Point BCD):** Tipos de datos `comp3(precision, scale)` nativos para cálculos financieros y matemáticos exactos, eliminando la imprecisión de coma flotante de la norma IEEE-754.
+4. **Toolchain 100% Nativa y Autónoma:** Compilador independiente escrito en C99 y UPL+ (`compiler/uplc.c`), capaz de autogestionar el ciclo de compilación a C99 y Ensamblador x86_64 NASM sin requerir entornos interpretados, Python ni dependencias externas.
+5. **Lexer Bilingüe (Español / Inglés):** Admite palabras clave universales en inglés (`fn`, `let`, `mut`, `struct`, `if`, `while`, `return`) o en español técnico (`funcion`, `sea`, `mutable`, `estructura`, `si`, `mientras`, `retornar`).
 
 ---
 
-## 🇬🇧 [English] - Introducing UPL+ Language & Toolchain
+## 🇬🇧 [English] - UPL+ Technical Specification
 
-### 💎 What is UPL+?
-**UPL+** is a **brand-new, next-generation systems programming language and bare-metal toolchain** built from scratch to provide uncompromising safety, extreme performance, and total linguistic sovereignty:
-1. **100% Self-Hosted & Native:** The core compiler is written in UPL+ itself ([`compiler/uplc_soberano.upl`](compiler/uplc_soberano.upl)), producing standalone native binaries with 0% Python or VM runtime dependencies.
-2. **Memory Safety without Borrow-Checker Hell:** Employs hardware landing-pads and canonical parity (`0xAA30`) to prevent memory corruption at the silicon level.
-3. **Zero-Bug Self-Healing (Surpassing Rust):** Unlike Rust’s fatal `panic!`, UPL+ intercepts faults and triggers atomic checkpoint rollbacks (`@snapshot`), keeping critical systems running uninterrupted.
-4. **Exact Decimal Arithmetic:** Native NeuroCOBOL `comp3` BCD types eliminate IEEE 754 rounding inaccuracies in mission-critical applications.
+### What is UPL+?
+**UPL+ (Universal Polyglot Layer Plus)** is a **compiled, deterministic systems programming language** engineered for operating system kernels, bare-metal firmware, embedded engines, and mission-critical high-performance computing.
+
+### Core Engineering Features
+1. **Deterministic Memory Safety:** Memory canary guard protection and atomic checkpointing (`@snapshot`) provide robust fault recovery without garbage collection overhead.
+2. **Bare-Metal & Direct Silicon Control:** The `@baremetal` directive and inline `asm` blocks compile directly to Ring 0 machine code, enabling full control over CPU registers and hardware ports with zero libc dependencies.
+3. **Fixed-Point Decimal Arithmetic:** Native `comp3` BCD types deliver exact decimal representations for financial and scientific systems where IEEE-754 binary floating-point drift is unacceptable.
+4. **Self-Contained Native Toolchain:** Autonomous compiler implementation in ANSI C99 and UPL+ (`compiler/uplc.c`), producing standalone binaries via C99 and x86_64 NASM backends with zero virtual machine requirements.
+5. **Bilingual Grammar Support:** Native keyword parsing in both Spanish and English at the lexer level.
 
 ---
 
@@ -52,51 +50,45 @@
 
 ```
 UNIVERSAL-POLYGLOT-LAYER-UPL/
-├── compiler/                  # Compilador UPL+ (uplc_soberano.upl nativo, Lexer, Parser, Backends)
-├── docs/                      # Manuales oficiales, especificación de gramática y diagnósticos
-├── examples/                  # Programas y juegos de demostración en código fuente .upl
-├── multilang/                 # Diccionarios de 57 idiomas para localización y ensamblador
-├── dvtrgas30_engine/          # Acelerador vectorial de paridad 0xAA30
-├── neurocobol_engine/         # Motor de aritmética exacta BCD COMP-3
-├── wiki/                      # Wiki técnica completa (Español / English)
-├── upl.bat                    # Lanzador nativo independiente para Windows
-├── upl.sh                     # Lanzador nativo independiente para Linux / macOS
-└── README.md                  # Este documento oficial
+├── compiler/                  # Compilador nativo UPLC (C99 y código fuente UPL+)
+├── docs/                      # Especificación técnica, gramática y arquitectura
+├── examples/                  # Programas de prueba, benchmarks y demos en .upl
+├── dvtrgas30_engine/          # Motor de verificación e integridad canónica
+├── neurocobol_engine/         # Motor de aritmética BCD fija COMP-3
+├── wiki/                      # Wiki técnica de referencia (Español / English)
+├── upl.bat                    # Script de compilación y ejecución nativa (Windows)
+├── upl.sh                     # Script de compilación y ejecución nativa (Linux / macOS)
+└── README.md                  # Especificación técnica principal
 ```
 
 ---
 
-## ⚡ Comandos Rápidos del Compilador / Quickstart
+## ⚡ Guía de Uso Rápido / Quickstart
 
 ```bash
-# 1. Compilar y ejecutar un programa UPL al instante
-upl run examples/ejemplo_soberano.upl
+# 1. Compilar y ejecutar un programa UPL directamente
+upl run examples/ejemplo_basico.upl
 
-# 2. Compilar a código fuente ANSI C99 optimizado
-upl build examples/ejemplo_soberano.upl -t c -o salida.c
+# 2. Compilar a código ANSI C99 optimizado
+upl build examples/ejemplo_basico.upl -t c -o salida.c
 
-# 3. Compilar a Ensamblador x86_64 puro para Ring 0 (Bare-Metal / Firmware)
-upl build examples/ejemplo_soberano.upl -t asm --baremetal -o kernel.asm
+# 3. Compilar a Ensamblador x86_64 NASM para modo Bare-Metal (Ring 0)
+upl build examples/ejemplo_basico.upl -t asm --baremetal -o kernel.asm
 
-# 4. Iniciar la Consola Interactiva Avanzada (REPL)
-upl repl
-
-# 5. Diagnosticar un código de excepción de Windows o CPU en tu idioma
-upl diag 0xC0000005 -l es
+# 4. Comprobar la versión de la toolchain
+upl --version
 ```
 
 ---
 
-## 📖 Documentación y Wiki Oficial
-* **[Catálogo Completo de Lenguajes e Idiomas Soportados](docs/CATALOGO_COMPLETO_LENGUAJES_UPL.md)**
+## 📖 Documentación Técnica
 * **[Guía Oficial de Sintaxis y Comandos](docs/GUIA_OFICIAL_SINTAXIS_Y_COMANDOS_UPL.md)**
-* **[Diccionario Maestro de Errores Multi-SO (57 Idiomas)](docs/DICCIONARIO_MAESTRO_CODIGOS_ERROR_MULTI_SO.md)**
-* **[Manifiesto del Lenguaje UPL para el Siglo XXI](docs/MANIFIESTO_LENGUAJE_UPL_SIGLO_XXI.md)**
-* **[Portal de la Wiki Soberana](wiki/INDEX.md)**
+* **[Especificación de la Gramática](docs/SPEC_MOTHER_LANGUAGE.md)**
+* **[Catálogo de Lenguajes Soportados](docs/CATALOGO_COMPLETO_LENGUAJES_UPL.md)**
+* **[Wiki Oficial de Desarrollo](wiki/INDEX.md)**
 
 ---
 
-## 📜 Certificación y Propiedad Intelectual
-* **Amparo Legal:** Obra registrada y protegida en SafeCreative.
-* **Continuidad Registral:** Este compilador, gramática y herramientas constituyen la actualización evolutiva oficial de la misma unidad de obra registrada.
-* **Licencia:** Consulta el archivo [LICENSE](LICENSE) para patentes defensivas y términos de uso soberano.
+## 📜 Licencia y Registro Legal
+* **Registro de Propiedad:** Obra registrada y protegida en SafeCreative.
+* **Licencia:** Consulta el archivo [LICENSE](LICENSE) para patentes defensivas y términos de uso del software.

@@ -1,0 +1,48 @@
+// ============================================================================
+// UPL COMPUTE ENGINE: HIGH-PERFORMANCE VECTOR MATHEMATICS
+// Architecture: SIMD / Vector Acceleration Primitives
+// Standard: UPL-v5 Native Core Specification
+// ============================================================================
+
+module vector_compute;
+
+@snapshot
+struct Vector4D {
+    x: u64,
+    y: u64,
+    z: u64,
+    w: u64
+}
+
+@baremetal
+pub fn vec4_init(v: *Vector4D, x: u64, y: u64, z: u64, w: u64) -> void {
+    v.x = x;
+    v.y = y;
+    v.z = z;
+    v.w = w;
+}
+
+@baremetal
+pub fn vec4_add(dst: *Vector4D, a: *Vector4D, b: *Vector4D) -> void {
+    dst.x = a.x + b.x;
+    dst.y = a.y + b.y;
+    dst.z = a.z + b.z;
+    dst.w = a.w + b.w;
+}
+
+@baremetal
+pub fn vec4_scale(dst: *Vector4D, src: *Vector4D, factor: u64) -> void {
+    dst.x = src.x * factor;
+    dst.y = src.y * factor;
+    dst.z = src.z * factor;
+    dst.w = src.w * factor;
+}
+
+@baremetal
+pub fn vec4_dot_product(a: *Vector4D, b: *Vector4D) -> u64 {
+    let prod_x: u64 = a.x * b.x;
+    let prod_y: u64 = a.y * b.y;
+    let prod_z: u64 = a.z * b.z;
+    let prod_w: u64 = a.w * b.w;
+    return prod_x + prod_y + prod_z + prod_w;
+}

@@ -1,25 +1,25 @@
 // ============================================================================
-// 🛡️ PROGRAMA MAESTRO UPL: DEMOSTRACIÓN DE LA TRINIDAD SOBERANA
-// Ecosistema: Neuro-OS Genesis / Universal Polyglot Layer
+// UPL+: PROGRAMA DEMOSTRATIVO DE SISTEMAS
+// Ecosistema: Universal Polyglot Layer
 // ============================================================================
 
-module demo_soberana;
+module demo_sistemas;
 
-// 1. Estructura con Blindaje de Salto Lógico y Landing-Pads DVTRGAS-30
+// 1. Estructura con Puntos de Control y Protección de Memoria
 @snapshot
-struct EstadoSoberano {
+struct EstadoProceso {
     id_proceso: u32,
     puntos_control: u64,
     balance_exacto: comp3(12, 2)
 }
 
-// 2. Función en Modo Bare-Metal (Acceso directo a silicio)
+// 2. Función en Modo Bare-Metal (Acceso directo a hardware)
 @baremetal
 pub fn inicializar_hardware() -> u32 {
     let puerto_control: u16 = 0x01CE
     let valor_modo: u16 = 0x0041
     
-    // Instrucción inline en ensamblador protegida
+    // Instrucciones inline en ensamblador x86
     asm {
         cli
         cld
@@ -28,7 +28,7 @@ pub fn inicializar_hardware() -> u32 {
     return 1
 }
 
-// 3. Función Principal de Control con Salto Lógico
+// 3. Función Principal de Control con Puntos de Control Deterministas
 pub fn main() -> i32 {
     let mut contador: i32 = 0
     let mut activo: bool = true
@@ -39,7 +39,7 @@ pub fn main() -> i32 {
     while contador < 5 {
         contador = contador + 1
         if contador == 3 {
-            salto_logico_guardar("checkpoint_iteracion_3.gxp")
+            checkpoint_guardar("checkpoint_iteracion_3.gxp")
         }
     }
 

@@ -1,0 +1,53 @@
+// ============================================================================
+// EJEMPLO: UPL COMPUTE - MATEMATICA VECTORIAL 4D
+// ============================================================================
+
+module ejemplo_vector_compute;
+
+@snapshot
+struct Vector4D {
+    x: u64,
+    y: u64,
+    z: u64,
+    w: u64
+}
+
+@baremetal
+pub fn vec4_init(v: *Vector4D, x: u64, y: u64, z: u64, w: u64) -> void {
+    v.x = x;
+    v.y = y;
+    v.z = z;
+    v.w = w;
+}
+
+@baremetal
+pub fn vec4_add(dst: *Vector4D, a: *Vector4D, b: *Vector4D) -> void {
+    dst.x = a.x + b.x;
+    dst.y = a.y + b.y;
+    dst.z = a.z + b.z;
+    dst.w = a.w + b.w;
+}
+
+@baremetal
+pub fn vec4_dot_product(a: *Vector4D, b: *Vector4D) -> u64 {
+    let prod_x: u64 = a.x * b.x;
+    let prod_y: u64 = a.y * b.y;
+    let prod_z: u64 = a.z * b.z;
+    let prod_w: u64 = a.w * b.w;
+    return prod_x + prod_y + prod_z + prod_w;
+}
+
+pub fn main() -> i32 {
+    let mut vec_a: Vector4D;
+    let mut vec_b: Vector4D;
+    let mut vec_c: Vector4D;
+
+    vec4_init(&vec_a, 10, 20, 30, 40);
+    vec4_init(&vec_b, 1, 2, 3, 4);
+
+    vec4_add(&vec_c, &vec_a, &vec_b);
+
+    let producto_escalar: u64 = vec4_dot_product(&vec_a, &vec_b);
+
+    return 0;
+}
