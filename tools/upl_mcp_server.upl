@@ -1,0 +1,44 @@
+// ============================================================================
+// UPL NATIVE MCP SERVER (MODEL CONTEXT PROTOCOL)
+// Lenguaje: UPL+ Puro / Auto-Hospedado (Self-Hosted)
+// Autor: José Manuel Moreno (Noxferion)
+// ============================================================================
+// 100% UPL+ Nativo - Cero dependencias de Python o runtimes externos.
+// ============================================================================
+
+module upl_mcp_server;
+
+@snapshot
+struct McpServerState {
+    protocol_version_major: u32,
+    protocol_version_minor: u32,
+    herramientas_registradas: u32,
+    sesion_activa: bool
+}
+
+pub fn mcp_init_state(st: *McpServerState) -> void {
+    st.protocol_version_major = 2024;
+    st.protocol_version_minor = 11;
+    st.herramientas_registradas = 3;
+    st.sesion_activa = true;
+}
+
+pub fn mcp_responder_initialize(id: str) -> void {
+    printf("{\"jsonrpc\":\"2.0\",\"id\":%s,\"result\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"tools\":{}},\"serverInfo\":{\"name\":\"upl-pure-mcp\",\"version\":\"1.5.0-Native\"}}}\n", id);
+}
+
+pub fn mcp_responder_tools_list(id: str) -> void {
+    printf("{\"jsonrpc\":\"2.0\",\"id\":%s,\"result\":{\"tools\":[", id);
+    printf("{\"name\":\"upl_run\",\"description\":\"Compila en memoria y ejecuta un archivo .upl inmediatamente de forma nativa UPL+.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"file_path\":{\"type\":\"string\",\"description\":\"Ruta al archivo .upl\"}},\"required\":[\"file_path\"]}},");
+    printf("{\"name\":\"upl_build\",\"description\":\"Compila un archivo .upl a ejecutable nativo, C99 o ensamblador NASM mediante UPLC.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"file_path\":{\"type\":\"string\",\"description\":\"Ruta al archivo .upl\"},\"target\":{\"type\":\"string\",\"description\":\"Target: bin, c, asm, deb, rpm, app, apk\",\"default\":\"bin\"},\"output_file\":{\"type\":\"string\",\"description\":\"Ruta del binario de salida\"}},\"required\":[\"file_path\"]}},");
+    printf("{\"name\":\"upl_list_modules\",\"description\":\"Lista todos los modulos de sistemas registrados en el ecosistema UPL+.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{}}}");
+    printf("]}}\n");
+}
+
+pub fn main() -> i32 {
+    let mut state: McpServerState;
+    mcp_init_state(&state);
+
+    // Servidor MCP Nativo UPL+
+    return 0;
+}
