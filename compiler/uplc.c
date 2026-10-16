@@ -75,7 +75,11 @@ typedef enum {
     TOK_COLON,         /* : */
     TOK_SEMICOLON,     /* ; */
     TOK_COMMA,         /* , */
-    TOK_DOT            /* . */
+    TOK_DOT,           /* . */
+    TOK_TILDE,         /* ~ */
+    TOK_CARET,         /* ^ */
+    TOK_SHL,           /* << */
+    TOK_SHR            /* >> */
 } UPLTokenType;
 
 typedef struct {
@@ -266,6 +270,9 @@ static int lexer_tokenize(Lexer *l) {
                 }
                 if (bi < MAX_TOKEN_LEN - 1) buf[bi++] = sc;
             }
+            if (l->pos >= l->len && lexer_peek(l, 0) != '"') {
+                fprintf(stderr, "⚠️ [UPLC] Error lexico (L%d:C%d): Cadena literal sin comilla de cierre antes de EOF.\n", start_line, start_col);
+            }
             if (lexer_peek(l, 0) == '"') lexer_advance(l);
             buf[bi] = '\0';
             lexer_add_token(l, TOK_STRING_LIT, buf, start_line, start_col);
@@ -308,6 +315,16 @@ static int lexer_tokenize(Lexer *l) {
             lexer_add_token(l, TOK_OR, "||", start_line, start_col);
             continue;
         }
+        if (ch == '<' && lexer_peek(l, 1) == '<') {
+            lexer_advance(l); lexer_advance(l);
+            lexer_add_token(l, TOK_SHL, "<<", start_line, start_col);
+            continue;
+        }
+        if (ch == '>' && lexer_peek(l, 1) == '>') {
+            lexer_advance(l); lexer_advance(l);
+            lexer_add_token(l, TOK_SHR, ">>", start_line, start_col);
+            continue;
+        }
 
         /* Operadores y delimitadores de un solo carácter */
         lexer_advance(l);
@@ -334,6 +351,8 @@ static int lexer_tokenize(Lexer *l) {
             case ';': lexer_add_token(l, TOK_SEMICOLON, ";", start_line, start_col); break;
             case ',': lexer_add_token(l, TOK_COMMA, ",", start_line, start_col); break;
             case '.': lexer_add_token(l, TOK_DOT, ".", start_line, start_col); break;
+            case '~': lexer_add_token(l, TOK_TILDE, "~", start_line, start_col); break;
+            case '^': lexer_add_token(l, TOK_CARET, "^", start_line, start_col); break;
             default: break;
         }
     }
@@ -771,6 +790,43 @@ static int transpile_upl_to_c(Lexer *l, FILE *out, bool is_baremetal) {
                     continue;
                 }
 
+                /* Asignación por desreferenciación de puntero: *ptr = expr; o *(ptr + off) = expr; */
+                if (ct->type == TOK_STAR) {
+                    cursor++;
+                    fprintf(out, "    *");
+                    if (cursor < l->token_count && l->tokens[cursor].type == TOK_LPAREN) {
+                        cursor++;
+                        fprintf(out, "(");
+                        int pdepth = 1;
+                        while (cursor < l->token_count && pdepth > 0) {
+                            if (l->tokens[cursor].type == TOK_LPAREN) pdepth++;
+                            else if (l->tokens[cursor].type == TOK_RPAREN) pdepth--;
+                            if (pdepth == 0) {
+                                cursor++;
+                                break;
+                            }
+                            emit_expr_token(l, &cursor, out, ptr_vars, ptr_var_count);
+                        }
+                        fprintf(out, ")");
+                    } else if (cursor < l->token_count && l->tokens[cursor].type == TOK_IDENT) {
+                        fprintf(out, "%s", l->tokens[cursor++].text);
+                    }
+                    if (cursor < l->token_count && l->tokens[cursor].type == TOK_ASSIGN) {
+                        cursor++;
+                        fprintf(out, " = ");
+                        int cur_line = (cursor < l->token_count) ? l->tokens[cursor].line : 1;
+                        int paren_depth = 0;
+                        while (!is_stmt_end(l, cursor, cur_line, paren_depth)) {
+                            if (l->tokens[cursor].type == TOK_LPAREN) paren_depth++;
+                            else if (l->tokens[cursor].type == TOK_RPAREN) paren_depth--;
+                            emit_expr_token(l, &cursor, out, ptr_vars, ptr_var_count);
+                        }
+                        if (cursor < l->token_count && l->tokens[cursor].type == TOK_SEMICOLON) cursor++;
+                        fprintf(out, ";\n");
+                    }
+                    continue;
+                }
+
                 /* Acceso a campos o asignación a variables */
                 if (ct->type == TOK_IDENT) {
                     char id1[MAX_TOKEN_LEN];
@@ -820,16 +876,14 @@ static int transpile_upl_to_c(Lexer *l, FILE *out, bool is_baremetal) {
                         int paren_depth = 1;
                         while (cursor < l->token_count && paren_depth > 0) {
                             if (l->tokens[cursor].type == TOK_LPAREN) paren_depth++;
-                            else if (l->tokens[cursor].type == TOK_RPAREN) paren_depth--;
-                            if (paren_depth == 0) {
-                                cursor++;
-                                break;
+                            else if (l->tokens[cursor].type == TOK_RPAREN) {
+                                paren_depth--;
+                                if (paren_depth == 0) {
+                                    cursor++;
+                                    break;
+                                }
                             }
-                            if (l->tokens[cursor].type == TOK_STRING_LIT) {
-                                fprintf(out, "\"%s\"", l->tokens[cursor++].text);
-                            } else {
-                                fprintf(out, "%s ", l->tokens[cursor++].text);
-                            }
+                            emit_expr_token(l, &cursor, out, ptr_vars, ptr_var_count);
                         }
                         if (cursor < l->token_count && l->tokens[cursor].type == TOK_SEMICOLON) cursor++;
                         fprintf(out, ");\n");
@@ -1127,11 +1181,13 @@ static void init_default_search_paths(const char *source_file) {
     add_search_path("modules/compute");
     add_search_path("modules/emulator");
     add_search_path("modules/multilang_asm");
+    add_search_path("modules/std");
     add_search_path("../modules");
     add_search_path("../modules/urep");
     add_search_path("../modules/compute");
     add_search_path("../modules/emulator");
     add_search_path("../modules/multilang_asm");
+    add_search_path("../modules/std");
 }
 
 static bool is_module_already_loaded(const char *mod_name) {
@@ -1303,6 +1359,8 @@ static int ejecutar_suite_de_pruebas(const char *prog) {
         "examples/ejemplo_vector_compute.upl",
         "examples/test_usuario.upl",
         "examples/test_modular_import.upl",
+        "examples/test_std_lib.upl",
+        "examples/gxhtml_desktop_3d.upl",
         NULL
     };
 
@@ -1313,6 +1371,10 @@ static int ejecutar_suite_de_pruebas(const char *prog) {
         "modules/multilang_asm/masm_table.upl",
         "modules/emulator/cpu_runner.upl",
         "modules/compute/vector_ops.upl",
+        "modules/std/math.upl",
+        "modules/std/memory.upl",
+        "modules/std/io.upl",
+        "modules/std/time.upl",
         NULL
     };
 
@@ -1332,7 +1394,7 @@ static int ejecutar_suite_de_pruebas(const char *prog) {
     /* 1. Tests de Ejecución Directa (Run Tests) */
     for (int i = 0; tests_run[i] != NULL; ++i) {
         total++;
-        printf("  [TEST %02d/18] RUN:   %-35s ", total, tests_run[i]);
+        printf("  [TEST %02d/24] RUN:   %-35s ", total, tests_run[i]);
         fflush(stdout);
 
 #ifdef _WIN32
@@ -1353,7 +1415,7 @@ static int ejecutar_suite_de_pruebas(const char *prog) {
     /* 2. Tests de Módulos de Silicio y Sistemas (C99 Transpilation) */
     for (int i = 0; modules_lib[i] != NULL; ++i) {
         total++;
-        printf("  [TEST %02d/18] MOD:   %-35s ", total, modules_lib[i]);
+        printf("  [TEST %02d/24] MOD:   %-35s ", total, modules_lib[i]);
         fflush(stdout);
 
 #ifdef _WIN32
@@ -1379,7 +1441,7 @@ static int ejecutar_suite_de_pruebas(const char *prog) {
     /* 3. Tests de Compilación a Binario Nativo Standalone */
     for (int i = 0; standalone_build[i] != NULL; ++i) {
         total++;
-        printf("  [TEST %02d/18] BUILD: %-35s ", total, standalone_build[i]);
+        printf("  [TEST %02d/24] BUILD: %-35s ", total, standalone_build[i]);
         fflush(stdout);
 
 #ifdef _WIN32
@@ -1404,7 +1466,7 @@ static int ejecutar_suite_de_pruebas(const char *prog) {
 
     /* 4. Test de Empaquetado Multi-Target */
     total++;
-    printf("  [TEST %02d/18] PACK:  Multi-Target (-t deb/rpm/app/apk)    ", total);
+    printf("  [TEST %02d/24] PACK:  Multi-Target (-t deb/rpm/app/apk)    ", total);
     fflush(stdout);
 #ifdef _WIN32
     snprintf(cmd, sizeof(cmd), "\"\"%s\" build examples/ejemplo_basico.upl -t deb > nul 2>&1\"", prog);
@@ -1422,7 +1484,7 @@ static int ejecutar_suite_de_pruebas(const char *prog) {
 
     /* 5. Test del Servidor MCP Nativo */
     total++;
-    printf("  [TEST %02d/18] MCP:   Native JSON-RPC Communication         ", total);
+    printf("  [TEST %02d/24] MCP:   Native JSON-RPC Communication         ", total);
     fflush(stdout);
 #ifdef _WIN32
     snprintf(cmd, sizeof(cmd), "cmd /c \"echo {\"\"jsonrpc\"\":\"\"2.0\"\",\"\"id\"\":1,\"\"method\"\":\"\"tools/list\"\"} | bin\\upl_mcp.exe > nul 2>&1\"");
@@ -1649,9 +1711,17 @@ int main(int argc, char **argv) {
         snprintf(compile_cmd, 1024, "cl /nologo /O2 \"%s\" /Fe:\"%s\" >nul 2>&1", tmp_c, out_exe);
     } else {
 #ifdef _WIN32
-        snprintf(compile_cmd, 1024, "%s -O2 \"%s\" -o \"%s\" -lm -lgdi32", cc, tmp_c, out_exe);
+        if (is_baremetal) {
+            snprintf(compile_cmd, 1024, "%s -O2 -ffreestanding -nostdlib \"%s\" -o \"%s\"", cc, tmp_c, out_exe);
+        } else {
+            snprintf(compile_cmd, 1024, "%s -O2 \"%s\" -o \"%s\" -lm -lgdi32", cc, tmp_c, out_exe);
+        }
 #else
-        snprintf(compile_cmd, 1024, "%s -O2 \"%s\" -o \"%s\" -lm", cc, tmp_c, out_exe);
+        if (is_baremetal) {
+            snprintf(compile_cmd, 1024, "%s -O2 -ffreestanding -nostdlib \"%s\" -o \"%s\"", cc, tmp_c, out_exe);
+        } else {
+            snprintf(compile_cmd, 1024, "%s -O2 \"%s\" -o \"%s\" -lm", cc, tmp_c, out_exe);
+        }
 #endif
     }
 

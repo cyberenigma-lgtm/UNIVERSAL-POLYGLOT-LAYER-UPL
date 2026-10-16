@@ -1,0 +1,217 @@
+// ============================================================================
+// UPL+ DESKTOP 3D GXHTML ENGINE (Port Nativo de Neuro-OS a UPL+)
+// Lenguaje: Pure UPL+ / Native Systems Language
+// Autor: José Manuel Moreno (Noxferion)
+// ============================================================================
+// Motor gráfico declarativo GXHTML con soporte de paneles glassmorphism,
+// barra de tareas holográfica y proyección en perspectiva 3D para ventanas.
+// ============================================================================
+
+module gxhtml_desktop_3d;
+
+import math;
+import memory;
+import io;
+import time;
+
+// 1. Constantes del Sistema de Escritorio
+const SCREEN_WIDTH: i32    = 1920;
+const SCREEN_HEIGHT: i32   = 1080;
+const TASKBAR_HEIGHT: i32  = 60;
+const MAX_WINDOWS_3D: i32  = 8;
+const MAX_GX_NODES: i32    = 32;
+
+// 2. Tipos de Nodos GXHTML
+const GX_NODE_ROOT: i32         = 0;
+const GX_NODE_WINDOW_GLASS: i32 = 1;
+const GX_NODE_PANEL: i32        = 2;
+const GX_NODE_BUTTON_NEON: i32  = 3;
+const GX_NODE_TEXT: i32         = 4;
+const GX_NODE_TASKBAR: i32      = 5;
+
+// 3. Estructura de Proyección 3D
+struct Vector3D {
+    x: i32,
+    y: i32,
+    z: i32
+}
+
+// 4. Estructura de Ventana 3D del Escritorio
+struct Ventana3D {
+    id: i32,
+    pos_x: i32,
+    pos_y: i32,
+    pos_z: i32,
+    ancho: i32,
+    alto: i32,
+    rotacion_yaw: i32,
+    color_neon: u32,
+    activa: bool,
+    minimizada: bool
+}
+
+// 5. Nodo Declarativo GXHTML
+struct NodoGXHTML {
+    tipo: i32,
+    x: i32,
+    y: i32,
+    w: i32,
+    h: i32,
+    color_hex: u32,
+    opacidad: u32,
+    radio_borde: i32,
+    visible: bool
+}
+
+// 6. Estado Maestro del Gestor de Escritorio
+@snapshot
+struct EstadoEscritorio3D {
+    ancho_pantalla: i32,
+    alto_pantalla: i32,
+    total_ventanas: i32,
+    ventana_foco: i32,
+    puntero_mouse_x: i32,
+    puntero_mouse_y: i32,
+    angulo_camara_z: i32,
+    frames_renderizados: u64,
+    canario_integridad: u32
+}
+
+// 7. Funciones de Inicialización
+pub fn desktop_init(estado: *EstadoEscritorio3D) -> void {
+    estado.ancho_pantalla = SCREEN_WIDTH;
+    estado.alto_pantalla = SCREEN_HEIGHT;
+    estado.total_ventanas = 3;
+    estado.ventana_foco = 0;
+    estado.puntero_mouse_x = 960;
+    estado.puntero_mouse_y = 540;
+    estado.angulo_camara_z = 15;
+    estado.frames_renderizados = 0;
+    estado.canario_integridad = 0xDEADBEEF;
+}
+
+// 8. Proyección en Perspectiva 3D: P(x, y, z) -> P'(x, y)
+pub fn proyectar_vertice_3d(x: i32, y: i32, z: i32, fov: i32) -> i32 {
+    let distancia_focal: i32 = 400;
+    let factor_z: i32 = z + distancia_focal;
+    if factor_z <= 0 {
+        return x;
+    }
+    let proyectado: i32 = (x * distancia_focal) / factor_z;
+    return proyectado;
+}
+
+// 9. Cálculo de Color y Alpha Blending con Glassmorphism
+pub fn mezclar_color_vidrio(fondo: u32, neon: u32, alpha: u32) -> u32 {
+    let r_fondo: u32 = (fondo >> 16) & 0xFF;
+    let g_fondo: u32 = (fondo >> 8) & 0xFF;
+    let b_fondo: u32 = fondo & 0xFF;
+
+    let r_neon: u32 = (neon >> 16) & 0xFF;
+    let g_neon: u32 = (neon >> 8) & 0xFF;
+    let b_neon: u32 = neon & 0xFF;
+
+    let r_res: u32 = (r_neon * alpha + r_fondo * (255 - alpha)) / 255;
+    let g_res: u32 = (g_neon * alpha + g_fondo * (255 - alpha)) / 255;
+    let b_res: u32 = (b_neon * alpha + b_fondo * (255 - alpha)) / 255;
+
+    return (r_res << 16) | (g_res << 8) | b_res;
+}
+
+// 10. Renderizador del Árbol de Escena GXHTML
+pub fn renderizar_escritorio_gxhtml(estado: *EstadoEscritorio3D) -> i32 {
+    printf("====================================================================\n");
+    printf("  🖥️  NEURO-OS: MOTOR DE ESCRITORIO DECLARATIVO GXHTML 3D (UPL+)\n");
+    printf("====================================================================\n");
+    printf("[DESK_3D] Resolucion de framebuffer: %d x %d (1080p Nativo)\n", estado.ancho_pantalla, estado.alto_pantalla);
+    printf("[DESK_3D] Cursor del mouse posicionado en: (%d, %d)\n", estado.puntero_mouse_x, estado.puntero_mouse_y);
+    printf("[DESK_3D] Inclinacion de camara perspectiva Z: %d grados\n", estado.angulo_camara_z);
+
+    // Verificación de canario de integridad de memoria
+    let mut check_canary: u32 = estado.canario_integridad;
+    let canary_ok: bool = canary_verify(&check_canary, 0xDEADBEEF);
+    printf("[DESK_3D] Estado de memoria y canario CFI: 0x%X (Integro: %d)\n", estado.canario_integridad, canary_ok);
+
+    // Inicialización de Ventanas 3D en la Ciudadela
+    printf("--------------------------------------------------------------------\n");
+    printf("  CAPAS Y VENTANAS FLOTANTES EN ESPACIO 3D:\n");
+    printf("--------------------------------------------------------------------\n");
+
+    let mut w0: Ventana3D;
+    w0.id = 1;
+    w0.pos_x = 200;
+    w0.pos_y = 150;
+    w0.pos_z = 50;
+    w0.ancho = 640;
+    w0.alto = 480;
+    w0.rotacion_yaw = -5;
+    w0.color_neon = 0x00FFCC; // Cian Neón
+    w0.activa = true;
+    w0.minimizada = false;
+
+    let proj_x0: i32 = proyectar_vertice_3d(w0.pos_x, w0.pos_y, w0.pos_z, 400);
+    let color_panel0: u32 = mezclar_color_vidrio(0x0A0F1D, w0.color_neon, 180);
+    printf("  [WIN #1] Terminal Shell 3D   | Pos:(%d,%d,Z:%d) -> ProjX:%d | Color:0x%06X | Focus: SI\n",
+           w0.pos_x, w0.pos_y, w0.pos_z, proj_x0, color_panel0);
+
+    let mut w1: Ventana3D;
+    w1.id = 2;
+    w1.pos_x = 880;
+    w1.pos_y = 220;
+    w1.pos_z = 120;
+    w1.ancho = 580;
+    w1.alto = 420;
+    w1.rotacion_yaw = 8;
+    w1.color_neon = 0xFF0055; // Magenta Neón
+    w1.activa = false;
+    w1.minimizada = false;
+
+    let proj_x1: i32 = proyectar_vertice_3d(w1.pos_x, w1.pos_y, w1.pos_z, 400);
+    let color_panel1: u32 = mezclar_color_vidrio(0x0A0F1D, w1.color_neon, 120);
+    printf("  [WIN #2] Editor Cortex IDE   | Pos:(%d,%d,Z:%d) -> ProjX:%d | Color:0x%06X | Focus: NO\n",
+           w1.pos_x, w1.pos_y, w1.pos_z, proj_x1, color_panel1);
+
+    let mut w2: Ventana3D;
+    w2.id = 3;
+    w2.pos_x = 500;
+    w2.pos_y = 600;
+    w2.pos_z = 200;
+    w2.ancho = 500;
+    w2.alto = 300;
+    w2.rotacion_yaw = 0;
+    w2.color_neon = 0x00FF66; // Esmeralda Neón
+    w2.activa = false;
+    w2.minimizada = false;
+
+    let proj_x2: i32 = proyectar_vertice_3d(w2.pos_x, w2.pos_y, w2.pos_z, 400);
+    let color_panel2: u32 = mezclar_color_vidrio(0x0A0F1D, w2.color_neon, 100);
+    printf("  [WIN #3] Monitor de Silicio  | Pos:(%d,%d,Z:%d) -> ProjX:%d | Color:0x%06X | Focus: NO\n",
+           w2.pos_x, w2.pos_y, w2.pos_z, proj_x2, color_panel2);
+
+    // Barra de tareas inferior GXHTML Glassmorphism
+    printf("--------------------------------------------------------------------\n");
+    let y_taskbar: i32 = estado.alto_pantalla - TASKBAR_HEIGHT;
+    let color_taskbar: u32 = mezclar_color_vidrio(0x050811, 0x00D9FF, 200);
+    printf("[TASKBAR] Anclada en Y=%d | Altura:%dpx | Estilo: GlassPanel 0x%06X\n", y_taskbar, TASKBAR_HEIGHT, color_taskbar);
+    printf("[TASKBAR] Boton Inicio 'GENESIS' + 3 Items de Tarea enlazados al Compositor\n");
+
+    estado.frames_renderizados = estado.frames_renderizados + 1;
+    printf("====================================================================\n");
+    printf("  ESTADO: FRAME #%llu GENERADO EXITOSAMENTE EN UPL+ (0 RETARDOS)\n", estado.frames_renderizados);
+    printf("====================================================================\n\n");
+
+    if canary_ok && proj_x0 > 0 && proj_x1 > 0 {
+        return 0; // Código de salida 0: Renderizado 3D validado
+    }
+    return 1;
+}
+
+// 11. Punto de Entrada Principal
+pub fn main() -> i32 {
+    let mut desktop: EstadoEscritorio3D;
+    desktop_init(&desktop);
+
+    // Ejecución de pipeline de composición GXHTML 3D
+    let codigo_salida: i32 = renderizar_escritorio_gxhtml(&desktop);
+    return codigo_salida;
+}

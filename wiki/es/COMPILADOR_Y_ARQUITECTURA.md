@@ -1,45 +1,56 @@
 # ⚙️ ARQUITECTURA DEL COMPILADOR UPL (`uplc`)
-## Pipeline de Compilación, Generación de Código y Silicon Landing-Pads
+## Pipeline de Compilación, Generación de Código y Seguridad de Memoria Nativa
+
+El compilador de UPL reside en el archivo fuente nativo [`compiler/uplc.c`](../../compiler/uplc.c) y se compila como un ejecutable autónomo en [`bin/uplc.exe`](../../bin/uplc.exe) (Windows) o `./bin/uplc` (Linux/POSIX), sin dependencias de runtimes o intérpretes externos.
 
 ---
 
-### 1. El Pipeline en 4 Fases
-
-El compilador de UPL reside en el módulo [`compiler/`](../../compiler) y procesa el código fuente a través de cuatro etapas rigurosas:
+### 1. El Pipeline de Compilación en 4 Fases
 
 ```mermaid
 graph TD
-    A[Código Fuente .upl] --> B[Tokenizador: upl_lexer.py]
-    B --> C[Analizador Sintáctico: upl_parser.py]
-    C --> D[Árbol AST Tipado: upl_ast.py]
+    A[Código Fuente .upl] --> B[Analizador Léxico: Tokenizer C99]
+    B --> C[Resolutor Modular: Import Graph Engine]
+    C --> D[Analizador Sintáctico y AST Tipado]
     D --> E{Generador de Código}
-    E -->|Target: C| F[upl_codegen_c.py -> ANSI C99]
-    E -->|Target: ASM| G[upl_codegen_asm.py -> x86_64 NASM Long Mode]
+    E -->|Target: C99| F[Emisor ANSI C99 con Linker GCC/Clang]
+    E -->|Target: ASM| G[Emisor NASM x86_64 Long Mode]
+    E -->|Target: Multi-OS| H[Empaquetador: DEB / RPM / APP / APK]
 ```
 
-1. **Tokenizador Bilingüe (`upl_lexer.py`):** Clasifica los caracteres del código fuente en tokens léxicos tipados, procesa directivas `@`, constantes hexadecimales y extrae bloques inline `asm { ... }` y `embed { ... }`.
-2. **Parser y AST (`upl_parser.py` y `upl_ast.py`):** Construye un árbol de sintaxis abstracta con validación de tipos, precedencia matemática de operadores e inmutabilidad estricta.
-3. **Generador ANSI C99 (`upl_codegen_c.py`):** Emite código C estándar con estructuras empaquetadas, prototipos seguros y compatibilidad universal con GCC, Clang y MSVC.
-4. **Generador Ensamblador x86_64 NASM (`upl_codegen_asm.py`):** Emite código máquina puro en Long Mode (64 bits) para **Ring 0 / Bare-Metal**, ideal para arrancar directamente en CPUs físicas o máquinas virtuales como QEMU sin ningún sistema operativo debajo.
+1. **Analizador Léxico Bilingüe (`compiler/uplc.c`):**
+   - Escanea el flujo de caracteres UTF-8 y emite tokens tipados (`Token`).
+   - Mapea de forma transparente e idéntica palabras clave en Español e Inglés (`fn`/`funcion`, `let`/`sea`, `import`/`importar`, `while`/`mientras`, etc.).
+   - Reconoce decoradores de sistemas (`@snapshot`, `@baremetal`, `@pure`).
+2. **Motor de Resolución Modular (`read_and_resolve_source`):**
+   - Analiza directivas `import <modulo>;` y resuelve recursivamente las dependencias desde las rutas estándar (`modules/urep/`, `modules/compute/`, `modules/emulator/`, `modules/multilang_asm/`).
+   - Previene ciclos de inclusión y fusiona definiciones de estructuras y funciones en una unidad de traducción unificada.
+3. **Emisor ANSI C99 (`transpile_upl_to_c`):**
+   - Transpila las estructuras y funciones UPL a código C99 conforme con la norma ISO/IEC 9899:1999.
+   - Enlaza automáticamente con bibliotecas de cálculo matemático (`-lm`) y primitivas de consola Win32/POSIX.
+4. **Emisor Ensamblador NASM x86_64 (`transpile_upl_to_nasm`):**
+   - Genera ensamblador canónico de 64 bits optimizado con convención de llamada estándar y alineación de pila de 16 bytes.
+5. **Empaquetador Multi-Distribución:**
+   - Soporte nativo para empaquetado multi-target mediante la opción `-t` (`deb`, `rpm`, `app`, `apk`).
 
 ---
 
-### 2. Los Pilares de Seguridad de UPL frente a Rust y C++
+### 2. Mecanismos de Seguridad e Integridad de Memoria
 
-* **El Problema de Rust:** Cuando Rust se enfrenta a un error irrecuperable en producción, invoca `panic!`, mata el proceso y provoca la caída del servicio. Además, en controladores y kernels obliga a usar `unsafe { ... }`, perdiendo sus protecciones.
-* **La Solución de UPL (Landing-Pads y Auto-Sanación):**
-  1. Cada bloque de datos crítico se delimita con un **Landing-Pad DVTRGAS-30** con sello canónico `0xAA30`.
-  2. Si ocurre una alteración de memoria o un error de hardware, el Landing-Pad intercepta la desviación y ejecuta un **Rollback Atómico** al último `@snapshot` válido.
-  3. El sistema **nunca se cuelga** y recupera su estado seguro en nanosegundos.
+* **Control Flow Integrity (CFI):** Mediante el módulo `modules/urep/urep_guard.upl`, se verifica que el puntero de instrucción (RIP) permanezca estrictamente dentro de los límites de la sección `.text` (`[text_base, text_limit]`).
+* **Canarios de Límite de Estructuras (`@snapshot`):** En estructuras marcadas con el decorador `@snapshot`, el compilador inyecta automáticamente bytes de guarda de cabecera (`_guard_canary_head`) y cola (`_guard_canary_tail`), permitiendo la detección de desbordamientos de búfer en memoria adyacente.
+* **Aritmética de Punto Fijo (`comp3`):** Proporciona almacenamiento en formato decimal empaquetado (BCD) para operaciones financieras o de misión crítica que requieran precisión exacta sin errores de redondeo IEEE 754.
 
 ---
 
 ### 3. Modos de Uso del Compilador CLI
 
-El compilador dispone de comandos unificados 100% nativos mediante `upl.bat` (Windows) y `upl.sh` (Linux/POSIX), o directamente `./bin/uplc`:
+El compilador ofrece comandos unificados mediante `upl.bat` (Windows), `upl.sh` (POSIX) o directamente `./bin/uplc`:
 
-* **`upl run <archivo.upl>`**: Compila y ejecuta el programa de inmediato.
-* **`upl build <archivo.upl> -t c`**: Genera el código C99 correspondiente.
-* **`upl build <archivo.upl> -t asm --baremetal`**: Genera el ensamblador puro de 64 bits para Ring 0.
-* **`upl repl`**: Inicia la Consola Interactiva Avanzada.
-* **`upl diag <codigo> -l <idioma>`**: Desglosa y explica cualquier código de error del procesador o del sistema operativo.
+* **`upl run <archivo.upl>`**: Compila en memoria y ejecuta el programa inmediatamente.
+* **`upl build <archivo.upl> -o <binario.exe>`**: Genera el binario ejecutable optimizado.
+* **`upl build <archivo.upl> -t c`**: Exporta el código C99 equivalente.
+* **`upl build <archivo.upl> -t asm`**: Exporta el ensamblador NASM x86_64.
+* **`upl build <archivo.upl> -t deb|rpm|app|apk`**: Empaqueta el programa para la plataforma seleccionada.
+* **`upl list`**: Lista los módulos de sistemas registrados en el ecosistema.
+* **`upl test`**: Ejecuta la suite de verificación continua automatizada (18/18 tests).

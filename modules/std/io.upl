@@ -1,0 +1,35 @@
+// ============================================================================
+// UPL STANDARD LIBRARY: BUFFERED I/O & LOGGING (std::io)
+// Language: Pure UPL+ / Native Systems Standard Library
+// Author: José Manuel Moreno (Noxferion)
+// ============================================================================
+
+module std_io;
+
+pub fn print_str(msg: str) -> void {
+    printf("%s", msg);
+}
+
+pub fn print_i32(val: i32) -> void {
+    printf("%d", val);
+}
+
+pub fn print_u64_hex(val: u64) -> void {
+    printf("0x%llX", val);
+}
+
+pub fn print_newline() -> void {
+    printf("\n");
+}
+
+pub fn log_info(tag: str, msg: str) -> void {
+    printf("[INFO]  [%s] %s\n", tag, msg);
+}
+
+pub fn log_warn(tag: str, msg: str) -> void {
+    printf("[WARN]  [%s] %s\n", tag, msg);
+}
+
+pub fn log_error(tag: str, msg: str) -> void {
+    printf("[ERROR] [%s] %s\n", tag, msg);
+}

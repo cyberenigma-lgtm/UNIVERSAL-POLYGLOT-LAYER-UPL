@@ -1,0 +1,63 @@
+// ============================================================================
+// UPL STANDARD LIBRARY: MEMORY OPERATIONS (std::memory)
+// Language: Pure UPL+ / Native Systems Standard Library
+// Author: José Manuel Moreno (Noxferion)
+// ============================================================================
+// Implements safe byte buffers, deterministic memory filling, pointer copies,
+// alignment calculations, and canary bound integrity checks.
+// ============================================================================
+
+module std_memory;
+
+const CANARY_GUARD_MAGIC: u32 = 0xDEADBEEF;
+
+// Copies 'count' bytes from src to dest sequentially
+pub fn mem_copy(dest: *u8, src: *u8, count: usize) -> void {
+    let mut i: usize = 0;
+    while i < count {
+        let val: u8 = *(src + i);
+        *(dest + i) = val;
+        i = i + 1;
+    }
+}
+
+// Fills 'count' bytes at dest with constant byte 'val'
+pub fn mem_set(dest: *u8, val: u8, count: usize) -> void {
+    let mut i: usize = 0;
+    while i < count {
+        *(dest + i) = val;
+        i = i + 1;
+    }
+}
+
+// Lexicographically compares two memory buffers of 'count' bytes
+// Returns 0 if identical, <0 if a < b, >0 if a > b
+pub fn mem_cmp(a: *u8, b: *u8, count: usize) -> i32 {
+    let mut i: usize = 0;
+    while i < count {
+        let va: u8 = *(a + i);
+        let vb: u8 = *(b + i);
+        if va != vb {
+            return (va as i32) - (vb as i32);
+        }
+        i = i + 1;
+    }
+    return 0;
+}
+
+// Writes a 32-bit security canary sentinel into the boundary memory address
+pub fn canary_write(guard_addr: *u32, magic: u32) -> void {
+    *guard_addr = magic;
+}
+
+// Verifies whether the security canary has remained uncorrupted
+pub fn canary_verify(guard_addr: *u32, expected_magic: u32) -> bool {
+    let actual: u32 = *guard_addr;
+    return actual == expected_magic;
+}
+
+// Calculates power-of-two address alignment boundary
+pub fn align_up_u64(address: u64, alignment: u64) -> u64 {
+    let mask: u64 = alignment - 1;
+    return (address + mask) & ~mask;
+}

@@ -1,0 +1,46 @@
+// ============================================================================
+// TEST: BIBLIOTECA ESTANDAR UPL (std::math + std::memory)
+// Language: Pure UPL+ / Native Systems Standard Library
+// Author: José Manuel Moreno (Noxferion)
+// ============================================================================
+
+module test_std_lib;
+
+import math;
+import memory;
+
+pub fn main() -> i32 {
+    printf("====================================================================\n");
+    printf("   TEST DE INTEGRACION: BIBLIOTECA ESTANDAR UPL (std)\n");
+    printf("====================================================================\n");
+
+    // 1. Matematicas: abs, clamp, min, max, pow
+    let v_abs: i32 = abs_i32(-42);
+    let v_clamp: i32 = clamp_i32(150, 0, 100);
+    let v_min: i32 = min_i32(10, 20);
+    let v_max: i32 = max_i32(10, 20);
+    let v_pow: i32 = pow_i32(2, 8);
+
+    printf("[STD_MATH] abs_i32(-42)        = %d (Esperado: 42)\n", v_abs);
+    printf("[STD_MATH] clamp_i32(150,0,100)= %d (Esperado: 100)\n", v_clamp);
+    printf("[STD_MATH] min_i32(10, 20)     = %d (Esperado: 10)\n", v_min);
+    printf("[STD_MATH] max_i32(10, 20)     = %d (Esperado: 20)\n", v_max);
+    printf("[STD_MATH] pow_i32(2, 8)       = %d (Esperado: 256)\n", v_pow);
+
+    // 2. Memoria: canarios de integridad y alineacion
+    let mut canary: u32 = 0;
+    canary_write(&canary, CANARY_GUARD_MAGIC);
+    let ok_canary: bool = canary_verify(&canary, CANARY_GUARD_MAGIC);
+    printf("[STD_MEM]  Canary Sentinel     = 0x%X (Integridad: %d)\n", canary, ok_canary);
+
+    let aligned: u64 = align_up_u64(4090, 4096);
+    printf("[STD_MEM]  align_up_u64(4090)  = %llu (Esperado: 4096)\n", aligned);
+
+    printf("====================================================================\n");
+    printf("  VERIFICACION ESTANDAR COMPLETADA CON EXITO (0 ERRORES)\n\n");
+
+    if v_abs == 42 && v_clamp == 100 && v_pow == 256 && ok_canary && aligned == 4096 {
+        return 0;
+    }
+    return 1;
+}

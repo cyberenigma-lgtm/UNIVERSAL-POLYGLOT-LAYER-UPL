@@ -1,200 +1,289 @@
 #include "nc_parser.h"
+#include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
-// 🧬 NATIVE MEMORY LINK: Redirect to System malloc (stubs.c)
-extern void* malloc(size_t size);
-extern void free(void* ptr);
-
-#define malloc malloc
-#define free free
+#ifdef NC_ENABLE_HARDWARE_PULSE
+extern void dvtrga_debug_pixel(int x, int y, unsigned int color);
+#define NC_PULSE(x, y, c) dvtrga_debug_pixel(x, y, c)
+#else
+#define NC_PULSE(x, y, c) ((void)0)
+#endif
 
 static Token current_token;
-static int defense_integrity_loaded = 0;
-static int defense_crypto_loaded = 0;
-static int defense_auth_loaded = 0;
+static int parser_errors = 0;
+
+int nc_parser_get_error_count(void) {
+    return parser_errors;
+}
 
 static ASTNode* create_node(ASTNodeType type, const char* text) {
-    // 🧬 HARDWARE DEBUG PULSE: BLUE (Parser Node Created v30.22)
-    extern void dvtrga_debug_pixel(int x, int y, unsigned int color);
     static int parse_pulse_x = 0;
-    dvtrga_debug_pixel(parse_pulse_x++ % 1024, 300, 0x0000FF);
+    NC_PULSE(parse_pulse_x++ % 1024, 300, 0x0000FF);
 
     ASTNode* node = (ASTNode*)malloc(sizeof(ASTNode));
+    if (!node) {
+        return NULL;
+    }
     node->type = type;
     memset(node->text, 0, sizeof(node->text));
-    if (text) strncpy(node->text, text, sizeof(node->text) - 1);
-    node->left = node->right = node->next = NULL;
+    if (text) {
+        strncpy(node->text, text, sizeof(node->text) - 1);
+        node->text[sizeof(node->text) - 1] = '\0';
+    }
+    node->left = NULL;
+    node->right = NULL;
+    node->next = NULL;
     return node;
 }
 
-static void consume(TokenType type) {
-    if (current_token.type == type) {
-        current_token = nc_lexer_next_token();
-    } else {
-        current_token = nc_lexer_next_token();
-    }
+static int check(TokenType type) {
+    return current_token.type == type;
 }
 
-static ASTNode* parse_statement();
-static ASTNode* parse_logic_block();
-static ASTNode* parse_ui_element();
+static void advance_token(void) {
+    current_token = nc_lexer_next_token();
+}
 
-static ASTNode* parse_expression() {
-    if (current_token.type == TOK_STRING) {
+static int expect(TokenType type, const char* expected_desc) {
+    if (current_token.type == type) {
+        advance_token();
+        return 1;
+    }
+    parser_errors++;
+    fprintf(stderr, "[NC_PARSER] Syntax Error (line %d): Expected '%s', but encountered '%s' (%s)\n",
+            current_token.line, expected_desc, current_token.text, nc_token_type_to_string(current_token.type));
+    
+    // Panic recovery: advance if not already at EOF to prevent infinite loops
+    if (current_token.type != TOK_EOF) {
+        advance_token();
+    }
+    return 0;
+}
+
+static ASTNode* parse_statement(void);
+static ASTNode* parse_logic_block(void);
+static ASTNode* parse_ui_element(void);
+
+static ASTNode* parse_expression(void) {
+    if (check(TOK_STRING)) {
         ASTNode* node = create_node(NODE_STRING_LITERAL, current_token.text);
-        consume(TOK_STRING);
+        advance_token();
         return node;
-    } else if (current_token.type == TOK_IDENTIFIER) {
+    } else if (check(TOK_NUMBER)) {
+        ASTNode* node = create_node(NODE_NUMBER_LITERAL, current_token.text);
+        advance_token();
+        return node;
+    } else if (check(TOK_IDENTIFIER)) {
         ASTNode* node = create_node(NODE_IDENTIFIER, current_token.text);
-        consume(TOK_IDENTIFIER);
+        advance_token();
         return node;
     }
     return NULL;
 }
 
-static ASTNode* parse_ui_element() {
-    if (current_token.type == TOK_WINDOW) {
-        consume(TOK_WINDOW);
-        char winName[64] = {0};
-        if (current_token.type == TOK_IDENTIFIER) {
-            strncpy(winName, current_token.text, sizeof(winName)-1);
-            consume(TOK_IDENTIFIER);
+static ASTNode* parse_ui_element(void) {
+    if (check(TOK_WINDOW)) {
+        advance_token();
+        char win_name[NC_MAX_TOKEN_LEN] = {0};
+        if (check(TOK_IDENTIFIER)) {
+            strncpy(win_name, current_token.text, sizeof(win_name) - 1);
+            advance_token();
         }
-        ASTNode* node = create_node(NODE_WINDOW, winName);
+        ASTNode* node = create_node(NODE_WINDOW, win_name);
         ASTNode* head = NULL;
         ASTNode* current = NULL;
-        while (current_token.type != TOK_END && current_token.type != TOK_EOF) {
+
+        while (!check(TOK_END) && !check(TOK_FIN) && !check(TOK_EOF)) {
             ASTNode* item = parse_ui_element();
-            if (!item) item = parse_statement();
+            if (!item) {
+                item = parse_statement();
+            }
             if (item) {
-                if (!head) head = item;
-                else current->next = item;
+                if (!head) {
+                    head = item;
+                } else {
+                    current->next = item;
+                }
                 current = item;
-            } else current_token = nc_lexer_next_token();
+            } else {
+                advance_token();
+            }
         }
-        node->right = head;
-        consume(TOK_END);
+        if (node) {
+            node->right = head;
+        }
+        if (check(TOK_FIN)) advance_token();
+        else expect(TOK_END, "END o FIN para cerrar bloque de ventana");
         return node;
-    } else if (current_token.type == TOK_BUTTON) {
-        consume(TOK_BUTTON);
-        char btnText[64] = {0};
-        if (current_token.type == TOK_STRING || current_token.type == TOK_IDENTIFIER) {
-            strncpy(btnText, current_token.text, sizeof(btnText)-1);
-            consume(current_token.type);
+    } else if (check(TOK_BUTTON)) {
+        advance_token();
+        char btn_text[NC_MAX_TOKEN_LEN] = {0};
+        if (check(TOK_STRING) || check(TOK_IDENTIFIER)) {
+            strncpy(btn_text, current_token.text, sizeof(btn_text) - 1);
+            advance_token();
         }
-        ASTNode* node = create_node(NODE_BUTTON, btnText);
-        if (current_token.type == TOK_ON) { consume(TOK_ON); consume(TOK_CLICK); }
-        node->right = parse_logic_block();
-        consume(TOK_END);
+        ASTNode* node = create_node(NODE_BUTTON, btn_text);
+        if (check(TOK_ON)) {
+            advance_token();
+            expect(TOK_CLICK, "CLICK / CLIC tras evento ON / AL");
+        }
+        if (node) {
+            node->right = parse_logic_block();
+        }
+        if (check(TOK_FIN)) advance_token();
+        else expect(TOK_END, "END o FIN para cerrar bloque de boton");
         return node;
     }
     return NULL;
 }
 
-static ASTNode* parse_file_statement() {
-    if (current_token.type == TOK_WRITE) {
-        consume(TOK_WRITE);
-        consume(TOK_FILE);
+static ASTNode* parse_file_statement(void) {
+    if (check(TOK_WRITE)) {
+        advance_token();
+        expect(TOK_FILE, "FILE / ARCHIVO tras WRITE / ESCRIBIR");
         return create_node(NODE_WRITE, "WRITE");
     }
     return NULL;
 }
 
-static ASTNode* parse_native_block() {
-    consume(TOK_NATIVO);
-    char native_code[1024] = {0};
-    // Note: Simple greedy consumer for NATIVO logic
-    while (current_token.type != TOK_FIN && current_token.type != TOK_END && current_token.type != TOK_EOF) {
-        strncat(native_code, current_token.text, 1023);
-        strncat(native_code, " ", 1023);
-        consume(current_token.type);
+static ASTNode* parse_native_block(void) {
+    advance_token(); // Consume NATIVO
+    size_t capacity = 1024;
+    size_t length = 0;
+    char* buffer = (char*)malloc(capacity);
+    if (!buffer) {
+        parser_errors++;
+        return NULL;
     }
-    consume(TOK_FIN);
-    return create_node(NODE_NATIVO, native_code);
+    buffer[0] = '\0';
+
+    while (!check(TOK_FIN) && !check(TOK_END) && !check(TOK_EOF)) {
+        size_t token_len = strlen(current_token.text);
+        if (length + token_len + 2 >= capacity) {
+            size_t new_cap = capacity * 2;
+            if (new_cap < capacity + token_len + 2) {
+                new_cap = capacity + token_len + 256;
+            }
+            char* new_buf = (char*)realloc(buffer, new_cap);
+            if (!new_buf) {
+                free(buffer);
+                parser_errors++;
+                return NULL;
+            }
+            buffer = new_buf;
+            capacity = new_cap;
+        }
+        memcpy(buffer + length, current_token.text, token_len);
+        length += token_len;
+        buffer[length++] = ' ';
+        buffer[length] = '\0';
+        advance_token();
+    }
+
+    if (check(TOK_FIN)) advance_token();
+    else expect(TOK_END, "FIN / END al cerrar bloque NATIVO");
+
+    ASTNode* node = create_node(NODE_NATIVO, buffer);
+    free(buffer);
+    return node;
 }
 
-static ASTNode* parse_statement() {
-    if (current_token.type == TOK_SHOW) {
-        consume(TOK_SHOW);
+static ASTNode* parse_statement(void) {
+    if (check(TOK_SHOW)) {
+        advance_token();
         ASTNode* node = create_node(NODE_SHOW, "SHOW");
-        node->left = parse_expression();
-        return node;
-    } else if (current_token.type == TOK_IF) {
-        consume(TOK_IF);
-        ASTNode* node = create_node(NODE_IF, "IF");
-        node->left = parse_expression();
-        consume(TOK_THEN);
-        node->right = parse_logic_block();
-        consume(TOK_END);
-        return node;
-    } else if (current_token.type == TOK_WINDOW || current_token.type == TOK_BUTTON) {
-        return parse_ui_element();
-    } else if (current_token.type == TOK_CAMPO || current_token.type == TOK_FIELD) {
-        consume(current_token.type);
-        char fieldName[64] = {0};
-        if (current_token.type == TOK_IDENTIFIER) {
-            strncpy(fieldName, current_token.text, 63);
-            consume(TOK_IDENTIFIER);
+        if (node) {
+            node->left = parse_expression();
         }
-        return create_node(NODE_FIELD, fieldName);
-    } else if (current_token.type == TOK_WRITE) {
+        return node;
+    } else if (check(TOK_IF)) {
+        advance_token();
+        ASTNode* node = create_node(NODE_IF, "IF");
+        if (node) {
+            node->left = parse_expression();
+        }
+        expect(TOK_THEN, "THEN / ENTONCES tras condicion IF / SI");
+        if (node) {
+            node->right = parse_logic_block();
+        }
+        if (check(TOK_FIN)) advance_token();
+        else expect(TOK_END, "FIN / END tras bloque condicional");
+        return node;
+    } else if (check(TOK_WINDOW) || check(TOK_BUTTON)) {
+        return parse_ui_element();
+    } else if (check(TOK_CAMPO) || check(TOK_FIELD)) {
+        advance_token();
+        char field_name[NC_MAX_TOKEN_LEN] = {0};
+        if (check(TOK_IDENTIFIER)) {
+            strncpy(field_name, current_token.text, sizeof(field_name) - 1);
+            advance_token();
+        }
+        return create_node(NODE_FIELD, field_name);
+    } else if (check(TOK_WRITE)) {
         return parse_file_statement();
-    } else if (current_token.type == TOK_NATIVO) {
+    } else if (check(TOK_NATIVO)) {
         return parse_native_block();
-    } else if (current_token.type == TOK_NITRO) {
-        consume(TOK_NITRO);
+    } else if (check(TOK_NITRO)) {
+        advance_token();
         return create_node(NODE_NITRO, "NITRO");
     }
     return NULL;
 }
 
-static ASTNode* parse_logic_block() {
+static ASTNode* parse_logic_block(void) {
     ASTNode* head = NULL;
     ASTNode* current = NULL;
-    while (current_token.type != TOK_END && current_token.type != TOK_END_IF && current_token.type != TOK_EOF) {
+    while (!check(TOK_END) && !check(TOK_FIN) && !check(TOK_END_IF) && !check(TOK_EOF)) {
         ASTNode* stmt = parse_statement();
         if (stmt) {
-            if (!head) head = stmt;
-            else current->next = stmt;
+            if (!head) {
+                head = stmt;
+            } else {
+                current->next = stmt;
+            }
             current = stmt;
-        } else break;
+        } else {
+            break;
+        }
     }
     return head;
 }
 
 ASTNode* nc_parse(const char* source) {
-    // 🧬 HARDWARE ENTRY PULSE: RED BLOCK (Parser Nexus v30.31.2)
-    extern void dvtrga_debug_pixel(int x, int y, unsigned int color);
-    for (int yp = 100; yp < 150; yp++) {
-        for (int xp = 500; xp < 600; xp++) {
-            dvtrga_debug_pixel(xp, yp, 0xFF0000);
-        }
-    }
-
+    parser_errors = 0;
     nc_lexer_init(source);
     current_token = nc_lexer_next_token();
-    if (current_token.type == TOK_PROGRAM) {
-        consume(TOK_PROGRAM);
+
+    if (check(TOK_PROGRAM)) {
+        advance_token();
         ASTNode* prog = create_node(NODE_PROGRAM, current_token.text);
-        consume(TOK_IDENTIFIER);
-        while (current_token.type != TOK_EOF) {
-            if (current_token.type == TOK_DATA) {
-                consume(TOK_DATA);
-                // 🧬 SYSTEM SNAP: Prevent infinite loop in data section
-                while (current_token.type != TOK_LOGIC && current_token.type != TOK_EOF) {
-                    current_token = nc_lexer_next_token();
+        expect(TOK_IDENTIFIER, "Nombre de programa tras PROGRAMA / PROGRAM");
+
+        while (!check(TOK_EOF)) {
+            if (check(TOK_DATA)) {
+                advance_token();
+                while (!check(TOK_LOGIC) && !check(TOK_EOF)) {
+                    advance_token();
                 }
-            } else if (current_token.type == TOK_LOGIC) {
-                consume(TOK_LOGIC);
-                prog->right = parse_logic_block();
-            } else if (current_token.type == TOK_END) { consume(TOK_END); break; }
-            else if (current_token.type == TOK_DOT) { consume(TOK_DOT); }
-            else { 
-                // 🧬 DEBUG: Unknown token in main parse loop (v30.20)
-                // extern void k_printf(const char* fmt, ...);
-                // k_printf(" [PARSE] Skipping Unknown: %d\n", current_token.type);
-                current_token = nc_lexer_next_token(); 
+            } else if (check(TOK_LOGIC)) {
+                advance_token();
+                if (prog) {
+                    prog->right = parse_logic_block();
+                }
+            } else if (check(TOK_END) || check(TOK_FIN)) {
+                advance_token();
+                break;
+            } else if (check(TOK_DOT)) {
+                advance_token();
+            } else {
+                advance_token();
             }
+        }
+
+        if (parser_errors > 0) {
+            nc_free_ast(prog);
+            return NULL;
         }
         return prog;
     }

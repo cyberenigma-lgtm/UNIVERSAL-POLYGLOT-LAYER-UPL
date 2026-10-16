@@ -11,6 +11,8 @@
 #define NC_STRICMP strcasecmp
 #endif
 
+#define NC_MAX_TOKEN_LEN 256
+
 typedef enum {
     TOK_PROGRAM, TOK_DATA, TOK_LOGIC, TOK_END, TOK_DEFINE, TOK_AS, TOK_SHOW,
     TOK_IF, TOK_THEN, TOK_ELSE, TOK_END_IF, TOK_WINDOW, TOK_BUTTON, TOK_FIELD,
@@ -24,12 +26,12 @@ typedef enum {
 
 typedef struct {
     TokenType type;
-    char text[256];
+    char text[NC_MAX_TOKEN_LEN];
     int line;
 } Token;
 
 void nc_lexer_init(const char* source);
-Token nc_lexer_next_token();
+Token nc_lexer_next_token(void);
 const char* nc_token_type_to_string(TokenType type);
 
 #endif

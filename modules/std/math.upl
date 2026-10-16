@@ -1,0 +1,57 @@
+// ============================================================================
+// UPL STANDARD LIBRARY: MATHEMATICS (std::math)
+// Language: Pure UPL+ / Native Systems Standard Library
+// Author: José Manuel Moreno (Noxferion)
+// ============================================================================
+
+module std_math;
+
+const PI_F32: f32 = 3.14159265;
+const TAU_F32: f32 = 6.28318530;
+const RAD_TO_DEG: f32 = 57.2957795;
+const DEG_TO_RAD: f32 = 0.01745329;
+
+pub fn abs_i32(val: i32) -> i32 {
+    if val < 0 {
+        return -val;
+    }
+    return val;
+}
+
+pub fn min_i32(a: i32, b: i32) -> i32 {
+    if a < b {
+        return a;
+    }
+    return b;
+}
+
+pub fn max_i32(a: i32, b: i32) -> i32 {
+    if a > b {
+        return a;
+    }
+    return b;
+}
+
+pub fn clamp_i32(val: i32, min_val: i32, max_val: i32) -> i32 {
+    if val < min_val {
+        return min_val;
+    }
+    if val > max_val {
+        return max_val;
+    }
+    return val;
+}
+
+pub fn lerp_f32(start: f32, end: f32, t: f32) -> f32 {
+    return start + (end - start) * t;
+}
+
+pub fn pow_i32(base: i32, exp: i32) -> i32 {
+    let mut res: i32 = 1;
+    let mut i: i32 = 0;
+    while i < exp {
+        res = res * base;
+        i = i + 1;
+    }
+    return res;
+}

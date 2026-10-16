@@ -1,0 +1,19 @@
+// ============================================================================
+// UPL STANDARD LIBRARY: HIGH RESOLUTION TIMING & PACING (std::time)
+// Language: Pure UPL+ / Native Systems Standard Library
+// Author: José Manuel Moreno (Noxferion)
+// ============================================================================
+
+module std_time;
+
+pub fn sleep_ms(ms: i32) -> void {
+    upl_sleep_ms(ms);
+}
+
+pub fn frame_rate_delay_60fps() -> void {
+    upl_sleep_ms(16);
+}
+
+pub fn frame_rate_delay_30fps() -> void {
+    upl_sleep_ms(33);
+}

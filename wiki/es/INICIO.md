@@ -1,23 +1,23 @@
 # 🚀 INICIO RÁPIDO: LENGUAJE DE PROGRAMACIÓN UPL
-## El Nuevo Lenguaje Soberano de Sistemas para el Siglo XXI
+## Lenguaje de Programación de Sistemas y Alto Rendimiento para el Siglo XXI
 
-Bienvenido a la documentación oficial de **UPL (Universal Polyglot Layer)**. UPL no es una librería ni un script de automatización: es un **lenguaje de programación de sistemas totalmente nuevo**, creado para proporcionar el máximo rendimiento sobre el silicio con una garantía de seguridad superior a Rust y C++.
+Bienvenido a la documentación técnica de **UPL (Universal Polyglot Layer)**. UPL es un **lenguaje de programación de sistemas compilado y autónomo**, diseñado para proporcionar rendimiento a nivel de silicio, seguridad de memoria sin sobrecarga en tiempo de ejecución e interoperabilidad multi-arquitectura.
 
 ---
 
-### 🌟 ¿Por qué UPL es un Lenguaje Totalmente Nuevo?
+### 🌟 Pilares de la Arquitectura de UPL
 
-1. **Compilador Nativo Dedicado (`uplc`):** Desarrollado con análisis léxico propio, análisis sintáctico de descenso recursivo, árbol de sintaxis abstracta (AST) tipado y generadores de código para C99 y Ensamblador x86_64 NASM puro.
-2. **Soberanía Bilingüe:** Primer lenguaje en el mundo con soporte nativo de sintaxis completa en Español y en Inglés en pie de igualdad.
-3. **Landing-Pads DVTRGAS-30 (0xAA30):** Protección física en memoria con guardas automáticas de silicio que absorben desbordamientos antes de que dañen otros datos.
-4. **Auto-Sanación con Salto Lógico (`@snapshot`):** En lugar de crashear como Rust ante un fallo imprevisto, UPL restaura el último punto de control válido en nanosegundos y continúa la ejecución.
-5. **Aritmética Exacta NeuroCOBOL (`comp3`):** Tipos BCD nativos que eliminan los errores de precisión en finanzas y cálculos críticos.
+1. **Compilador Nativo Dedicado (`uplc`):** Desarrollado en ANSI C99 autónomo, con análisis léxico propio, análisis sintáctico de descenso recursivo, árbol de sintaxis abstracta (AST) tipado y generadores de código directo para C99 y Ensamblador x86_64 NASM.
+2. **Sintaxis Bilingüe Nativa:** Soporte formal de palabras clave en Español y en Inglés en igualdad de condiciones sintácticas.
+3. **Protección de Límites con Canarios de Memoria:** Inserción de bytes de guarda y canarios en cabecera y cola de estructuras `@snapshot` para mitigar desbordamientos de búfer (*buffer overflow*).
+4. **Puntos de Control Deterministas (`@snapshot`):** Serialización atómica del estado de memoria en tiempo de ejecución para tolerancia a fallos y auditoría de ejecución.
+5. **Aritmética Decimal de Punto Fijo (`comp3`):** Tipos BCD empaquetados nativos para cálculos financieros y científicos sin errores de redondeo de punto flotante.
 
 ---
 
 ### 📦 Tu Primer Programa en UPL
 
-Crea un archivo llamado `hola_soberano.upl`:
+Crea un archivo llamado `hola_mundo.upl`:
 
 ```rust
 module demo;
@@ -27,45 +27,43 @@ pub fn main() -> i32 {
     while contador < 5 {
         contador = contador + 1;
     }
-    return contador;
+    return 0;
 }
 ```
 
-O si prefieres programar en Español:
+O utilizando palabras clave en Español:
 
 ```rust
 modulo demo;
 
 funcion principal() -> i32 {
-    sea mutable contador: i32 = 0;
+    sea mut contador: i32 = 0;
     mientras contador < 5 {
         contador = contador + 1;
     }
-    retornar contador;
+    retornar 0;
 }
 ```
 
 ---
 
-### ⚡ Cómo Ejecutar y Compilar
+### ⚡ Cómo Compilar y Ejecutar
 
-Desde la terminal en el directorio raíz de UPL:
+Desde la terminal en el directorio raíz del proyecto:
 
 ```bash
-# Ejecución directa e inmediata nativa (Windows: upl.bat / Linux: ./upl.sh)
-upl run hola_soberano.upl
+# 1. Ejecución directa en memoria (Windows: upl.bat / POSIX: ./upl.sh):
+upl run hola_mundo.upl
 
-# Compilación a código C99 optimizado
-upl build hola_soberano.upl -t c -o salida.c
+# 2. Compilación a binario ejecutable optimizado:
+upl build hola_mundo.upl -o hola_mundo.exe
 
-# Compilación a Ensamblador x86_64 Long Mode (Bare-Metal / Ring 0)
-upl build hola_soberano.upl -t asm --baremetal -o salida.asm
+# 3. Transpilación a código C99 estándar:
+upl build hola_mundo.upl -t c -o salida.c
+
+# 4. Transpilación a Ensamblador NASM x86_64:
+upl build hola_mundo.upl -t asm -o salida.asm
+
+# 5. Ejecutar la suite completa de tests automatizados:
+upl test
 ```
-
----
-
-### 📚 Próximos Pasos en la Wiki
-* **[Manual de Sintaxis y Gramática](SINTAXIS_Y_GRAMATICA.md)**
-* **[Arquitectura Interna del Compilador](COMPILADOR_Y_ARQUITECTURA.md)**
-* **[Diccionario de Errores y Diagnóstico Multi-SO](DICCIONARIO_ERRORES.md)**
-* **[Galería de Ejemplos en Código UPL](EJEMPLOS.md)**
