@@ -63,6 +63,7 @@ test.bat
 ---
 
 ### 📚 Documentación Técnica Detallada
+* **[Manual del Transpilador Nativo C99 a UPL+ (`c2upl`)](TRANSPILADOR_C2UPL.md)**
 * **[Especificación Formal de Gramática y Tipos (EBNF)](file:///c:/Users/cyber/OneDrive/Documentos/NeuroOs/UNIVERSAL-POLYGLOT-LAYER-UPL/docs/SPEC_GRAMATICA_Y_SISTEMA_TIPOS.md)**
 * **[Arquitectura Interna del Compilador C99](file:///c:/Users/cyber/OneDrive/Documentos/NeuroOs/UNIVERSAL-POLYGLOT-LAYER-UPL/docs/ARQUITECTURA_COMPILADOR.md)**
 * **[Suite y Arnés de Pruebas](file:///c:/Users/cyber/OneDrive/Documentos/NeuroOs/UNIVERSAL-POLYGLOT-LAYER-UPL/docs/SUITE_DE_PRUEBAS.md)**

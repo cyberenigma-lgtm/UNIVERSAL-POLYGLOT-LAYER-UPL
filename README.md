@@ -4,8 +4,9 @@
 
 **Autor / Author:** José Manuel Moreno (Noxferion)  
 **Versión / Version:** 2.0.0-Release (Dragon Book Architecture)  
-**Licencia / License:** Propietaria / Defensiva (Registrado en SafeCreative)
+**Licencia / License:** GNU General Public License v3.0 (GPLv3) — Autoría y especificación registradas defensivamente en SafeCreative
 
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![SafeCreative Protected](https://img.shields.io/badge/SafeCreative-Obra%20Protegida-blue.svg)](https://www.safecreative.org)
 [![Language Specification](https://img.shields.io/badge/Spec-Formal%20EBNF%20v2.0-green.svg)](docs/SPEC_GRAMATICA_Y_SISTEMA_TIPOS.md)
 [![Compiler Architecture](https://img.shields.io/badge/Compiler-ANSI%20C99%20Pipeline-blue.svg)](docs/ARQUITECTURA_COMPILADOR.md)

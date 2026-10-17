@@ -63,6 +63,7 @@ test.bat
 ---
 
 ### 📚 Technical Documentation
+* **[C99 to UPL+ Native Transpiler Guide (`c2upl`)](C2UPL_TRANSPILER.md)**
 * **[Formal Grammar & Type Specification](file:///c:/Users/cyber/OneDrive/Documentos/NeuroOs/UNIVERSAL-POLYGLOT-LAYER-UPL/docs/SPEC_GRAMATICA_Y_SISTEMA_TIPOS.md)**
 * **[Compiler Pipeline Architecture](file:///c:/Users/cyber/OneDrive/Documentos/NeuroOs/UNIVERSAL-POLYGLOT-LAYER-UPL/docs/ARQUITECTURA_COMPILADOR.md)**
 * **[Verification Test Suite](file:///c:/Users/cyber/OneDrive/Documentos/NeuroOs/UNIVERSAL-POLYGLOT-LAYER-UPL/docs/SUITE_DE_PRUEBAS.md)**
