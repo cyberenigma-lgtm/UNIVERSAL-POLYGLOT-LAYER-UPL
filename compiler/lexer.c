@@ -140,6 +140,28 @@ static Token read_number(Lexer* lexer) {
     size_t start_line = lexer->line;
     bool is_float = false;
 
+    // Soporte para literales hexadecimales: 0x... / 0X...
+    if (peek(lexer) == '0' && (peek_next(lexer) == 'x' || peek_next(lexer) == 'X')) {
+        advance(lexer); // '0'
+        advance(lexer); // 'x' o 'X'
+        while (isxdigit((unsigned char)peek(lexer))) {
+            advance(lexer);
+        }
+        size_t length = lexer->cursor - start_cursor;
+        return create_token(TOKEN_LITERAL_INT, &lexer->source[start_cursor], length, start_line, start_col);
+    }
+
+    // Soporte para literales binarios: 0b... / 0B...
+    if (peek(lexer) == '0' && (peek_next(lexer) == 'b' || peek_next(lexer) == 'B')) {
+        advance(lexer); // '0'
+        advance(lexer); // 'b' o 'B'
+        while (peek(lexer) == '0' || peek(lexer) == '1') {
+            advance(lexer);
+        }
+        size_t length = lexer->cursor - start_cursor;
+        return create_token(TOKEN_LITERAL_INT, &lexer->source[start_cursor], length, start_line, start_col);
+    }
+
     while (isdigit((unsigned char)peek(lexer))) {
         advance(lexer);
     }
@@ -288,6 +310,7 @@ Token lexer_next_token(Lexer* lexer) {
         case ',': return create_token(TOKEN_DELIM_COMMA, ",", 1, start_line, start_col);
         case ':': return create_token(TOKEN_DELIM_COLON, ":", 1, start_line, start_col);
         case '.': return create_token(TOKEN_DELIM_DOT, ".", 1, start_line, start_col);
+        case '@': return create_token(TOKEN_AT, "@", 1, start_line, start_col);
     }
 
     return create_token(TOKEN_ERROR, &lexer->source[lexer->cursor - 1], 1, start_line, start_col);
@@ -352,6 +375,7 @@ const char* token_type_name(TokenType type) {
         case TOKEN_DELIM_COLON:    return "TOKEN_DELIM_COLON";
         case TOKEN_DELIM_DOT:      return "TOKEN_DELIM_DOT";
         case TOKEN_DELIM_ARROW:    return "TOKEN_DELIM_ARROW";
+        case TOKEN_AT:             return "TOKEN_AT";
         default:                   return "UNKNOWN";
     }
 }

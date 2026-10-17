@@ -123,6 +123,11 @@ int main(int argc, char **argv) {
     if (dump_ast) {
         printf("=== ARBOL DE SINTAXIS ABSTRACTA (AST) ===\n");
         upl_ast_dump(program, 0);
+        if (!output_file && !emit_c_only) {
+            upl_arena_free(&arena);
+            free(source);
+            return 0;
+        }
     }
 
     // 6. Generación de Código C99

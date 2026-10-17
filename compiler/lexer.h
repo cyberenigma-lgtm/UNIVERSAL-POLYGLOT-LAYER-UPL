@@ -63,7 +63,8 @@ typedef enum {
     TOKEN_DELIM_COMMA,      /* , */
     TOKEN_DELIM_COLON,      /* : */
     TOKEN_DELIM_DOT,        /* . */
-    TOKEN_DELIM_ARROW       /* -> */
+    TOKEN_DELIM_ARROW,      /* -> */
+    TOKEN_AT                /* @ (atributos / decoradores) */
 } TokenType;
 
 typedef struct {

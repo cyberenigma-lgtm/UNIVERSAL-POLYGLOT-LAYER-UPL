@@ -9,7 +9,8 @@
 [![SafeCreative Protected](https://img.shields.io/badge/SafeCreative-Obra%20Protegida-blue.svg)](https://www.safecreative.org)
 [![Language Specification](https://img.shields.io/badge/Spec-Formal%20EBNF%20v2.0-green.svg)](docs/SPEC_GRAMATICA_Y_SISTEMA_TIPOS.md)
 [![Compiler Architecture](https://img.shields.io/badge/Compiler-ANSI%20C99%20Pipeline-blue.svg)](docs/ARQUITECTURA_COMPILADOR.md)
-[![Verification Suite](https://img.shields.io/badge/Tests-5%2F5%20Suites%20PASS-brightgreen.svg)](docs/SUITE_DE_PRUEBAS.md)
+[![Verification Suite](https://img.shields.io/badge/Tests-6%2F6%20Suites%20PASS-brightgreen.svg)](docs/SUITE_DE_PRUEBAS.md)
+[![C99 Transpiler](https://img.shields.io/badge/Transpiler-c2upl%20(C99%20to%20UPL%2B)-orange.svg)](tools/c2upl.c)
 [![Python Dependency](https://img.shields.io/badge/Python-0%25%20(Pure%20C99)-lightgrey.svg)](#-toolchain-aut%C3%B3noma-cero-dependencias)
 
 > **COMUNICADO DE PROPIEDAD INTELECTUAL / INTELLECTUAL PROPERTY NOTICE:**  
@@ -147,16 +148,40 @@ demo.exe
 ---
 
 ### 🧪 Suite de Verificación Automatizada
-El repositorio incluye un arnés de pruebas completo en `test.bat` que valida todas las capas del compilador:
+El repositorio incluye un arnés de pruebas completo en `test.bat` (Windows) y `test.sh` (Linux/macOS) que valida todas las capas del compilador:
 
 ```bash
+# Windows
 test.bat
+
+# Linux / macOS
+./test.sh
 ```
-* **[1/5] Lexer Bilingüe:** 6/6 tests PASS.
-* **[2/5] Parser Pratt & AST:** 6/6 tests PASS.
-* **[3/5] Motor COMP-3 BCD:** 4/4 tests PASS.
-* **[4/5] Supervisor Antidivagaciones:** 3/3 tests PASS.
-* **[5/5] Compilación End-to-End con `uplc`:** PASS (Cálculo exacto: 1000 EUR + 21% = 1210 EUR).
+* **[1/6] Lexer Bilingüe:** 6/6 tests PASS.
+* **[2/6] Parser Pratt & AST:** 6/6 tests PASS.
+* **[3/6] Motor COMP-3 BCD:** 4/4 tests PASS.
+* **[4/6] Supervisor Antidivagaciones:** 3/3 tests PASS.
+* **[5/6] Compilación End-to-End con `uplc`:** PASS (Cálculo exacto: 1000 EUR + 21% = 1210 EUR).
+* **[6/6] Transpilador C99 a UPL+ (`c2upl`):** 5/5 tests PASS.
+
+---
+
+### 🔄 Transpilador Nativo C99 a UPL+ (`c2upl`)
+Para facilitar la adopción e importar código de bajo nivel existente sin reescribir archivos a mano, UPL+ incluye el transpilador nativo [`tools/c2upl.c`](tools/c2upl.c) (escrito en C99 puro, 0% dependencias externas):
+
+```bash
+# Compilar c2upl (si no está compilado previamente):
+gcc -std=c99 -O2 tools/c2upl.c -o bin/c2upl.exe
+
+# Transpilar código C99 a UPL+ (dialecto inglés estándar):
+bin/c2upl.exe archivo.c -o archivo.upl
+
+# Transpilar código C99 a UPL+ (dialecto español nativo):
+bin/c2upl.exe -l es archivo.c -o archivo.upl
+
+# Ejecutar la suite de pruebas unitarias internas de c2upl:
+bin/c2upl.exe --test
+```
 
 ---
 
@@ -287,16 +312,40 @@ demo.exe
 ---
 
 ### 🧪 Automated Verification Suite
-Run the full test harness to validate all compiler stages:
+Run the full test harness to validate all compiler stages on Windows or Linux/macOS:
 
 ```bash
+# Windows
 test.bat
+
+# Linux / macOS
+./test.sh
 ```
-* **[1/5] Bilingual Lexer:** 6/6 tests PASS.
-* **[2/5] Pratt Parser & AST:** 6/6 tests PASS.
-* **[3/5] COMP-3 BCD Engine:** 4/4 tests PASS.
-* **[4/5] Anti-Hallucination Supervisor:** 3/3 tests PASS.
-* **[5/5] End-to-End Compilation:** PASS (Exact tax calculation: 1000 EUR + 21% = 1210 EUR).
+* **[1/6] Bilingual Lexer:** 6/6 tests PASS.
+* **[2/6] Pratt Parser & AST:** 6/6 tests PASS.
+* **[3/6] COMP-3 BCD Engine:** 4/4 tests PASS.
+* **[4/6] Anti-Hallucination Supervisor:** 3/3 tests PASS.
+* **[5/6] End-to-End Compilation:** PASS (Exact tax calculation: 1000 EUR + 21% = 1210 EUR).
+* **[6/6] C99 to UPL+ Transpiler (`c2upl`):** 5/5 tests PASS.
+
+---
+
+### 🔄 Native C99 to UPL+ Transpiler (`c2upl`)
+To accelerate adoption and import existing low-level C codebase without manual rewriting, UPL+ includes the standalone transpiler [`tools/c2upl.c`](tools/c2upl.c) (built in standard C99, 0% external dependencies):
+
+```bash
+# Compile c2upl (if not already compiled):
+gcc -std=c99 -O2 tools/c2upl.c -o bin/c2upl.exe
+
+# Transpile C99 to standard UPL+ (English keywords by default):
+bin/c2upl.exe source.c -o source.upl
+
+# Transpile C99 to native Spanish UPL+:
+bin/c2upl.exe -l es source.c -o source.upl
+
+# Run internal unit test suite:
+bin/c2upl.exe --test
+```
 
 ---
 
@@ -314,8 +363,8 @@ A background memory guard for the 32-bit *Warhammer Online: Return of Reckoning*
 
 ```
 UNIVERSAL-POLYGLOT-LAYER-UPL/
-├── assets/                    # Identidad gráfica oficial (logo_upl_nuasm.jpg)
-├── bin/                       # Binarios compilados (uplc.exe, test_*.exe)
+├── assets/                    # Identidad gráfica oficial (upl_banner.jpg, logo)
+├── bin/                       # Binarios compilados (uplc.exe, c2upl.exe, test_*.exe)
 ├── compiler/                  # Código fuente del compilador en C99 / Compiler sources
 │   ├── lexer.c / lexer.h      # Analizador léxico bilingüe / Lexical analyzer
 │   ├── upl_arena.c / .h       # Asignador de memoria por bloques / Memory arena
@@ -334,9 +383,13 @@ UNIVERSAL-POLYGLOT-LAYER-UPL/
 ├── modules/std/               # Módulos de la librería estándar (io, math, memory)
 ├── tests/                     # Suites de pruebas unitarias en C99 / Unit tests
 ├── tools/                     # Herramientas de sistemas y utilidades nativas
+│   ├── c2upl.c                # Transpilador nativo estricto C99 a UPL+ (0% Python)
+│   ├── upl_supervisor.c       # Guardián técnico determinista / Antihallucination guard
+│   └── ror_memory_guard.c     # Watchdog de memoria Win32
 ├── upl.bat                    # Script lanzador del compilador (Windows)
 ├── upl.sh                     # Script lanzador del compilador (Linux/POSIX)
-└── test.bat                   # Ejecutor de la suite completa de pruebas
+├── test.bat                   # Ejecutor de la suite completa de pruebas (Windows)
+└── test.sh                    # Ejecutor de la suite completa de pruebas (Linux/POSIX)
 ```
 
 ---

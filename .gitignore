@@ -47,6 +47,7 @@ AUDITORIA_CLI.upl
 *.obj
 
 # Assets/Binary
+bin/
 *.exe
 *.bin
 *.iso

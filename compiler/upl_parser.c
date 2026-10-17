@@ -349,8 +349,8 @@ UplAstNode* upl_parser_parse_statement(UplParser *p) {
     size_t line = p->current.line;
     size_t col = p->current.column;
 
-    // 1. Sentencia Let (sea / let)
-    if (match(p, TOKEN_KEYWORD_LET)) {
+    // 1. Sentencia Let / Const (sea / let / const / constante)
+    if (match(p, TOKEN_KEYWORD_LET) || match(p, TOKEN_KEYWORD_CONST)) {
         bool is_mut = match(p, TOKEN_KEYWORD_MUT);
         consume(p, TOKEN_IDENTIFIER, "Esperaba identificador para declaracion de variable");
         const char *name = upl_arena_strdup(p->arena, p->previous.lexeme);
@@ -371,9 +371,11 @@ UplAstNode* upl_parser_parse_statement(UplParser *p) {
 
     // 2. Sentencia If (si / if)
     if (match(p, TOKEN_KEYWORD_IF)) {
-        consume(p, TOKEN_DELIM_LPAREN, "Esperaba '(' tras if");
+        bool has_paren = match(p, TOKEN_DELIM_LPAREN);
         UplAstNode *cond = upl_parser_parse_expression(p);
-        consume(p, TOKEN_DELIM_RPAREN, "Esperaba ')' tras condicion de if");
+        if (has_paren) {
+            consume(p, TOKEN_DELIM_RPAREN, "Esperaba ')' tras condicion de if");
+        }
         UplAstNode *then_block = parse_block(p);
         UplAstNode *else_branch = NULL;
 
@@ -389,9 +391,11 @@ UplAstNode* upl_parser_parse_statement(UplParser *p) {
 
     // 3. Sentencia While (mientras / while)
     if (match(p, TOKEN_KEYWORD_WHILE)) {
-        consume(p, TOKEN_DELIM_LPAREN, "Esperaba '(' tras while");
+        bool has_paren = match(p, TOKEN_DELIM_LPAREN);
         UplAstNode *cond = upl_parser_parse_expression(p);
-        consume(p, TOKEN_DELIM_RPAREN, "Esperaba ')' tras condicion de while");
+        if (has_paren) {
+            consume(p, TOKEN_DELIM_RPAREN, "Esperaba ')' tras condicion de while");
+        }
         UplAstNode *body = parse_block(p);
         return upl_ast_new_stmt_while(p->arena, cond, body, line, col);
     }
@@ -504,9 +508,18 @@ static UplAstNode* parse_struct_declaration(UplParser *p) {
         const char *fname = upl_arena_strdup(p->arena, p->previous.lexeme);
         consume(p, TOKEN_DELIM_COLON, "Esperaba ':' tras nombre de campo");
         UplAstNode *ftype = upl_parser_parse_type(p);
-        consume(p, TOKEN_DELIM_SEMICOLON, "Esperaba ';' tras definicion de campo");
+        if (!match(p, TOKEN_DELIM_SEMICOLON)) {
+            match(p, TOKEN_DELIM_COMMA);
+        }
         UplAstNode *field = upl_ast_new_decl_field(p->arena, fname, ftype, line, col);
         upl_ast_list_append(p->arena, &fields, field);
+
+        if (p->had_error) {
+            while (!check(p, TOKEN_DELIM_RBRACE) && !check(p, TOKEN_EOF)) {
+                advance(p);
+            }
+            break;
+        }
     }
 
     consume(p, TOKEN_DELIM_RBRACE, "Esperaba '}' al cerrar estructura");
@@ -517,12 +530,42 @@ static UplAstNode* parse_declaration(UplParser *p) {
     size_t line = p->current.line;
     size_t col = p->current.column;
 
+    // Atributos y decoradores de sistemas: @snapshot, @baremetal, @pure, etc.
+    while (match(p, TOKEN_AT)) {
+        consume(p, TOKEN_IDENTIFIER, "Esperaba identificador de atributo tras '@'");
+        if (match(p, TOKEN_DELIM_LPAREN)) {
+            while (!check(p, TOKEN_DELIM_RPAREN) && !check(p, TOKEN_EOF)) {
+                advance(p);
+            }
+            consume(p, TOKEN_DELIM_RPAREN, "Esperaba ')' tras argumentos de atributo");
+        }
+    }
+
     // Módulo: module / modulo nombre;
     if (match(p, TOKEN_KEYWORD_MODULE)) {
         consume(p, TOKEN_IDENTIFIER, "Esperaba identificador de modulo");
         const char *name = upl_arena_strdup(p->arena, p->previous.lexeme);
         consume(p, TOKEN_DELIM_SEMICOLON, "Esperaba ';' tras declaracion de modulo");
         return upl_ast_new_decl_module(p->arena, name, line, col);
+    }
+
+    // Constante a nivel de módulo: const / constante
+    if (match(p, TOKEN_KEYWORD_CONST)) {
+        consume(p, TOKEN_IDENTIFIER, "Esperaba identificador para declaracion const");
+        const char *name = upl_arena_strdup(p->arena, p->previous.lexeme);
+        UplAstNode *type = NULL;
+        UplAstNode *init_expr = NULL;
+
+        if (match(p, TOKEN_DELIM_COLON)) {
+            type = upl_parser_parse_type(p);
+        }
+
+        if (match(p, TOKEN_OP_ASSIGN)) {
+            init_expr = upl_parser_parse_expression(p);
+        }
+
+        consume(p, TOKEN_DELIM_SEMICOLON, "Esperaba ';' al finalizar declaracion const");
+        return upl_ast_new_stmt_let(p->arena, name, type, init_expr, false, line, col);
     }
 
     // Importación: import / importar "modulo" o identificador;

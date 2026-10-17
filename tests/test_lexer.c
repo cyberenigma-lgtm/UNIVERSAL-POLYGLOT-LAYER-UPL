@@ -83,7 +83,7 @@ static void test_tracking_lines_and_columns(void) {
 }
 
 static void test_numeric_and_string_literals(void) {
-    const char* source = "1048576 3.14159 \"Hola \\\"Mundo\\\" con escape\\n\"";
+    const char* source = "1048576 3.14159 0x90 0b1010 \"Hola \\\"Mundo\\\" con escape\\n\"";
     Lexer lexer;
     lexer_init(&lexer, source);
 
@@ -97,6 +97,16 @@ static void test_numeric_and_string_literals(void) {
     assert(strcmp(t2.lexeme, "3.14159") == 0);
     token_free(&t2);
 
+    Token t_hex = lexer_next_token(&lexer);
+    assert(t_hex.type == TOKEN_LITERAL_INT);
+    assert(strcmp(t_hex.lexeme, "0x90") == 0);
+    token_free(&t_hex);
+
+    Token t_bin = lexer_next_token(&lexer);
+    assert(t_bin.type == TOKEN_LITERAL_INT);
+    assert(strcmp(t_bin.lexeme, "0b1010") == 0);
+    token_free(&t_bin);
+
     Token t3 = lexer_next_token(&lexer);
     assert(t3.type == TOKEN_LITERAL_STRING);
     assert(strcmp(t3.lexeme, "Hola \\\"Mundo\\\" con escape\\n") == 0);
@@ -106,11 +116,11 @@ static void test_numeric_and_string_literals(void) {
     assert(t4.type == TOKEN_EOF);
     token_free(&t4);
 
-    printf("  [PASS] 3. Literales numericos (enteros, flotantes) y strings con escapes\n");
+    printf("  [PASS] 3. Literales numericos (enteros, hex 0x, bin 0b, flotantes) y strings\n");
 }
 
 static void test_operators_and_delimiters(void) {
-    const char* source = "== != -> && || <= >= ! ( ) { } [ ] ; , . : + - * / ^";
+    const char* source = "== != -> && || <= >= ! ( ) { } [ ] ; , . : + - * / ^ @";
     Lexer lexer;
     lexer_init(&lexer, source);
 
@@ -122,7 +132,7 @@ static void test_operators_and_delimiters(void) {
         TOKEN_DELIM_LBRACE, TOKEN_DELIM_RBRACE,
         TOKEN_DELIM_LBRACKET, TOKEN_DELIM_RBRACKET,
         TOKEN_DELIM_SEMICOLON, TOKEN_DELIM_COMMA, TOKEN_DELIM_DOT, TOKEN_DELIM_COLON,
-        TOKEN_OP_ADD, TOKEN_OP_SUB, TOKEN_OP_MUL, TOKEN_OP_DIV, TOKEN_OP_XOR,
+        TOKEN_OP_ADD, TOKEN_OP_SUB, TOKEN_OP_MUL, TOKEN_OP_DIV, TOKEN_OP_XOR, TOKEN_AT,
         TOKEN_EOF
     };
 
