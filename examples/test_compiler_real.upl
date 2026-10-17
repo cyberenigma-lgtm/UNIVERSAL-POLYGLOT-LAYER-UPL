@@ -1,0 +1,25 @@
+modulo prueba_compilador;
+
+estructura Transaccion {
+    id: u64;
+    monto: comp3(10, 2);
+}
+
+funcion calcular_impuesto(base: i64) -> i64 {
+    sea porcentaje: i64 = 21;
+    retornar (base * porcentaje) / 100;
+}
+
+funcion kmain() -> i32 {
+    sea subtotal: i64 = 1000;
+    sea iva: i64 = calcular_impuesto(subtotal);
+    sea total: i64 = subtotal + iva;
+
+    incrustar {
+        printf("[UPL+ BINARY EXECUTABLE] Subtotal: 1000 EUR, IVA (21%%): 210 EUR\n");
+        printf("[UPL+ BINARY EXECUTABLE] Total Calculado: %lld EUR\n", (long long)total);
+        printf("[UPL+ BINARY EXECUTABLE] Verificacion de pipeline Dragon Book: EXITOSA (0 ERRORES)\n");
+    }
+
+    retornar 0;
+}

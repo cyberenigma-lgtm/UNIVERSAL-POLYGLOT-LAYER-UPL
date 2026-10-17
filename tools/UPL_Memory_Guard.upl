@@ -1,0 +1,108 @@
+modulo guardian_memoria_juego;
+
+incrustar {
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <psapi.h>
+#include <stdio.h>
+#include <stdbool.h>
+
+static HANDLE buscar_proceso(const char *nombre_proceso, DWORD *out_pid) {
+    DWORD pids[1024], cbNeeded;
+    if (!EnumProcesses(pids, sizeof(pids), &cbNeeded)) return NULL;
+
+    unsigned int count = cbNeeded / sizeof(DWORD);
+    for (unsigned int i = 0; i < count; i++) {
+        if (pids[i] == 0) continue;
+        HANDLE h = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | PROCESS_SET_QUOTA, FALSE, pids[i]);
+        if (h) {
+            char szName[MAX_PATH] = "";
+            HMODULE hMod;
+            DWORD cbNeededMod;
+            if (EnumProcessModules(h, &hMod, sizeof(hMod), &cbNeededMod)) {
+                GetModuleBaseNameA(h, hMod, szName, sizeof(szName));
+                if (_stricmp(szName, nombre_proceso) == 0) {
+                    *out_pid = pids[i];
+                    return h;
+                }
+            }
+            CloseHandle(h);
+        }
+    }
+    return NULL;
+}
+}
+
+pub funcion monitorizar_bucle_continuo(umbral_mb: u64) -> i32 {
+    incrustar {
+        printf("====================================================================\n");
+        printf("   UPL+ GUARDIAN DE MEMORIA EN TIEMPO REAL: WARHAMMER ONLINE       \n");
+        printf("====================================================================\n");
+        printf("[UPL+ GUARD] Monitor activo. Umbral de seguridad: %llu MB.\n", (unsigned long long)umbral_mb);
+        printf("[UPL+ GUARD] Protegiendo contra OutOfMemory en WAR.exe y WAR-64.exe...\n");
+        printf("[UPL+ GUARD] Manten esta ventana abierta en segundo plano mientras juegas.\n\n");
+
+        bool juego_estuvo_abierto = false;
+
+        for (;;) {
+            DWORD pid32 = 0, pid64 = 0;
+            HANDLE h32 = buscar_proceso("WAR.exe", &pid32);
+            HANDLE h64 = buscar_proceso("WAR-64.exe", &pid64);
+
+            HANDLE hActive = h64 ? h64 : h32;
+            const char *procName = h64 ? "WAR-64.exe" : (h32 ? "WAR.exe" : NULL);
+            DWORD activePid = h64 ? pid64 : pid32;
+
+            if (h32 && h64) {
+                CloseHandle(h32);
+            }
+
+            if (hActive) {
+                juego_estuvo_abierto = true;
+                PROCESS_MEMORY_COUNTERS_EX pmc;
+                if (GetProcessMemoryInfo(hActive, (PROCESS_MEMORY_COUNTERS*)&pmc, sizeof(pmc))) {
+                    size_t ram_mb = pmc.WorkingSetSize / (1024 * 1024);
+                    size_t commit_mb = pmc.PrivateUsage / (1024 * 1024);
+
+                    if (ram_mb > (size_t)umbral_mb) {
+                        printf("\n[ALERTA MEMORIA UPL+] %s (PID: %lu) consumiendo %zu MB (Commit: %zu MB).\n",
+                               procName, activePid, ram_mb, commit_mb);
+                        printf("[UPL+ GUARD] Ejecutando purga forzada de memoria obsoleta (Heap Trimming)...\n");
+
+                        if (EmptyWorkingSet(hActive)) {
+                            PROCESS_MEMORY_COUNTERS_EX pmc_post;
+                            GetProcessMemoryInfo(hActive, (PROCESS_MEMORY_COUNTERS*)&pmc_post, sizeof(pmc_post));
+                            size_t nueva_ram = pmc_post.WorkingSetSize / (1024 * 1024);
+                            size_t delta = (ram_mb > nueva_ram) ? (ram_mb - nueva_ram) : 0;
+                            printf("[UPL+ GUARD] Purga exitosa: %zu MB liberados. Memoria actual: %zu MB (Seguro).\n\n",
+                                   delta, nueva_ram);
+                        }
+                    } else {
+                        printf("\r[TELEMETRIA UPL+] %s en ejecucion | RAM: %4zu MB | Commit: %4zu MB | ESTADO: OK   ",
+                               procName, ram_mb, commit_mb);
+                        fflush(stdout);
+                    }
+                }
+                CloseHandle(hActive);
+            } else {
+                if (juego_estuvo_abierto) {
+                    printf("\n[UPL+ GUARD] El cliente de Warhammer se ha cerrado. Esperando nueva sesion...\n");
+                    juego_estuvo_abierto = false;
+                } else {
+                    printf("\r[UPL+ GUARD] Esperando inicio de WAR.exe / WAR-64.exe...                    ");
+                    fflush(stdout);
+                }
+            }
+
+            Sleep(3000); // Comprobación cada 3 segundos
+        }
+        return 0;
+    }
+}
+
+funcion kmain() -> i32 {
+    // Umbral de 2200 MB para margen seguro antes del crash de 32 bits
+    sea umbral_seguro: u64 = 2200;
+    monitorizar_bucle_continuo(umbral_seguro);
+    retornar 0;
+}

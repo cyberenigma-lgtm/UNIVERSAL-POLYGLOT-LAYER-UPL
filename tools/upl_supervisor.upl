@@ -1,0 +1,81 @@
+modulo supervisor;
+
+// =============================================================================
+// MODULO SUPERVISOR NATIVO UPL: GUARDIAN DETERMINISTA CONTRA DIVAGACIONES
+// =============================================================================
+
+estructura ResultadoAuditoria {
+    estado: i32;        // 0: EXITO, 1: CORREGIDO_SANEADO, -1: ERROR_DIVAGACION
+    bytes_saneados: usize;
+}
+
+pub funcion contiene_humo(texto: str) -> bool {
+    incrustar {
+        const char *patrones[] = {
+            "reactor nuclear",
+            "soberania tecnologica",
+            "soberan\xC3\xADa tecnol\xC3\xB3gica",
+            "dios supremo",
+            "tecnologia alienigena",
+            "tecnolog\xC3\xADa alien\xC3\xADgena",
+            "bunker cuantico",
+            "b\xC3\xBAnker cu\xC3\xA1ntico",
+            "inmortal",
+            "capilla sixtina del silicio",
+            "algoritmo prohibido",
+            "mutacion cuantica",
+            "revolucion cuantica",
+            "revoluci\xC3\xB3n cu\xC3\xA1ntica",
+            NULL
+        };
+
+        for (int i = 0; patrones[i] != NULL; ++i) {
+            if (strstr(texto, patrones[i]) != NULL) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+pub funcion tiene_sintaxis_tecnica(texto: str) -> bool {
+    incrustar {
+        const char *kws[] = {
+            "fn ", "funcion ", "sea ", "let ", "struct ", "estructura ",
+            "modulo ", "module ", "import ", "importar ", "comp3",
+            NULL
+        };
+
+        for (int i = 0; kws[i] != NULL; ++i) {
+            if (strstr(texto, kws[i]) != NULL) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+pub funcion auditar_flujo(texto: str) -> i32 {
+    sea humo: bool = contiene_humo(texto);
+    sea tecnico: bool = tiene_sintaxis_tecnica(texto);
+
+    si (!tecnico) {
+        // Bloqueo total: es narrativa o divagacion pura sin codigo fuente
+        retornar -1;
+    }
+
+    si (humo) {
+        // Contaminacion detectada en la periferia
+        retornar 1;
+    }
+
+    // Codigo limpio verificado
+    retornar 0;
+}
+
+funcion kmain() -> i32 {
+    incrustar {
+        printf("=== SUPERVISOR NATIVO UPL+: GUARDIAN OPERATIVO ===\n");
+    }
+    retornar 0;
+}

@@ -1,0 +1,330 @@
+#include "upl_codegen.h"
+#include <stdio.h>
+#include <string.h>
+
+static void emit_indent(UplCodeGen *gen) {
+    for (int i = 0; i < gen->indent_level; ++i) {
+        fprintf(gen->out, "    ");
+    }
+}
+
+static void emit_type(UplCodeGen *gen, const UplAstNode *type) {
+    if (!type) {
+        fprintf(gen->out, "void");
+        return;
+    }
+
+    switch (type->kind) {
+        case AST_TYPE_PRIMITIVE:
+            switch (type->as.type_spec.prim) {
+                case UPL_TYPE_I8:    fprintf(gen->out, "int8_t"); break;
+                case UPL_TYPE_I16:   fprintf(gen->out, "int16_t"); break;
+                case UPL_TYPE_I32:   fprintf(gen->out, "int32_t"); break;
+                case UPL_TYPE_I64:   fprintf(gen->out, "int64_t"); break;
+                case UPL_TYPE_U8:    fprintf(gen->out, "uint8_t"); break;
+                case UPL_TYPE_U16:   fprintf(gen->out, "uint16_t"); break;
+                case UPL_TYPE_U32:   fprintf(gen->out, "uint32_t"); break;
+                case UPL_TYPE_U64:   fprintf(gen->out, "uint64_t"); break;
+                case UPL_TYPE_USIZE: fprintf(gen->out, "size_t"); break;
+                case UPL_TYPE_F32:   fprintf(gen->out, "float"); break;
+                case UPL_TYPE_F64:   fprintf(gen->out, "double"); break;
+                case UPL_TYPE_BOOL:  fprintf(gen->out, "bool"); break;
+                case UPL_TYPE_STR:   fprintf(gen->out, "const char*"); break;
+                case UPL_TYPE_VOID:  fprintf(gen->out, "void"); break;
+            }
+            break;
+        case AST_TYPE_COMP3:
+            fprintf(gen->out, "uint8_t* /* comp3 */");
+            break;
+        case AST_TYPE_POINTER:
+            emit_type(gen, type->as.type_spec.base_or_elem_type);
+            fprintf(gen->out, "*");
+            break;
+        case AST_TYPE_CUSTOM:
+            fprintf(gen->out, "%s", type->as.type_spec.custom_name);
+            break;
+        default:
+            fprintf(gen->out, "int64_t");
+            break;
+    }
+}
+
+static void emit_expression(UplCodeGen *gen, const UplAstNode *node);
+
+static void emit_binary(UplCodeGen *gen, const UplAstNode *node) {
+    fprintf(gen->out, "(");
+    emit_expression(gen, node->as.binary_expr.left);
+
+    const char *op_str = "+";
+    switch (node->as.binary_expr.op) {
+        case TOKEN_OP_ADD:           op_str = " + "; break;
+        case TOKEN_OP_SUB:           op_str = " - "; break;
+        case TOKEN_OP_MUL:           op_str = " * "; break;
+        case TOKEN_OP_DIV:           op_str = " / "; break;
+        case TOKEN_OP_EQUAL:         op_str = " == "; break;
+        case TOKEN_OP_NOT_EQUAL:     op_str = " != "; break;
+        case TOKEN_OP_LESS:          op_str = " < "; break;
+        case TOKEN_OP_GREATER:       op_str = " > "; break;
+        case TOKEN_OP_LESS_EQUAL:    op_str = " <= "; break;
+        case TOKEN_OP_GREATER_EQUAL: op_str = " >= "; break;
+        case TOKEN_OP_AND:           op_str = " && "; break;
+        case TOKEN_OP_OR:            op_str = " || "; break;
+        case TOKEN_OP_XOR:           op_str = " ^ "; break;
+        case TOKEN_OP_ASSIGN:        op_str = " = "; break;
+        default:                     op_str = " + "; break;
+    }
+    fprintf(gen->out, "%s", op_str);
+    emit_expression(gen, node->as.binary_expr.right);
+    fprintf(gen->out, ")");
+}
+
+static void emit_expression(UplCodeGen *gen, const UplAstNode *node) {
+    if (!node) return;
+
+    switch (node->kind) {
+        case AST_LITERAL_INT:
+            fprintf(gen->out, "%lldLL", (long long)node->as.lit_int.val);
+            break;
+        case AST_LITERAL_FLOAT:
+            fprintf(gen->out, "%f", node->as.lit_float.val);
+            break;
+        case AST_LITERAL_STRING:
+            fprintf(gen->out, "\"%s\"", node->as.lit_str.val);
+            break;
+        case AST_LITERAL_BOOL:
+            fprintf(gen->out, "%s", node->as.lit_bool.val ? "true" : "false");
+            break;
+        case AST_IDENTIFIER:
+            fprintf(gen->out, "%s", node->as.ident.name);
+            break;
+        case AST_EXPR_BINARY:
+        case AST_EXPR_ASSIGN:
+            emit_binary(gen, node);
+            break;
+        case AST_EXPR_UNARY:
+            if (node->as.unary_expr.op == TOKEN_OP_SUB) fprintf(gen->out, "-");
+            else if (node->as.unary_expr.op == TOKEN_OP_NOT) fprintf(gen->out, "!");
+            else if (node->as.unary_expr.op == TOKEN_OP_MUL) fprintf(gen->out, "*");
+            emit_expression(gen, node->as.unary_expr.operand);
+            break;
+        case AST_EXPR_CALL:
+            emit_expression(gen, node->as.call_expr.callee);
+            fprintf(gen->out, "(");
+            for (UplAstList *l = node->as.call_expr.args; l != NULL; l = l->next) {
+                emit_expression(gen, l->node);
+                if (l->next) fprintf(gen->out, ", ");
+            }
+            fprintf(gen->out, ")");
+            break;
+        case AST_EXPR_MEMBER:
+            emit_expression(gen, node->as.member_expr.object);
+            fprintf(gen->out, ".%s", node->as.member_expr.member);
+            break;
+        case AST_EXPR_INDEX:
+            emit_expression(gen, node->as.index_expr.array);
+            fprintf(gen->out, "[");
+            emit_expression(gen, node->as.index_expr.index);
+            fprintf(gen->out, "]");
+            break;
+        case AST_EXPR_CAST:
+            fprintf(gen->out, "((");
+            emit_type(gen, node->as.cast_expr.target_type);
+            fprintf(gen->out, ")(");
+            emit_expression(gen, node->as.cast_expr.expr);
+            fprintf(gen->out, "))");
+            break;
+        default:
+            break;
+    }
+}
+
+static void emit_statement(UplCodeGen *gen, const UplAstNode *node);
+
+static void emit_block(UplCodeGen *gen, const UplAstNode *node) {
+    if (!node || node->kind != AST_STMT_BLOCK) return;
+    fprintf(gen->out, "{\n");
+    gen->indent_level++;
+    for (UplAstList *l = node->as.block.stmts; l != NULL; l = l->next) {
+        emit_statement(gen, l->node);
+    }
+    gen->indent_level--;
+    emit_indent(gen);
+    fprintf(gen->out, "}\n");
+}
+
+static void emit_statement(UplCodeGen *gen, const UplAstNode *node) {
+    if (!node) return;
+    emit_indent(gen);
+
+    switch (node->kind) {
+        case AST_STMT_LET:
+            if (!node->as.stmt_let.is_mut) {
+                fprintf(gen->out, "const ");
+            }
+            if (node->as.stmt_let.type) {
+                if (node->as.stmt_let.type->kind == AST_TYPE_COMP3) {
+                    int prec = node->as.stmt_let.type->as.type_spec.comp3_precision;
+                    size_t bytes = (size_t)((prec / 2) + 1);
+                    fprintf(gen->out, "uint8_t %s[%zu];\n", node->as.stmt_let.name, bytes);
+                    if (node->as.stmt_let.init_expr) {
+                        emit_indent(gen);
+                        fprintf(gen->out, "upl_comp3_from_str(%s, sizeof(%s), ", node->as.stmt_let.name, node->as.stmt_let.name);
+                        emit_expression(gen, node->as.stmt_let.init_expr);
+                        fprintf(gen->out, ", %d, %d);\n", prec, node->as.stmt_let.type->as.type_spec.comp3_scale);
+                    }
+                    return;
+                } else {
+                    emit_type(gen, node->as.stmt_let.type);
+                    fprintf(gen->out, " ");
+                }
+            } else {
+                fprintf(gen->out, "__auto_type ");
+            }
+            fprintf(gen->out, "%s", node->as.stmt_let.name);
+            if (node->as.stmt_let.init_expr) {
+                fprintf(gen->out, " = ");
+                emit_expression(gen, node->as.stmt_let.init_expr);
+            }
+            fprintf(gen->out, ";\n");
+            break;
+
+        case AST_STMT_RETURN:
+            fprintf(gen->out, "return");
+            if (node->as.stmt_return.expr) {
+                fprintf(gen->out, " ");
+                emit_expression(gen, node->as.stmt_return.expr);
+            }
+            fprintf(gen->out, ";\n");
+            break;
+
+        case AST_STMT_IF:
+            fprintf(gen->out, "if (");
+            emit_expression(gen, node->as.stmt_if.cond);
+            fprintf(gen->out, ") ");
+            emit_block(gen, node->as.stmt_if.then_block);
+            if (node->as.stmt_if.else_branch) {
+                emit_indent(gen);
+                fprintf(gen->out, "else ");
+                if (node->as.stmt_if.else_branch->kind == AST_STMT_IF) {
+                    emit_statement(gen, node->as.stmt_if.else_branch);
+                } else {
+                    emit_block(gen, node->as.stmt_if.else_branch);
+                }
+            }
+            break;
+
+        case AST_STMT_WHILE:
+            fprintf(gen->out, "while (");
+            emit_expression(gen, node->as.stmt_while.cond);
+            fprintf(gen->out, ") ");
+            emit_block(gen, node->as.stmt_while.body);
+            break;
+
+        case AST_STMT_BLOCK:
+            emit_block(gen, node);
+            break;
+
+        case AST_STMT_EMBED:
+            fprintf(gen->out, "/* [UPL_EMBED_START] */\n%s\n", node->as.raw_block.raw_code);
+            emit_indent(gen);
+            fprintf(gen->out, "/* [UPL_EMBED_END] */\n");
+            break;
+
+        case AST_STMT_ASM:
+            fprintf(gen->out, "__asm__ volatile (\n    \"%s\"\n);\n", node->as.raw_block.raw_code);
+            break;
+
+        case AST_STMT_EXPR:
+            emit_expression(gen, node->as.unary_expr.operand);
+            fprintf(gen->out, ";\n");
+            break;
+
+        default:
+            break;
+    }
+}
+
+void upl_codegen_init(UplCodeGen *gen, FILE *out) {
+    gen->out = out ? out : stdout;
+    gen->indent_level = 0;
+    gen->had_error = false;
+    gen->error_message[0] = '\0';
+}
+
+bool upl_codegen_generate(UplCodeGen *gen, const UplAstNode *program) {
+    if (!program || program->kind != AST_PROGRAM) return false;
+
+    // 1. Cabecera C99 estándar
+    fprintf(gen->out, "/* Codigo generado formalmente por el compilador UPL+ (Dragon Book Standard) */\n");
+    fprintf(gen->out, "#include <stdio.h>\n");
+    fprintf(gen->out, "#include <stdint.h>\n");
+    fprintf(gen->out, "#include <stdbool.h>\n");
+    fprintf(gen->out, "#include <stdlib.h>\n");
+    fprintf(gen->out, "#include <string.h>\n");
+    fprintf(gen->out, "#include \"upl_comp3.h\"\n\n");
+
+    // 2. Declaración de estructuras (typedefs)
+    for (UplAstList *l = program->as.program.items; l != NULL; l = l->next) {
+        if (l->node->kind == AST_DECL_STRUCT) {
+            fprintf(gen->out, "typedef struct %s {\n", l->node->as.decl_struct.name);
+            for (UplAstList *f = l->node->as.decl_struct.fields; f != NULL; f = f->next) {
+                fprintf(gen->out, "    ");
+                if (f->node->as.decl_field.type && f->node->as.decl_field.type->kind == AST_TYPE_COMP3) {
+                    int prec = f->node->as.decl_field.type->as.type_spec.comp3_precision;
+                    size_t bytes = (size_t)((prec / 2) + 1);
+                    fprintf(gen->out, "uint8_t %s[%zu]; /* comp3(%d) */\n", f->node->as.decl_field.name, bytes, prec);
+                } else {
+                    emit_type(gen, f->node->as.decl_field.type);
+                    fprintf(gen->out, " %s;\n", f->node->as.decl_field.name);
+                }
+            }
+            fprintf(gen->out, "} %s;\n\n", l->node->as.decl_struct.name);
+        }
+    }
+
+    // 3. Prototipos de funciones
+    for (UplAstList *l = program->as.program.items; l != NULL; l = l->next) {
+        if (l->node->kind == AST_DECL_FN) {
+            const char *fname = l->node->as.decl_fn.name;
+            if (strcmp(fname, "main") == 0 || strcmp(fname, "kmain") == 0) continue;
+            emit_type(gen, l->node->as.decl_fn.return_type);
+            fprintf(gen->out, " %s(", fname);
+            for (UplAstList *p = l->node->as.decl_fn.params; p != NULL; p = p->next) {
+                emit_type(gen, p->node->as.decl_param.type);
+                fprintf(gen->out, " %s", p->node->as.decl_param.name);
+                if (p->next) fprintf(gen->out, ", ");
+            }
+            fprintf(gen->out, ");\n");
+        }
+    }
+    fprintf(gen->out, "\n");
+
+    // 4. Definición de funciones y bloques de nivel superior
+    for (UplAstList *l = program->as.program.items; l != NULL; l = l->next) {
+        if (l->node->kind == AST_DECL_FN) {
+            const char *fname = l->node->as.decl_fn.name;
+            bool is_entrypoint = (strcmp(fname, "main") == 0 || strcmp(fname, "kmain") == 0);
+
+            if (is_entrypoint) {
+                fprintf(gen->out, "int main(int argc, char **argv) ");
+            } else {
+                emit_type(gen, l->node->as.decl_fn.return_type);
+                fprintf(gen->out, " %s(", fname);
+                for (UplAstList *p = l->node->as.decl_fn.params; p != NULL; p = p->next) {
+                    emit_type(gen, p->node->as.decl_param.type);
+                    fprintf(gen->out, " %s", p->node->as.decl_param.name);
+                    if (p->next) fprintf(gen->out, ", ");
+                }
+                fprintf(gen->out, ") ");
+            }
+
+            emit_block(gen, l->node->as.decl_fn.body);
+            fprintf(gen->out, "\n");
+        } else if (l->node->kind == AST_STMT_EMBED) {
+            emit_statement(gen, l->node);
+            fprintf(gen->out, "\n");
+        }
+    }
+
+    return true;
+}

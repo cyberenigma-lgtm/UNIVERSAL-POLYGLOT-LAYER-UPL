@@ -1,56 +1,58 @@
-# ⚙️ ARQUITECTURA DEL COMPILADOR UPL (`uplc`)
-## Pipeline de Compilación, Generación de Código y Seguridad de Memoria Nativa
+# ⚙️ ARQUITECTURA DEL COMPILADOR UPL+ (`uplc`)
+## Pipeline Modular Dragon Book en ANSI C99
 
-El compilador de UPL reside en el archivo fuente nativo [`compiler/uplc.c`](../../compiler/uplc.c) y se compila como un ejecutable autónomo en [`bin/uplc.exe`](../../bin/uplc.exe) (Windows) o `./bin/uplc` (Linux/POSIX), sin dependencias de runtimes o intérpretes externos.
+El compilador de UPL+ (`uplc`) reside en el directorio fuente [`compiler/`](../../compiler/) y se compila como un ejecutable autónomo en [`bin/uplc.exe`](../../bin/uplc.exe) (Windows) o `./bin/uplc` (Linux/POSIX), sin dependencias de runtimes externos ni máquinas virtuales.
 
 ---
 
-### 1. El Pipeline de Compilación en 4 Fases
+### 1. El Pipeline de Compilación en 7 Fases
 
 ```mermaid
 graph TD
-    A[Código Fuente .upl] --> B[Analizador Léxico: Tokenizer C99]
-    B --> C[Resolutor Modular: Import Graph Engine]
-    C --> D[Analizador Sintáctico y AST Tipado]
-    D --> E{Generador de Código}
-    E -->|Target: C99| F[Emisor ANSI C99 con Linker GCC/Clang]
-    E -->|Target: ASM| G[Emisor NASM x86_64 Long Mode]
-    E -->|Target: Multi-OS| H[Empaquetador: DEB / RPM / APP / APK]
+    A[Código Fuente .upl] --> B[Analizador Léxico: lexer.c / lexer.h]
+    B --> C[Asignador por Bloques: upl_arena.c / upl_arena.h]
+    C --> D[Analizador Sintáctico Pratt / AST: upl_parser.c / upl_ast.c]
+    D --> E[Motor Aritmético COMP-3 BCD: runtime/upl_comp3.c]
+    E --> F[Generador de Código C99: upl_codegen.c / upl_codegen.h]
+    F --> G{Opciones de Salida}
+    G -->|--emit-c| H[Código ANSI C99 Estándar]
+    G -->|Salida Binaria| I[Compilador C del Sistema GCC/Clang -> Ejecutable Nativo]
 ```
 
-1. **Analizador Léxico Bilingüe (`compiler/uplc.c`):**
-   - Escanea el flujo de caracteres UTF-8 y emite tokens tipados (`Token`).
-   - Mapea de forma transparente e idéntica palabras clave en Español e Inglés (`fn`/`funcion`, `let`/`sea`, `import`/`importar`, `while`/`mientras`, etc.).
-   - Reconoce decoradores de sistemas (`@snapshot`, `@baremetal`, `@pure`).
-2. **Motor de Resolución Modular (`read_and_resolve_source`):**
-   - Analiza directivas `import <modulo>;` y resuelve recursivamente las dependencias desde las rutas estándar (`modules/urep/`, `modules/compute/`, `modules/emulator/`, `modules/multilang_asm/`).
-   - Previene ciclos de inclusión y fusiona definiciones de estructuras y funciones en una unidad de traducción unificada.
-3. **Emisor ANSI C99 (`transpile_upl_to_c`):**
-   - Transpila las estructuras y funciones UPL a código C99 conforme con la norma ISO/IEC 9899:1999.
-   - Enlaza automáticamente con bibliotecas de cálculo matemático (`-lm`) y primitivas de consola Win32/POSIX.
-4. **Emisor Ensamblador NASM x86_64 (`transpile_upl_to_nasm`):**
-   - Genera ensamblador canónico de 64 bits optimizado con convención de llamada estándar y alineación de pila de 16 bytes.
-5. **Empaquetador Multi-Distribución:**
-   - Soporte nativo para empaquetado multi-target mediante la opción `-t` (`deb`, `rpm`, `app`, `apk`).
+1. **Analizador Léxico Bilingüe (`compiler/lexer.c`):**
+   - Escanea el flujo UTF-8 y emite tokens tipados (`Token`).
+   - Mapea de forma idéntica palabras clave en Español e Inglés (`fn`/`funcion`, `let`/`sea`, `import`/`importar`, `while`/`mientras`, etc.).
+   - Captura bloques de código crudo (`embed "c" { ... }`) preservando directivas de preprocesador y llamadas Win32/POSIX.
+2. **Asignador de Memoria por Arenas (`compiler/upl_arena.c`):**
+   - Asigna todos los nodos del AST e identificadores en bloques contiguos de 64 KB con complejidad $O(1)$ y cero fragmentación.
+3. **Árbol de Sintaxis Abstracta (`compiler/upl_ast.c`):**
+   - Modela declaraciones, funciones, estructuras agregadas, sentencias de control y expresiones.
+4. **Analizador Sintáctico y Pratt Parsing (`compiler/upl_parser.c`):**
+   - Implementa descenso recursivo para sentencias y precedencia de operadores mediante algoritmo de Pratt para expresiones aritméticas y lógicas.
+5. **Motor Aritmético Decimal COMP-3 (`compiler/runtime/upl_comp3.c`):**
+   - Aritmética BCD empaquetada en software para cálculos financieros sin errores de redondeo IEEE-754.
+6. **Emisor ANSI C99 (`compiler/upl_codegen.c`):**
+   - Emite código C99 estricto conforme a ISO/IEC 9899:1999 con preservación de bloques nativos.
+7. **Driver de Compilación (`compiler/main.c`):**
+   - Orquesta el proceso e invoca a GCC/Clang para generar el ejecutable binario final.
 
 ---
 
-### 2. Mecanismos de Seguridad e Integridad de Memoria
+### 2. Opciones de Uso de la Línea de Comandos
 
-* **Control Flow Integrity (CFI):** Mediante el módulo `modules/urep/urep_guard.upl`, se verifica que el puntero de instrucción (RIP) permanezca estrictamente dentro de los límites de la sección `.text` (`[text_base, text_limit]`).
-* **Canarios de Límite de Estructuras (`@snapshot`):** En estructuras marcadas con el decorador `@snapshot`, el compilador inyecta automáticamente bytes de guarda de cabecera (`_guard_canary_head`) y cola (`_guard_canary_tail`), permitiendo la detección de desbordamientos de búfer en memoria adyacente.
-* **Aritmética de Punto Fijo (`comp3`):** Proporciona almacenamiento en formato decimal empaquetado (BCD) para operaciones financieras o de misión crítica que requieran precisión exacta sin errores de redondeo IEEE 754.
+```bash
+# Compilar directamente a binario nativo:
+upl.bat -o programa.exe codigo.upl
 
----
+# Generar únicamente el código fuente C99 equivalente:
+upl.bat -c codigo.upl
 
-### 3. Modos de Uso del Compilador CLI
+# Inspeccionar el árbol sintáctico (AST):
+upl.bat --dump-ast codigo.upl
 
-El compilador ofrece comandos unificados mediante `upl.bat` (Windows), `upl.sh` (POSIX) o directamente `./bin/uplc`:
+# Inspeccionar la secuencia de tokens:
+upl.bat --dump-tokens codigo.upl
 
-* **`upl run <archivo.upl>`**: Compila en memoria y ejecuta el programa inmediatamente.
-* **`upl build <archivo.upl> -o <binario.exe>`**: Genera el binario ejecutable optimizado.
-* **`upl build <archivo.upl> -t c`**: Exporta el código C99 equivalente.
-* **`upl build <archivo.upl> -t asm`**: Exporta el ensamblador NASM x86_64.
-* **`upl build <archivo.upl> -t deb|rpm|app|apk`**: Empaqueta el programa para la plataforma seleccionada.
-* **`upl list`**: Lista los módulos de sistemas registrados en el ecosistema.
-* **`upl test`**: Ejecuta la suite de verificación continua automatizada (18/18 tests).
+# Ejecutar el arnés completo de pruebas del compilador:
+test.bat
+```

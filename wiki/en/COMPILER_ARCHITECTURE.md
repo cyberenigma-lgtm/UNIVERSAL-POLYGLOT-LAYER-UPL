@@ -1,33 +1,58 @@
-# ⚙️ UPL COMPILER ARCHITECTURE (`uplc`)
-## Pipeline Overview, Dual-Backend Code Generation & Self-Healing
+# ⚙️ UPL+ COMPILER ARCHITECTURE (`uplc`)
+## Modular Dragon Book Pipeline in ANSI C99
+
+The UPL+ compiler (`uplc`) is located in the [`compiler/`](../../compiler/) source directory and compiles as a standalone executable in [`bin/uplc.exe`](../../bin/uplc.exe) (Windows) or `./bin/uplc` (Linux/POSIX), with zero runtime dependencies and zero virtual machine overhead.
 
 ---
 
-### 1. The 4-Stage Compilation Pipeline
-
-The sovereign compiler located in [`compiler/`](../../compiler) follows a deterministic pipeline:
+### 1. The 7-Phase Compilation Pipeline
 
 ```mermaid
 graph TD
-    A[Source Code .upl] --> B[upl_lexer.py\nBilingual Lexer]
-    B --> C[upl_parser.py\nRecursive Descent Parser]
-    C --> D[upl_ast.py\nTyped Abstract Syntax Tree]
-    D --> E{Target Selection}
-    E -->|Target: C| F[upl_codegen_c.py\nANSI C99 with Landing-Pads]
-    E -->|Target: ASM| G[upl_codegen_asm.py\nx86_64 Long Mode NASM Ring 0]
+    A[Source Code .upl] --> B[Lexical Analyzer: lexer.c / lexer.h]
+    B --> C[Arena Allocator: upl_arena.c / upl_arena.h]
+    C --> D[Pratt Parser & AST: upl_parser.c / upl_ast.c]
+    D --> E[COMP-3 BCD Decimal Engine: runtime/upl_comp3.c]
+    E --> F[C99 Code Generator: upl_codegen.c / upl_codegen.h]
+    F --> G{Output Selection}
+    G -->|--emit-c| H[Standard ANSI C99 Source]
+    G -->|Binary Output| I[Host C Compiler GCC/Clang -> Native Executable]
 ```
 
-1. **Bilingual Lexer (`upl_lexer.py`):** Tokenizes source characters into strongly-typed tokens, handling `@` directives, hex literals, raw `asm { ... }` blocks, and `embed <lang> { ... }`.
-2. **Parser & AST (`upl_parser.py` & `upl_ast.py`):** Builds a typed Abstract Syntax Tree enforcing immutability by default, static types, and operator precedence.
-3. **C99 Generator (`upl_codegen_c.py`):** Generates clean, standard ANSI C99 with packed structures and inlining, compatible with GCC, Clang, and MSVC.
-4. **Assembly Generator (`upl_codegen_asm.py`):** Generates pure x86_64 Long Mode NASM assembly for **Ring 0 / Bare-Metal** execution directly on the CPU without any host OS dependencies.
+1. **Bilingual Lexical Analyzer (`compiler/lexer.c`):**
+   - Scans UTF-8 streams and emits typed tokens (`Token`).
+   - Identically maps English and Spanish keywords (`fn`/`funcion`, `let`/`sea`, `import`/`importar`, `while`/`mientras`, etc.).
+   - Captures raw code blocks (`embed "c" { ... }`) preserving preprocessor directives, Win32 API calls, and POSIX syscalls.
+2. **Memory Arena Allocator (`compiler/upl_arena.c`):**
+   - Allocates all AST nodes and identifiers in contiguous 64 KB blocks with $O(1)$ complexity and zero memory fragmentation.
+3. **Abstract Syntax Tree (`compiler/upl_ast.c`):**
+   - Models modules, functions, aggregated structs, control flow statements, and typed expressions.
+4. **Recursive-Descent & Pratt Parser (`compiler/upl_parser.c`):**
+   - Implements recursive descent for statements and Pratt's operator precedence climbing algorithm for arithmetic and boolean expressions.
+5. **COMP-3 Packed Decimal Math Engine (`compiler/runtime/upl_comp3.c`):**
+   - Exact software BCD arithmetic for financial and high-precision computing without IEEE-754 drift.
+6. **ANSI C99 Code Generator (`compiler/upl_codegen.c`):**
+   - Emits clean, strict ISO/IEC 9899:1999 C99 source code with verbatim embedded block injection.
+7. **Compilation Driver (`compiler/main.c`):**
+   - CLI orchestrator that coordinates phases and invokes the host C compiler (GCC/Clang) to produce the final native binary.
 
 ---
 
-### 2. Resilience: UPL vs. Rust and C++
+### 2. Command-Line Options
 
-| Feature | Rust | UPL (Universal Polyglot Layer) |
-|---|---|---|
-| **Driver / Bare-Metal Code** | Forces `unsafe { ... }`, abandoning safety guarantees. | First-class `@baremetal` with hardware Landing-Pads. |
-| **Response to Unexpected Faults** | Executes `panic!`, aborts the process, or crashes the machine. | **Self-Healing:** Intercepts faults and rolls back to last `@snapshot` in nanoseconds. |
-| **Critical Math Accuracy** | IEEE 754 floats subject to precision loss. | **NeuroCOBOL (`comp3`):** Exact decimal BCD arithmetic sealed with `0x4A4D4D43`. |
+```bash
+# Compile directly to a standalone native binary:
+upl.bat -o program.exe source.upl
+
+# Emit only the equivalent C99 source code:
+upl.bat -c source.upl
+
+# Dump the Abstract Syntax Tree (AST):
+upl.bat --dump-ast source.upl
+
+# Dump the token stream:
+upl.bat --dump-tokens source.upl
+
+# Run the complete compiler test suite:
+test.bat
+```

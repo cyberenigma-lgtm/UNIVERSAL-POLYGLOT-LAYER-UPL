@@ -41,6 +41,10 @@ AUDITORIA.asm
 AUDITORIA_CLI.upl
 *.tmp
 *.log
+*.upl.c
+*.bak
+*.o
+*.obj
 
 # Assets/Binary
 *.exe

@@ -1,57 +1,69 @@
-# 🚀 UPL PROGRAMMING LANGUAGE - QUICKSTART
-## The Next-Generation Sovereign Systems Language
+# 🚀 UPL+ PROGRAMMING LANGUAGE — TECHNICAL QUICKSTART
+## Deterministic Systems Programming Language & Standalone C99 Native Toolchain
 
-Welcome to the official documentation of **UPL (Universal Polyglot Layer)**. UPL is a **brand-new, independent, first-class systems programming language** designed from the ground up for extreme hardware performance, bilingual sovereignty, and self-healing resilience superior to Rust and C++.
-
----
-
-### 🌟 Why is UPL a Completely New Language?
-
-1. **Dedicated Native Compiler (`uplc`):** Built with its own lexical scanner, recursive-descent parser, typed Abstract Syntax Tree (AST), and dual code generators for ANSI C99 and x86_64 NASM Long Mode.
-2. **First-Class Dual Syntax:** The first language worldwide with full native syntax parity between Spanish and English.
-3. **Silicon Landing-Pads (DVTRGAS-30 0xAA30):** Automatic boundary guard pages with canonical parity checks that prevent buffer overflows before execution touches adjacent memory.
-4. **Self-Healing Resilience (`@snapshot`):** Unlike Rust’s process-killing `panic!`, UPL captures atomic state checkpoints and rolls back execution in nanoseconds without service downtime.
-5. **Exact Decimal Math (`comp3`):** Native BCD packed decimals that completely eliminate floating-point IEEE-754 rounding inaccuracies in financial and critical computations.
+Welcome to the technical documentation of **UPL+ (Universal Polyglot Layer Plus)**. UPL+ is a **compiled, strongly typed systems programming language** designed for low-level application development, memory watchdog utilities, and deterministic fixed-point financial arithmetic.
 
 ---
 
-### 📦 Your First UPL Program
+### 🌟 Core Architectural Features
 
-Save as `hello_sovereign.upl`:
+1. **Standalone Native Compiler (`uplc`):** Implemented in ANSI C99 with modular Dragon Book architecture (bilingual lexer, memory arena allocator, typed AST, Pratt recursive-descent parser, and C99 code generator).
+2. **First-Class Bilingual Grammar:** Full keyword parity between English (`fn`, `let`, `mut`, `struct`, `if`, `while`, `return`) and Spanish (`funcion`, `sea`, `mut`, `estructura`, `si`, `mientras`, `retornar`) at the lexer level.
+3. **Exact Decimal Arithmetic (`comp3`):** Native BCD packed decimal engine that eliminates IEEE-754 binary floating-point drift in accounting and financial operations.
+4. **Zero-Overhead Host Interoperability (`embed`):** Direct injection of native C99, Win32 API, or POSIX system calls with zero marshalling overhead.
+5. **Memory Arena Allocator:** Monotonic block allocator ensuring $O(1)$ allocation and instant compilation-unit deallocation without heap fragmentation.
+
+---
+
+### 📦 Sample Program (`hello.upl`)
 
 ```rust
 module demo;
 
+embed "c" {
+#include <stdio.h>
+}
+
 pub fn main() -> i32 {
-    let mut counter: i32 = 0;
-    while counter < 5 {
-        counter = counter + 1;
+    let mut total: i32 = 0;
+    let base: i32 = 1000;
+    let tax_rate: i32 = 21;
+
+    total = base + (base * tax_rate / 100);
+
+    embed "c" {
+        printf("[UPL+ NATIVE] Base: 1000, Total with Tax (21%%): %d\n", total);
     }
-    return counter;
+
+    return 0;
 }
 ```
 
 ---
 
-### ⚡ Running & Compiling
+### ⚡ Compilation & Execution
 
-From the root directory:
+From the repository root:
 
 ```bash
-# Direct one-step native execution (Windows: upl.bat / Linux: ./upl.sh)
-upl run hello_sovereign.upl
+# 1. Compile directly to a native binary (Windows: upl.bat / POSIX: ./upl.sh):
+upl.bat -o hello.exe hello.upl
+hello.exe
 
-# Compile to optimized C99 source code
-upl build hello_sovereign.upl -t c -o output.c
+# 2. Emit ANSI C99 source code without invoking the host compiler:
+upl.bat -c hello.upl
 
-# Compile to pure x86_64 Long Mode Assembly for Ring 0 (Bare-Metal / Firmware)
-upl build hello_sovereign.upl -t asm --baremetal -o output.asm
+# 3. Inspect Abstract Syntax Tree (AST):
+upl.bat --dump-ast hello.upl
+
+# 4. Run the comprehensive automated verification suite:
+test.bat
 ```
 
 ---
 
-### 📚 Wiki Sections
-* **[Syntax & Grammar Reference](SYNTAX_AND_GRAMMAR.md)**
-* **[Compiler Pipeline & Architecture](COMPILER_ARCHITECTURE.md)**
-* **[Multi-OS Error Dictionary (57 Languages)](ERROR_DICTIONARY.md)**
-* **[Code Examples Gallery](EXAMPLES.md)**
+### 📚 Technical Documentation
+* **[Formal Grammar & Type Specification](file:///c:/Users/cyber/OneDrive/Documentos/NeuroOs/UNIVERSAL-POLYGLOT-LAYER-UPL/docs/SPEC_GRAMATICA_Y_SISTEMA_TIPOS.md)**
+* **[Compiler Pipeline Architecture](file:///c:/Users/cyber/OneDrive/Documentos/NeuroOs/UNIVERSAL-POLYGLOT-LAYER-UPL/docs/ARQUITECTURA_COMPILADOR.md)**
+* **[Verification Test Suite](file:///c:/Users/cyber/OneDrive/Documentos/NeuroOs/UNIVERSAL-POLYGLOT-LAYER-UPL/docs/SUITE_DE_PRUEBAS.md)**
+* **[Real-World Case Study: Warhammer Memory Guard](file:///c:/Users/cyber/OneDrive/Documentos/NeuroOs/UNIVERSAL-POLYGLOT-LAYER-UPL/docs/CASO_ESTUDIO_WARHAMMER_MEMORY_GUARD.md)**

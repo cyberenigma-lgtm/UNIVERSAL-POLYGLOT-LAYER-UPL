@@ -1,0 +1,74 @@
+modulo lanzador_integrado;
+
+incrustar {
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <stdio.h>
+#include <stdbool.h>
+}
+
+pub funcion iniciar_juego_y_guardia() -> i32 {
+    incrustar {
+        printf("====================================================================\n");
+        printf("   UPL+ LANZADOR PROTEGIDO: WARHAMMER ONLINE RETURN OF RECKONING   \n");
+        printf("====================================================================\n");
+
+        char dir_actual[MAX_PATH];
+        GetCurrentDirectoryA(sizeof(dir_actual), dir_actual);
+        printf("[UPL+ LANZADOR] Directorio del juego: %s\n", dir_actual);
+
+        // 1. Verificar RoRLauncher.exe
+        char ruta_launcher[MAX_PATH];
+        snprintf(ruta_launcher, sizeof(ruta_launcher), "%s\\RoRLauncher.exe", dir_actual);
+
+        FILE *f_test = fopen(ruta_launcher, "rb");
+        if (!f_test) {
+            fprintf(stderr, "[ERROR UPL+] No se encontro RoRLauncher.exe en este directorio.\n");
+            return -1;
+        }
+        fclose(f_test);
+        printf("[UPL+ LANZADOR] RoRLauncher.exe verificado con exito.\n");
+
+        // 2. Iniciar UPL_Memory_Guard.exe en segundo plano
+        char ruta_guard[MAX_PATH];
+        snprintf(ruta_guard, sizeof(ruta_guard), "%s\\UPL_Memory_Guard.exe", dir_actual);
+
+        FILE *f_guard = fopen(ruta_guard, "rb");
+        if (f_guard) {
+            fclose(f_guard);
+            printf("[UPL+ LANZADOR] Iniciando Guardian de Memoria UPL+ en segundo plano...\n");
+            STARTUPINFOA si_guard;
+            PROCESS_INFORMATION pi_guard;
+            ZeroMemory(&si_guard, sizeof(si_guard));
+            si_guard.cb = sizeof(si_guard);
+            ZeroMemory(&pi_guard, sizeof(pi_guard));
+
+            CreateProcessA(ruta_guard, NULL, NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, dir_actual, &si_guard, &pi_guard);
+            CloseHandle(pi_guard.hProcess);
+            CloseHandle(pi_guard.hThread);
+        }
+
+        // 3. Cargar RoRLauncher.exe con elevacion UAC
+        printf("[UPL+ LANZADOR] Abriendo RoRLauncher.exe...\n");
+        typedef HINSTANCE (WINAPI *ShellExecFn)(HWND, LPCSTR, LPCSTR, LPCSTR, LPCSTR, INT);
+        HMODULE hShell = LoadLibraryA("shell32.dll");
+        if (hShell) {
+            ShellExecFn pShellExec = (ShellExecFn)GetProcAddress(hShell, "ShellExecuteA");
+            if (pShellExec) {
+                HINSTANCE h = pShellExec(NULL, "open", ruta_launcher, NULL, dir_actual, SW_SHOWNORMAL);
+                if ((INT_PTR)h <= 32) {
+                    pShellExec(NULL, "runas", ruta_launcher, NULL, dir_actual, SW_SHOWNORMAL);
+                }
+            }
+            FreeLibrary(hShell);
+        }
+
+        printf("[UPL+ LANZADOR] Sesion protegida iniciada correctamente.\n");
+        return 0;
+    }
+}
+
+funcion kmain() -> i32 {
+    iniciar_juego_y_guardia();
+    retornar 0;
+}

@@ -1,46 +1,40 @@
-# 🚀 INICIO RÁPIDO: LENGUAJE DE PROGRAMACIÓN UPL
-## Lenguaje de Programación de Sistemas y Alto Rendimiento para el Siglo XXI
+# 🚀 INICIO RÁPIDO: LENGUAJE DE PROGRAMACIÓN UPL+
+## Lenguaje de Programación de Sistemas y Compilador Nativo C99
 
-Bienvenido a la documentación técnica de **UPL (Universal Polyglot Layer)**. UPL es un **lenguaje de programación de sistemas compilado y autónomo**, diseñado para proporcionar rendimiento a nivel de silicio, seguridad de memoria sin sobrecarga en tiempo de ejecución e interoperabilidad multi-arquitectura.
-
----
-
-### 🌟 Pilares de la Arquitectura de UPL
-
-1. **Compilador Nativo Dedicado (`uplc`):** Desarrollado en ANSI C99 autónomo, con análisis léxico propio, análisis sintáctico de descenso recursivo, árbol de sintaxis abstracta (AST) tipado y generadores de código directo para C99 y Ensamblador x86_64 NASM.
-2. **Sintaxis Bilingüe Nativa:** Soporte formal de palabras clave en Español y en Inglés en igualdad de condiciones sintácticas.
-3. **Protección de Límites con Canarios de Memoria:** Inserción de bytes de guarda y canarios en cabecera y cola de estructuras `@snapshot` para mitigar desbordamientos de búfer (*buffer overflow*).
-4. **Puntos de Control Deterministas (`@snapshot`):** Serialización atómica del estado de memoria en tiempo de ejecución para tolerancia a fallos y auditoría de ejecución.
-5. **Aritmética Decimal de Punto Fijo (`comp3`):** Tipos BCD empaquetados nativos para cálculos financieros y científicos sin errores de redondeo de punto flotante.
+Bienvenido a la documentación técnica de **UPL+ (Universal Polyglot Layer Plus)**. UPL+ es un **lenguaje de programación de sistemas compilado, fuertemente tipado y autónomo**, diseñado para proporcionar alto rendimiento, interoperabilidad sin coste con el sistema operativo y aritmética decimal exacta para entornos críticos.
 
 ---
 
-### 📦 Tu Primer Programa en UPL
+### 🌟 Pilares de la Arquitectura de UPL+
 
-Crea un archivo llamado `hola_mundo.upl`:
+1. **Compilador Nativo Dedicado (`uplc`):** Desarrollado en ANSI C99 modular conforme a la arquitectura canónica Dragon Book (analizador léxico bilingüe, asignador de memoria por arenas, AST tipado, parser recursivo descendente con algoritmo Pratt y generador C99).
+2. **Sintaxis Bilingüe Nativa:** Soporte formal de palabras clave en Español (`funcion`, `sea`, `mut`, `estructura`, `si`, `mientras`, `retornar`) y en Inglés (`fn`, `let`, `mut`, `struct`, `if`, `while`, `return`) en igualdad de condiciones a nivel de token.
+3. **Aritmética Decimal Exacta (`comp3`):** Tipos BCD empaquetados por software (`comp3(precision, escala)`) para cálculos financieros y contables sin los errores de redondeo de punto flotante de la norma IEEE-754.
+4. **Interoperabilidad Nativa con C/Win32/POSIX (`embed`):** Inyección directa de bloques de código nativo sin capas de serialización ni sobrecoste de llamadas FFI.
+5. **Asignación de Memoria por Arenas:** Gestión determinista de la memoria interna del compilador en bloques de 64 KB, eliminando la fragmentación y permitiendo liberaciones instantáneas $O(1)$.
+
+---
+
+### 📦 Tu Primer Programa en UPL+ (`hola_mundo.upl`)
 
 ```rust
-module demo;
+modulo ejemplo;
 
-pub fn main() -> i32 {
-    let mut contador: i32 = 0;
-    while contador < 5 {
-        contador = contador + 1;
-    }
-    return 0;
+incrustar "c" {
+#include <stdio.h>
 }
-```
-
-O utilizando palabras clave en Español:
-
-```rust
-modulo demo;
 
 funcion principal() -> i32 {
-    sea mut contador: i32 = 0;
-    mientras contador < 5 {
-        contador = contador + 1;
+    sea mut total: i32 = 0;
+    sea base: i32 = 1000;
+    sea tasa: i32 = 21;
+
+    total = base + (base * tasa / 100);
+
+    incrustar "c" {
+        printf("[UPL+ NATIVO] Base: 1000, Total con IVA (21%%): %d\n", total);
     }
+
     retornar 0;
 }
 ```
@@ -52,18 +46,24 @@ funcion principal() -> i32 {
 Desde la terminal en el directorio raíz del proyecto:
 
 ```bash
-# 1. Ejecución directa en memoria (Windows: upl.bat / POSIX: ./upl.sh):
-upl run hola_mundo.upl
+# 1. Compilación a binario ejecutable nativo (Windows: upl.bat / POSIX: ./upl.sh):
+upl.bat -o hola_mundo.exe hola_mundo.upl
+hola_mundo.exe
 
-# 2. Compilación a binario ejecutable optimizado:
-upl build hola_mundo.upl -o hola_mundo.exe
+# 2. Generar únicamente el código fuente C99 sin invocar gcc:
+upl.bat -c hola_mundo.upl
 
-# 3. Transpilación a código C99 estándar:
-upl build hola_mundo.upl -t c -o salida.c
+# 3. Inspeccionar el Árbol de Sintaxis Abstracta (AST):
+upl.bat --dump-ast hola_mundo.upl
 
-# 4. Transpilación a Ensamblador NASM x86_64:
-upl build hola_mundo.upl -t asm -o salida.asm
-
-# 5. Ejecutar la suite completa de tests automatizados:
-upl test
+# 4. Ejecutar el arnés maestro de pruebas automatizadas:
+test.bat
 ```
+
+---
+
+### 📚 Documentación Técnica Detallada
+* **[Especificación Formal de Gramática y Tipos (EBNF)](file:///c:/Users/cyber/OneDrive/Documentos/NeuroOs/UNIVERSAL-POLYGLOT-LAYER-UPL/docs/SPEC_GRAMATICA_Y_SISTEMA_TIPOS.md)**
+* **[Arquitectura Interna del Compilador C99](file:///c:/Users/cyber/OneDrive/Documentos/NeuroOs/UNIVERSAL-POLYGLOT-LAYER-UPL/docs/ARQUITECTURA_COMPILADOR.md)**
+* **[Suite y Arnés de Pruebas](file:///c:/Users/cyber/OneDrive/Documentos/NeuroOs/UNIVERSAL-POLYGLOT-LAYER-UPL/docs/SUITE_DE_PRUEBAS.md)**
+* **[Caso de Estudio Real: Watchdog de Memoria para Warhammer Online](file:///c:/Users/cyber/OneDrive/Documentos/NeuroOs/UNIVERSAL-POLYGLOT-LAYER-UPL/docs/CASO_ESTUDIO_WARHAMMER_MEMORY_GUARD.md)**
