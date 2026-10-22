@@ -9,6 +9,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#ifndef _WIN32
+#  include <strings.h>
+#endif
 
 static void print_usage(const char *prog_name) {
     fprintf(stderr, "UPL+ Compilador Oficial (v2.0 Dragon Book Architecture)\n");
@@ -208,17 +211,35 @@ int main(int argc, char **argv) {
     char gcc_cmd[2048];
     bool is_shared = false;
     size_t out_len = strlen(exe_filename);
+#ifdef _WIN32
     if (out_len >= 4 && (_stricmp(exe_filename + out_len - 4, ".dll") == 0)) {
         is_shared = true;
     }
+#else
+    if (out_len >= 3 && (strcasecmp(exe_filename + out_len - 3, ".so") == 0)) {
+        is_shared = true;
+    }
+#endif
 
     if (is_shared) {
         snprintf(gcc_cmd, sizeof(gcc_cmd),
-                 "gcc -O2 -s -shared \"%s\" compiler/runtime/upl_comp3.c -I compiler/runtime -Wl,--export-all-symbols -luser32 -lgdi32 -lwinmm %s -o \"%s\"",
+                 "gcc -O2 -s -shared \"%s\" compiler/runtime/upl_comp3.c -I compiler/runtime "
+#ifdef _WIN32
+                 "-Wl,--export-all-symbols -luser32 -lgdi32 -lwinmm "
+#else
+                 "-fPIC -lm "
+#endif
+                 "%s -o \"%s\"",
                  c_filename, extra_gcc_flags, exe_filename);
     } else {
         snprintf(gcc_cmd, sizeof(gcc_cmd),
-                 "gcc -O2 \"%s\" compiler/runtime/upl_comp3.c -I compiler/runtime -luser32 -lgdi32 -lwinmm %s -o \"%s\"",
+                 "gcc -O2 \"%s\" compiler/runtime/upl_comp3.c -I compiler/runtime "
+#ifdef _WIN32
+                 "-luser32 -lgdi32 -lwinmm "
+#else
+                 "-lm "
+#endif
+                 "%s -o \"%s\"",
                  c_filename, extra_gcc_flags, exe_filename);
     }
 
