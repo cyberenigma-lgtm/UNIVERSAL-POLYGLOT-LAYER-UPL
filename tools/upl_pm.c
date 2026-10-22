@@ -12,8 +12,10 @@
   #include <direct.h>
   #define mkdir_compat(p) _mkdir(p)
 #else
-  #include <dirent.h>
+  #include <sys/types.h>
   #include <sys/stat.h>
+  #include <dirent.h>
+  #include <unistd.h>
   #define mkdir_compat(p) mkdir(p, 0755)
 #endif
 
@@ -89,7 +91,11 @@ static void cmd_init(const char *name) {
 
 static void cmd_verify(void) {
     printf("[UPL PM] Verificando integridad de canarios y compilacion de modulos...\n");
+#ifdef _WIN32
     int ret = system("test.bat");
+#else
+    int ret = system("./test.sh");
+#endif
     if (ret == 0) {
         printf("\n[OK] Verificacion de todos los modulos UPL: EXITOSA (0 Fallos)\n");
     } else {

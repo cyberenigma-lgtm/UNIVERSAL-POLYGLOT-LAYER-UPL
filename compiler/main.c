@@ -54,7 +54,11 @@ int main(int argc, char **argv) {
     char extra_gcc_flags[1024] = "";
 
     if (argc >= 2 && (strcmp(argv[1], "pm") == 0 || strcmp(argv[1], "pkg") == 0)) {
+#ifdef _WIN32
         char cmd[1024] = "bin\\upl_pm.exe";
+#else
+        char cmd[1024] = "./bin/upl_pm";
+#endif
         for (int i = 2; i < argc; ++i) {
             strcat(cmd, " ");
             strcat(cmd, argv[i]);
