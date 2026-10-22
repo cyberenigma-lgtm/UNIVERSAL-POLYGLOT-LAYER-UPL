@@ -20,8 +20,25 @@
 ---
 
 <p align="center">
-  <img src="assets/upl_banner.jpg" alt="UPL+ Systems Programming Language Banner" width="900"/>
+  <img src="assets/logo_upl_oficial.png" alt="UPL Official Logo" width="220"/><br/>
+  <img src="assets/upl_banner.jpg" alt="UPL+ Systems Programming Language Banner" width="850"/>
 </p>
+
+---
+
+### ⚡ INSTALACIÓN RÁPIDA (ANTIGRAVITY IDE / VS CODE / NOTEPAD++)
+Todo el ecosistema está completamente autocontenido en este repositorio:
+
+1. **Extensión Oficial para Antigravity IDE y VS Code:**
+   - Haz doble clic en el instalador automático: [`extensions/instalar_extension.bat`](extensions/instalar_extension.bat).
+   - O instala el paquete oficial en 1 clic: [`extensions/upl-lang-1.5.2.vsix`](extensions/upl-lang-1.5.2.vsix) (*Menú Extensiones `...` -> Install from VSIX...*).
+2. **Soporte para Notepad++:**
+   - Importa el archivo [`extensions/notepadpp/upl_notepadpp.xml`](extensions/notepadpp/upl_notepadpp.xml) desde *Idioma -> Definir idioma -> Importar*.
+3. **Compilador y Ejecución Instantánea:**
+   - Compilar y ejecutar en 1 paso: `bin/uplc.exe run examples/demo_futuro_upl.upl`
+4. **Documentación Canónica:**
+   - 📖 [Manual Oficial Completo de UPL+](docs/MANUAL_OFICIAL_DEL_LENGUAJE_UPL.md) (Capítulos, Módulos, Errores y Soluciones).
+   - 🌐 [Tabla Maestra de Palabras Clave en 9 Idiomas](docs/TABLA_MAESTRA_9_IDIOMAS_UPL.md).
 
 ---
 
