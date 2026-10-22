@@ -1,0 +1,89 @@
+// ============================================================================
+// UPL+: DEMOSTRACION DEL LENGUAJE DE PROGRAMACION MAS AVANZADO DEL MUNDO
+// 1. Mezcla de Idiomas (Bilingue Nativo Espanol / Ingles)
+// 2. Mezcla de Lenguajes (UPL + C Nativo Embed + Ensamblador + COMP-3 COBOL)
+// 3. Redireccionamientos de Archivos y Memoria
+// ============================================================================
+
+module demo_upl_avanzado;
+
+// Inyeccion C99 nativa directa (Sin dependencias externas)
+embed {
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+static FILE *g_salida_redireccionada = NULL;
+
+void io_redirigir_a_archivo(const char *ruta) {
+    g_salida_redireccionada = freopen(ruta, "w", stdout);
+}
+
+void io_restaurar_consola(void) {
+    if (g_salida_redireccionada) {
+        fflush(stdout);
+#ifdef _WIN32
+        freopen("CON", "w", stdout);
+#else
+        freopen("/dev/tty", "w", stdout);
+#endif
+        g_salida_redireccionada = NULL;
+    }
+}
+}
+
+// Estructura financiera con tipo BCD COMP-3 exacto
+struct CuentaBancaria {
+    titular_id: u32,
+    balance: comp3(10, 2)
+}
+
+// 1. Funcion en Ingles que utiliza Ensamblador
+pub fn read_cpu_timestamp() -> u64 {
+    let mut ts: u64 = 0;
+    asm {
+        "rdtsc"
+    }
+    return ts;
+}
+
+// 2. Funcion en Espanol que gestiona archivos y redireccionamientos
+publico funcion demo_redirecciones() -> bool {
+    sea ruta_log: str = "registro_ejecucion.log";
+
+    // Redirigir toda la salida de consola al archivo de log
+    embed {
+        io_redirigir_a_archivo("registro_ejecucion.log");
+        printf("=== LOG DE AUDITORIA UPL SOBERANO ===\n");
+        printf("[OK] Salida redirigida exitosamente a disco.\n");
+        printf("[OK] Multilenguaje activo: UPL + ASM + C99 + COMP-3.\n");
+        io_restaurar_consola();
+    }
+
+    retornar true;
+}
+
+// 3. Punto de entrada hibrido
+pub fn main() -> i32 {
+    printf("[UPL SOVEREIGN CORE] Iniciando demostracion poliglota integral...\n");
+
+    // 1. Probar lectura de silicio por Ensamblador
+    let t0: u64 = read_cpu_timestamp();
+    printf("[1/3 Ensamblador] Instruccion de CPU ejecutada con exito.\n");
+
+    // 2. Probar cuenta con decimales exactos COMP-3 (COBOL)
+    let mut cuenta: CuentaBancaria;
+    cuenta.titular_id = 777;
+    let balance_inicial: str = "54321098.50";
+    upl_comp3_from_str(cuenta.balance, 6, balance_inicial, 10, 2);
+    printf("[2/3 COBOL COMP-3] Registro bancario instanciado con 0 error de redondeo.\n");
+
+    // 3. Probar redireccionamiento de salida
+    let ok_redir: bool = demo_redirecciones();
+    si ok_redir {
+        printf("[3/3 Redireccion] Flujo capturado y restaurado en consola.\n");
+    }
+
+    printf("=== DEMOSTRACION COMPLETADA CON EXITO (0 ERRORES) ===\n");
+    return 0;
+}

@@ -76,15 +76,15 @@
             "patterns": [
                 {
                     "name": "keyword.control.upl",
-                    "match": "\\b(if|si|else|sino|while|mientras|for|para|return|retornar)\\b"
+                    "match": "\\b(if|si|else|sino|while|mientras|for|para|return|retornar|break|romper|continue|continuar)\\b"
                 },
                 {
                     "name": "keyword.declaration.upl",
-                    "match": "\\b(fn|funcion|let|sea|mut|const|constante|struct|estructura|module|modulo|import|importar|use|usar|pub|publico|as|como)\\b"
+                    "match": "\\b(fn|funcion|let|sea|mut|const|constante|struct|estructura|module|modulo|import|importar|use|usar|pub|publico|as|como|extern|externo)\\b"
                 },
                 {
                     "name": "keyword.other.asm.upl",
-                    "match": "\\b(asm|ensamblador)\\b"
+                    "match": "\\b(asm|ensamblador|embed|incrustar)\\b"
                 }
             ]
         },
@@ -92,7 +92,7 @@
             "patterns": [
                 {
                     "name": "storage.type.upl",
-                    "match": "\\b(i8|u8|i16|u16|i32|u32|i64|u64|f32|f64|bool|str|void|comp3|UrepSecurityContext|Vector4D|CpuRegisterState|MasmOpcodeEntry)\\b"
+                    "match": "\\b(i8|u8|i16|u16|i32|u32|i64|u64|usize|f32|f64|bool|str|void|comp3|UrepSecurityContext|Vector4D|CpuRegisterState|MasmOpcodeEntry)\\b"
                 }
             ]
         },
@@ -113,6 +113,10 @@
                 {
                     "name": "constant.numeric.hex.upl",
                     "match": "\\b0x[0-9a-fA-F]+\\b"
+                },
+                {
+                    "name": "constant.numeric.binary.upl",
+                    "match": "\\b0b[01]+\\b"
                 },
                 {
                     "name": "constant.numeric.float.upl",
@@ -140,7 +144,7 @@
             "patterns": [
                 {
                     "name": "keyword.operator.upl",
-                    "match": "(\\+|\\-|\\*|/|%|==|!=|<=|>=|<|>|=|&&|\\|\\||!|&|\\||->)"
+                    "match": "(\\+=|\\-=|\\*=|/=|%=|<<=|>>=|&=|\\|=|\\^=|<<|>>|==|!=|<=|>=|<|>|=|&&|\\|\\||!|&|\\||\\^|~|\\+|\\-|\\*|/|%|->)"
                 }
             ]
         }

@@ -272,7 +272,7 @@ Token lexer_next_token(Lexer* lexer) {
 
     advance(lexer); // Avanzar cursor para operadores y delimitadores
 
-    // Operadores de dos caracteres y relacionales
+    // Operadores de múltiples caracteres y asignaciones compuestas
     if (c == '=') {
         if (peek(lexer) == '=') { advance(lexer); return create_token(TOKEN_OP_EQUAL, "==", 2, start_line, start_col); }
         return create_token(TOKEN_OP_ASSIGN, "=", 1, start_line, start_col);
@@ -282,32 +282,64 @@ Token lexer_next_token(Lexer* lexer) {
         return create_token(TOKEN_OP_NOT, "!", 1, start_line, start_col);
     }
     if (c == '<') {
+        if (peek(lexer) == '<') {
+            advance(lexer);
+            if (peek(lexer) == '=') { advance(lexer); return create_token(TOKEN_OP_SHL_ASSIGN, "<<=", 3, start_line, start_col); }
+            return create_token(TOKEN_OP_SHL, "<<", 2, start_line, start_col);
+        }
         if (peek(lexer) == '=') { advance(lexer); return create_token(TOKEN_OP_LESS_EQUAL, "<=", 2, start_line, start_col); }
         return create_token(TOKEN_OP_LESS, "<", 1, start_line, start_col);
     }
     if (c == '>') {
+        if (peek(lexer) == '>') {
+            advance(lexer);
+            if (peek(lexer) == '=') { advance(lexer); return create_token(TOKEN_OP_SHR_ASSIGN, ">>=", 3, start_line, start_col); }
+            return create_token(TOKEN_OP_SHR, ">>", 2, start_line, start_col);
+        }
         if (peek(lexer) == '=') { advance(lexer); return create_token(TOKEN_OP_GREATER_EQUAL, ">=", 2, start_line, start_col); }
         return create_token(TOKEN_OP_GREATER, ">", 1, start_line, start_col);
     }
     if (c == '-') {
         if (peek(lexer) == '>') { advance(lexer); return create_token(TOKEN_DELIM_ARROW, "->", 2, start_line, start_col); }
+        if (peek(lexer) == '=') { advance(lexer); return create_token(TOKEN_OP_SUB_ASSIGN, "-=", 2, start_line, start_col); }
         return create_token(TOKEN_OP_SUB, "-", 1, start_line, start_col);
+    }
+    if (c == '+') {
+        if (peek(lexer) == '=') { advance(lexer); return create_token(TOKEN_OP_ADD_ASSIGN, "+=", 2, start_line, start_col); }
+        return create_token(TOKEN_OP_ADD, "+", 1, start_line, start_col);
+    }
+    if (c == '*') {
+        if (peek(lexer) == '=') { advance(lexer); return create_token(TOKEN_OP_MUL_ASSIGN, "*=", 2, start_line, start_col); }
+        return create_token(TOKEN_OP_MUL, "*", 1, start_line, start_col);
+    }
+    if (c == '/') {
+        if (peek(lexer) == '=') { advance(lexer); return create_token(TOKEN_OP_DIV_ASSIGN, "/=", 2, start_line, start_col); }
+        return create_token(TOKEN_OP_DIV, "/", 1, start_line, start_col);
+    }
+    if (c == '%') {
+        if (peek(lexer) == '=') { advance(lexer); return create_token(TOKEN_OP_MOD_ASSIGN, "%=", 2, start_line, start_col); }
+        return create_token(TOKEN_OP_MOD, "%", 1, start_line, start_col);
     }
     if (c == '&') {
         if (peek(lexer) == '&') { advance(lexer); return create_token(TOKEN_OP_AND, "&&", 2, start_line, start_col); }
+        if (peek(lexer) == '=') { advance(lexer); return create_token(TOKEN_OP_AND_ASSIGN, "&=", 2, start_line, start_col); }
         return create_token(TOKEN_OP_BIT_AND, "&", 1, start_line, start_col);
     }
     if (c == '|') {
         if (peek(lexer) == '|') { advance(lexer); return create_token(TOKEN_OP_OR, "||", 2, start_line, start_col); }
+        if (peek(lexer) == '=') { advance(lexer); return create_token(TOKEN_OP_OR_ASSIGN, "|=", 2, start_line, start_col); }
         return create_token(TOKEN_OP_BIT_OR, "|", 1, start_line, start_col);
     }
+    if (c == '^') {
+        if (peek(lexer) == '=') { advance(lexer); return create_token(TOKEN_OP_XOR_ASSIGN, "^=", 2, start_line, start_col); }
+        return create_token(TOKEN_OP_XOR, "^", 1, start_line, start_col);
+    }
+    if (c == '~') {
+        return create_token(TOKEN_OP_BIT_NOT, "~", 1, start_line, start_col);
+    }
 
-    // Delimitadores y operadores de un solo caracter
+    // Delimitadores y símbolos de un solo caracter
     switch (c) {
-        case '+': return create_token(TOKEN_OP_ADD, "+", 1, start_line, start_col);
-        case '*': return create_token(TOKEN_OP_MUL, "*", 1, start_line, start_col);
-        case '/': return create_token(TOKEN_OP_DIV, "/", 1, start_line, start_col);
-        case '^': return create_token(TOKEN_OP_XOR, "^", 1, start_line, start_col);
         case '(': return create_token(TOKEN_DELIM_LPAREN, "(", 1, start_line, start_col);
         case ')': return create_token(TOKEN_DELIM_RPAREN, ")", 1, start_line, start_col);
         case '{': return create_token(TOKEN_DELIM_LBRACE, "{", 1, start_line, start_col);
@@ -366,6 +398,7 @@ const char* token_type_name(TokenType type) {
         case TOKEN_OP_SUB:         return "TOKEN_OP_SUB";
         case TOKEN_OP_MUL:         return "TOKEN_OP_MUL";
         case TOKEN_OP_DIV:         return "TOKEN_OP_DIV";
+        case TOKEN_OP_MOD:         return "TOKEN_OP_MOD";
         case TOKEN_OP_LESS:        return "TOKEN_OP_LESS";
         case TOKEN_OP_GREATER:     return "TOKEN_OP_GREATER";
         case TOKEN_OP_LESS_EQUAL:  return "TOKEN_OP_LESS_EQUAL";
@@ -376,6 +409,19 @@ const char* token_type_name(TokenType type) {
         case TOKEN_OP_XOR:         return "TOKEN_OP_XOR";
         case TOKEN_OP_BIT_AND:     return "TOKEN_OP_BIT_AND";
         case TOKEN_OP_BIT_OR:      return "TOKEN_OP_BIT_OR";
+        case TOKEN_OP_BIT_NOT:     return "TOKEN_OP_BIT_NOT";
+        case TOKEN_OP_SHL:         return "TOKEN_OP_SHL";
+        case TOKEN_OP_SHR:         return "TOKEN_OP_SHR";
+        case TOKEN_OP_ADD_ASSIGN:  return "TOKEN_OP_ADD_ASSIGN";
+        case TOKEN_OP_SUB_ASSIGN:  return "TOKEN_OP_SUB_ASSIGN";
+        case TOKEN_OP_MUL_ASSIGN:  return "TOKEN_OP_MUL_ASSIGN";
+        case TOKEN_OP_DIV_ASSIGN:  return "TOKEN_OP_DIV_ASSIGN";
+        case TOKEN_OP_MOD_ASSIGN:  return "TOKEN_OP_MOD_ASSIGN";
+        case TOKEN_OP_AND_ASSIGN:  return "TOKEN_OP_AND_ASSIGN";
+        case TOKEN_OP_OR_ASSIGN:   return "TOKEN_OP_OR_ASSIGN";
+        case TOKEN_OP_XOR_ASSIGN:  return "TOKEN_OP_XOR_ASSIGN";
+        case TOKEN_OP_SHL_ASSIGN:  return "TOKEN_OP_SHL_ASSIGN";
+        case TOKEN_OP_SHR_ASSIGN:  return "TOKEN_OP_SHR_ASSIGN";
         case TOKEN_DELIM_LPAREN:   return "TOKEN_DELIM_LPAREN";
         case TOKEN_DELIM_RPAREN:   return "TOKEN_DELIM_RPAREN";
         case TOKEN_DELIM_LBRACE:   return "TOKEN_DELIM_LBRACE";

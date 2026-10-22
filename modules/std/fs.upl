@@ -1,0 +1,182 @@
+// ============================================================================
+// UPL STANDARD LIBRARY: FILESYSTEM & FILE OPS (std::fs / std::archivo)
+// Language: Pure UPL+ / Native Systems Standard Library
+// Author: José Manuel Moreno (Noxferion)
+// ============================================================================
+// Complete sovereign file management: open, save, rename, change extension,
+// create directories, copy, delete, and inspect files with zero dependencies.
+// ============================================================================
+
+modulo std_fs;
+
+embed {
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+#ifdef _WIN32
+#  include <windows.h>
+#  include <direct.h>
+#  define upl_mkdir(p) _mkdir(p)
+#else
+#  include <sys/stat.h>
+#  include <unistd.h>
+#  define upl_mkdir(p) mkdir(p, 0755)
+#endif
+}
+
+// 1. Comprueba si un archivo o directorio existe en el disco
+pub fn fs_existe(ruta: str) -> bool {
+    let mut f: *void = 0;
+    embed {
+        FILE *fp = fopen(ruta, "rb");
+        if (fp) {
+            fclose(fp);
+            return true;
+        }
+        return false;
+    }
+    retornar false;
+}
+
+// 2. Obtiene el tamano exacto de un archivo en bytes
+pub fn fs_tamano(ruta: str) -> u64 {
+    let mut sz: u64 = 0;
+    embed {
+        FILE *fp = fopen(ruta, "rb");
+        if (!fp) return 0ULL;
+        fseek(fp, 0L, SEEK_END);
+        long bytes = ftell(fp);
+        fclose(fp);
+        return (uint64_t)(bytes > 0 ? bytes : 0);
+    }
+    retornar sz;
+}
+
+// 3. Abrir archivo (modos: "r", "w", "a", "rb", "wb", "ab+")
+pub fn fs_abrir(ruta: str, modo: str) -> *void {
+    let mut handle: *void = 0;
+    embed {
+        FILE *fp = fopen(ruta, modo);
+        return (void*)fp;
+    }
+    retornar handle;
+}
+
+// 4. Cerrar archivo
+pub fn fs_cerrar(handle: *void) -> bool {
+    embed {
+        if (!handle) return false;
+        return fclose((FILE*)handle) == 0;
+    }
+    retornar false;
+}
+
+// 5. Guardar un buffer completo a disco de forma directa y atomica
+pub fn fs_guardar(ruta: str, buffer: *u8, bytes: usize) -> bool {
+    embed {
+        if (!ruta || !buffer) return false;
+        FILE *fp = fopen(ruta, "wb");
+        if (!fp) return false;
+        size_t written = fwrite(buffer, 1, bytes, fp);
+        fclose(fp);
+        return written == bytes;
+    }
+    retornar false;
+}
+
+// 6. Cargar un archivo completo a un buffer en memoria
+pub fn fs_cargar(ruta: str, out_buffer: *u8, max_bytes: usize) -> usize {
+    embed {
+        if (!ruta || !out_buffer) return 0;
+        FILE *fp = fopen(ruta, "rb");
+        if (!fp) return 0;
+        size_t read_bytes = fread(out_buffer, 1, max_bytes, fp);
+        fclose(fp);
+        return read_bytes;
+    }
+    retornar 0;
+}
+
+// 7. Cambiar el nombre de un archivo o carpeta (rename / mover)
+pub fn fs_cambiar_nombre(ruta_antigua: str, ruta_nueva: str) -> bool {
+    embed {
+        if (!ruta_antigua || !ruta_nueva) return false;
+        return rename(ruta_antigua, ruta_nueva) == 0;
+    }
+    retornar false;
+}
+
+// 8. Cambiar la extension de un archivo (e.g. "juego.dat" + ".gxp" -> "juego.gxp")
+pub fn fs_cambiar_extension(ruta_origen: str, nueva_extension: str, out_buf: *u8, out_max: usize) -> bool {
+    embed {
+        if (!ruta_origen || !nueva_extension || !out_buf || out_max < 4) return false;
+        
+        // Copiar ruta origen
+        size_t len = strlen(ruta_origen);
+        if (len >= out_max) return false;
+        strncpy((char*)out_buf, ruta_origen, out_max - 1);
+        out_buf[out_max - 1] = '\0';
+
+        // Buscar el ultimo punto '.' tras la ultima barra '/' o '\'
+        char *dot = strrchr((char*)out_buf, '.');
+        char *slash1 = strrchr((char*)out_buf, '/');
+        char *slash2 = strrchr((char*)out_buf, '\\');
+        char *last_slash = slash1 > slash2 ? slash1 : slash2;
+
+        if (dot && (!last_slash || dot > last_slash)) {
+            *dot = '\0'; // Truncar en el punto
+        }
+
+        // Si la nueva extension no empieza con punto, anadirlo si es necesario
+        if (nueva_extension[0] != '.') {
+            strncat((char*)out_buf, ".", out_max - strlen((char*)out_buf) - 1);
+        }
+        strncat((char*)out_buf, nueva_extension, out_max - strlen((char*)out_buf) - 1);
+        return true;
+    }
+    retornar false;
+}
+
+// 9. Borrar archivo
+pub fn fs_borrar(ruta: str) -> bool {
+    embed {
+        if (!ruta) return false;
+        return remove(ruta) == 0;
+    }
+    retornar false;
+}
+
+// 10. Crear carpeta / directorio
+pub fn fs_crear_carpeta(ruta: str) -> bool {
+    embed {
+        if (!ruta) return false;
+        return upl_mkdir(ruta) == 0;
+    }
+    retornar false;
+}
+
+// 11. Copiar archivo byte a byte
+pub fn fs_copiar(origen: str, destino: str) -> bool {
+    embed {
+        if (!origen || !destino) return false;
+        FILE *src = fopen(origen, "rb");
+        if (!src) return false;
+        FILE *dst = fopen(destino, "wb");
+        if (!dst) { fclose(src); return false; }
+
+        char chunk[4096];
+        size_t n;
+        bool ok = true;
+        while ((n = fread(chunk, 1, sizeof(chunk), src)) > 0) {
+            if (fwrite(chunk, 1, n, dst) != n) {
+                ok = false;
+                break;
+            }
+        }
+        fclose(src);
+        fclose(dst);
+        return ok;
+    }
+    retornar false;
+}

@@ -1,0 +1,148 @@
+// ============================================================================
+// UPL STANDARD LIBRARY: HASH MAP / DICTIONARY (std::dict)
+// Language: Pure UPL+ / Native Systems Standard Library
+// Author: José Manuel Moreno (Noxferion)
+// ============================================================================
+// Ultra-fast deterministic hash map with FNV-1a 64-bit hashing and linear probing.
+// Zero heap fragmentation, zero external dependencies.
+// ============================================================================
+
+modulo std_dict;
+
+const DICT_CAPACITY: usize = 256;
+const FNV_OFFSET_BASIS_64: u64 = 14695981039346656037;
+const FNV_PRIME_64: u64 = 1099511628211;
+
+publico estructura EntradaDict {
+    clave: [u8; 64],
+    clave_len: usize,
+    valor: u64,
+    ocupado: bool
+}
+
+publico estructura Diccionario {
+    entradas: [EntradaDict; 256],
+    tamano: usize,
+    capacidad: usize
+}
+
+// Algoritmo Hash FNV-1a de 64 bits para cadenas de bytes
+pub fn dict_hash_fnv1a(str_bytes: *u8, len: usize) -> u64 {
+    let mut hash: u64 = FNV_OFFSET_BASIS_64;
+    let mut i: usize = 0;
+    while i < len {
+        let byte_val: u64 = *(str_bytes + i) as u64;
+        hash = hash ^ byte_val;
+        hash = hash * FNV_PRIME_64;
+        i = i + 1;
+    }
+    retornar hash;
+}
+
+// Inicializa una estructura de Diccionario vacia
+pub fn dict_iniciar(d: *Diccionario) -> void {
+    d.tamano = 0;
+    d.capacidad = DICT_CAPACITY;
+    let mut i: usize = 0;
+    while i < DICT_CAPACITY {
+        d.entradas[i].ocupado = false;
+        d.entradas[i].clave_len = 0;
+        d.entradas[i].valor = 0;
+        i = i + 1;
+    }
+}
+
+// Compara dos secuencias de bytes para verificar igualdad de clave
+pub fn dict_clave_igual(a: *u8, a_len: usize, b: *u8, b_len: usize) -> bool {
+    si a_len != b_len {
+        retornar false;
+    }
+    let mut i: usize = 0;
+    while i < a_len {
+        si *(a + i) != *(b + i) {
+            retornar false;
+        }
+        i = i + 1;
+    }
+    retornar true;
+}
+
+// Inserta o actualiza un par clave-valor en el diccionario (O(1))
+pub fn dict_poner(d: *Diccionario, clave: *u8, clave_len: usize, valor: u64) -> bool {
+    si d.tamano >= (DICT_CAPACITY - 16) {
+        retornar false; // Factor de carga maximo alcanzado
+    }
+    si clave_len >= 64 {
+        retornar false; // Clave demasiado larga
+    }
+
+    let hash: u64 = dict_hash_fnv1a(clave, clave_len);
+    let mut slot: usize = (hash % (DICT_CAPACITY as u64)) as usize;
+
+    let mut intentos: usize = 0;
+    while intentos < DICT_CAPACITY {
+        let entry: *EntradaDict = &d.entradas[slot];
+        
+        si !entry.ocupado {
+            // Ranura vacia encontrada: insertar
+            let mut j: usize = 0;
+            while j < clave_len {
+                entry.clave[j] = *(clave + j);
+                j = j + 1;
+            }
+            entry.clave_len = clave_len;
+            entry.valor = valor;
+            entry.ocupado = true;
+            d.tamano = d.tamano + 1;
+            retornar true;
+        }
+
+        // Si la clave ya existe en esta ranura, actualizar valor
+        si dict_clave_igual(&entry.clave[0], entry.clave_len, clave, clave_len) {
+            entry.valor = valor;
+            retornar true;
+        }
+
+        // Sondeo lineal
+        slot = (slot + 1) % DICT_CAPACITY;
+        intentos = intentos + 1;
+    }
+
+    retornar false;
+}
+
+// Busca el valor asociado a una clave en el diccionario (O(1))
+pub fn dict_obtener(d: *Diccionario, clave: *u8, clave_len: usize, out_valor: *u64) -> bool {
+    let hash: u64 = dict_hash_fnv1a(clave, clave_len);
+    let mut slot: usize = (hash % (DICT_CAPACITY as u64)) as usize;
+
+    let mut intentos: usize = 0;
+    while intentos < DICT_CAPACITY {
+        let entry: *EntradaDict = &d.entradas[slot];
+
+        si !entry.ocupado {
+            retornar false; // No encontrado
+        }
+
+        si dict_clave_igual(&entry.clave[0], entry.clave_len, clave, clave_len) {
+            *out_valor = entry.valor;
+            retornar true;
+        }
+
+        slot = (slot + 1) % DICT_CAPACITY;
+        intentos = intentos + 1;
+    }
+
+    retornar false;
+}
+
+// Comprueba si una clave existe en el diccionario
+pub fn dict_contiene(d: *Diccionario, clave: *u8, clave_len: usize) -> bool {
+    let mut dummy: u64 = 0;
+    retornar dict_obtener(d, clave, clave_len, &dummy);
+}
+
+// Devuelve el numero total de elementos en el diccionario
+pub fn dict_longitud(d: *Diccionario) -> usize {
+    retornar d.tamano;
+}

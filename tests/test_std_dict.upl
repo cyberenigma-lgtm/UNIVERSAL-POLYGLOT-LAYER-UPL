@@ -1,0 +1,154 @@
+modulo test_std_dict_runner;
+
+const DICT_CAPACITY: usize = 256;
+const FNV_OFFSET_BASIS_64: u64 = 14695981039346656037;
+const FNV_PRIME_64: u64 = 1099511628211;
+
+struct EntradaDict {
+    clave: [u8; 64],
+    clave_len: usize,
+    valor: u64,
+    ocupado: bool
+}
+
+struct Diccionario {
+    entradas: [EntradaDict; 256],
+    tamano: usize,
+    capacidad: usize
+}
+
+pub fn dict_hash_fnv1a(str_bytes: *u8, len: usize) -> u64 {
+    let mut hash: u64 = FNV_OFFSET_BASIS_64;
+    let mut i: usize = 0;
+    while i < len {
+        let byte_val: u64 = *(str_bytes + i) as u64;
+        hash = hash ^ byte_val;
+        hash = hash * FNV_PRIME_64;
+        i = i + 1;
+    }
+    retornar hash;
+}
+
+pub fn dict_iniciar(d: *Diccionario) -> void {
+    d.tamano = 0;
+    d.capacidad = DICT_CAPACITY;
+    let mut i: usize = 0;
+    while i < DICT_CAPACITY {
+        d.entradas[i].ocupado = false;
+        d.entradas[i].clave_len = 0;
+        d.entradas[i].valor = 0;
+        i = i + 1;
+    }
+}
+
+pub fn dict_clave_igual(a: *u8, a_len: usize, b: *u8, b_len: usize) -> bool {
+    si a_len != b_len {
+        retornar false;
+    }
+    let mut i: usize = 0;
+    while i < a_len {
+        si *(a + i) != *(b + i) {
+            retornar false;
+        }
+        i = i + 1;
+    }
+    retornar true;
+}
+
+pub fn dict_poner(d: *Diccionario, clave: *u8, clave_len: usize, valor: u64) -> bool {
+    si d.tamano >= (DICT_CAPACITY - 16) {
+        retornar false;
+    }
+    si clave_len >= 64 {
+        retornar false;
+    }
+
+    let hash: u64 = dict_hash_fnv1a(clave, clave_len);
+    let mut slot: usize = (hash % (DICT_CAPACITY as u64)) as usize;
+
+    let mut intentos: usize = 0;
+    while intentos < DICT_CAPACITY {
+        let entry: *EntradaDict = &d.entradas[slot];
+        
+        si !entry.ocupado {
+            let mut j: usize = 0;
+            while j < clave_len {
+                entry.clave[j] = *(clave + j);
+                j = j + 1;
+            }
+            entry.clave_len = clave_len;
+            entry.valor = valor;
+            entry.ocupado = true;
+            d.tamano = d.tamano + 1;
+            retornar true;
+        }
+
+        si dict_clave_igual(&entry.clave[0], entry.clave_len, clave, clave_len) {
+            entry.valor = valor;
+            retornar true;
+        }
+
+        slot = (slot + 1) % DICT_CAPACITY;
+        intentos = intentos + 1;
+    }
+
+    retornar false;
+}
+
+pub fn dict_obtener(d: *Diccionario, clave: *u8, clave_len: usize, out_valor: *u64) -> bool {
+    let hash: u64 = dict_hash_fnv1a(clave, clave_len);
+    let mut slot: usize = (hash % (DICT_CAPACITY as u64)) as usize;
+
+    let mut intentos: usize = 0;
+    while intentos < DICT_CAPACITY {
+        let entry: *EntradaDict = &d.entradas[slot];
+
+        si !entry.ocupado {
+            retornar false;
+        }
+
+        si dict_clave_igual(&entry.clave[0], entry.clave_len, clave, clave_len) {
+            *out_valor = entry.valor;
+            retornar true;
+        }
+
+        slot = (slot + 1) % DICT_CAPACITY;
+        intentos = intentos + 1;
+    }
+
+    retornar false;
+}
+
+pub fn main() -> i32 {
+    let mut d: Diccionario;
+    dict_iniciar(&d);
+
+    let k1: str = "velocidad";
+    let ok1: bool = dict_poner(&d, k1 as *u8, 9, 300);
+    si !ok1 { retornar 1; }
+
+    let k2: str = "salud";
+    let ok2: bool = dict_poner(&d, k2 as *u8, 5, 100);
+    si !ok2 { retornar 2; }
+
+    let mut val: u64 = 0;
+    let ok3: bool = dict_obtener(&d, k1 as *u8, 9, &val);
+    si !ok3 || val != 300 { retornar 3; }
+
+    let ok4: bool = dict_obtener(&d, k2 as *u8, 5, &val);
+    si !ok4 || val != 100 { retornar 4; }
+
+    // Actualizar clave existente
+    let ok5: bool = dict_poner(&d, k1 as *u8, 9, 450);
+    si !ok5 { retornar 5; }
+
+    let ok6: bool = dict_obtener(&d, k1 as *u8, 9, &val);
+    si !ok6 || val != 450 { retornar 6; }
+
+    // Clave inexistente
+    let k_inexistente: str = "escudo";
+    let ok7: bool = dict_obtener(&d, k_inexistente as *u8, 6, &val);
+    si ok7 { retornar 7; } // No debio encontrarla
+
+    retornar 0; // Exito total
+}

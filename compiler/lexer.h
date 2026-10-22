@@ -37,7 +37,7 @@ typedef enum {
     TOKEN_KEYWORD_BREAK,    /* break / romper */
     TOKEN_KEYWORD_CONTINUE, /* continue / continuar */
 
-    /* Operadores */
+    /* Operadores Aritméticos y Lógicos */
     TOKEN_OP_ASSIGN,        /* = */
     TOKEN_OP_EQUAL,         /* == */
     TOKEN_OP_NOT_EQUAL,     /* != */
@@ -45,6 +45,7 @@ typedef enum {
     TOKEN_OP_SUB,           /* - */
     TOKEN_OP_MUL,           /* * */
     TOKEN_OP_DIV,           /* / */
+    TOKEN_OP_MOD,           /* % */
     TOKEN_OP_LESS,          /* < */
     TOKEN_OP_GREATER,       /* > */
     TOKEN_OP_LESS_EQUAL,    /* <= */
@@ -55,6 +56,21 @@ typedef enum {
     TOKEN_OP_XOR,           /* ^ */
     TOKEN_OP_BIT_AND,       /* & */
     TOKEN_OP_BIT_OR,        /* | */
+    TOKEN_OP_BIT_NOT,       /* ~ */
+    TOKEN_OP_SHL,           /* << */
+    TOKEN_OP_SHR,           /* >> */
+
+    /* Operadores de Asignación Compuesta */
+    TOKEN_OP_ADD_ASSIGN,    /* += */
+    TOKEN_OP_SUB_ASSIGN,    /* -= */
+    TOKEN_OP_MUL_ASSIGN,    /* *= */
+    TOKEN_OP_DIV_ASSIGN,    /* /= */
+    TOKEN_OP_MOD_ASSIGN,    /* %= */
+    TOKEN_OP_AND_ASSIGN,    /* &= */
+    TOKEN_OP_OR_ASSIGN,     /* |= */
+    TOKEN_OP_XOR_ASSIGN,    /* ^= */
+    TOKEN_OP_SHL_ASSIGN,    /* <<= */
+    TOKEN_OP_SHR_ASSIGN,    /* >>= */
 
     /* Delimitadores */
     TOKEN_DELIM_LPAREN,     /* ( */

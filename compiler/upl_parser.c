@@ -14,8 +14,9 @@ typedef enum {
     PREC_BIT_AND,    // &
     PREC_EQUALITY,   // ==, !=
     PREC_COMPARISON, // <, <=, >, >=
+    PREC_SHIFT,      // <<, >>
     PREC_TERM,       // +, -
-    PREC_FACTOR,     // *, /
+    PREC_FACTOR,     // *, /, %
     PREC_CAST,       // as / como
     PREC_UNARY,      // !, -
     PREC_CALL,       // ., (), []
@@ -174,7 +175,17 @@ UplAstNode* upl_parser_parse_type(UplParser *p) {
 
 static Precedence get_precedence(TokenType type) {
     switch (type) {
-        case TOKEN_OP_ASSIGN:        return PREC_ASSIGNMENT;
+        case TOKEN_OP_ASSIGN:
+        case TOKEN_OP_ADD_ASSIGN:
+        case TOKEN_OP_SUB_ASSIGN:
+        case TOKEN_OP_MUL_ASSIGN:
+        case TOKEN_OP_DIV_ASSIGN:
+        case TOKEN_OP_MOD_ASSIGN:
+        case TOKEN_OP_AND_ASSIGN:
+        case TOKEN_OP_OR_ASSIGN:
+        case TOKEN_OP_XOR_ASSIGN:
+        case TOKEN_OP_SHL_ASSIGN:
+        case TOKEN_OP_SHR_ASSIGN:    return PREC_ASSIGNMENT;
         case TOKEN_OP_OR:            return PREC_OR;
         case TOKEN_OP_AND:           return PREC_AND;
         case TOKEN_OP_BIT_OR:        return PREC_BIT_OR;
@@ -186,10 +197,13 @@ static Precedence get_precedence(TokenType type) {
         case TOKEN_OP_GREATER:
         case TOKEN_OP_LESS_EQUAL:
         case TOKEN_OP_GREATER_EQUAL: return PREC_COMPARISON;
+        case TOKEN_OP_SHL:
+        case TOKEN_OP_SHR:           return PREC_SHIFT;
         case TOKEN_OP_ADD:
         case TOKEN_OP_SUB:           return PREC_TERM;
         case TOKEN_OP_MUL:
-        case TOKEN_OP_DIV:           return PREC_FACTOR;
+        case TOKEN_OP_DIV:
+        case TOKEN_OP_MOD:           return PREC_FACTOR;
         case TOKEN_KEYWORD_AS:       return PREC_CAST;
         case TOKEN_DELIM_LPAREN:
         case TOKEN_DELIM_LBRACKET:
@@ -241,7 +255,8 @@ static UplAstNode* parse_unary(UplParser *p) {
     size_t line = p->current.line;
     size_t col = p->current.column;
 
-    if (match(p, TOKEN_OP_SUB) || match(p, TOKEN_OP_NOT) || match(p, TOKEN_OP_MUL)) {
+    if (match(p, TOKEN_OP_SUB) || match(p, TOKEN_OP_NOT) || match(p, TOKEN_OP_MUL) ||
+        match(p, TOKEN_OP_BIT_NOT) || match(p, TOKEN_OP_BIT_AND)) {
         TokenType op = p->previous.type;
         UplAstNode *operand = parse_unary(p);
         return upl_ast_new_unary(p->arena, op, operand, line, col);
@@ -306,8 +321,19 @@ static UplAstNode* parse_expression_precedence(UplParser *p, Precedence prec) {
         size_t col = p->previous.column;
 
         Precedence next_prec = get_precedence(op);
-        // Operador de asignación es asociativo a derecha
-        if (op != TOKEN_OP_ASSIGN) {
+        // Operadores de asignación son asociativos a la derecha
+        bool is_assign = (op == TOKEN_OP_ASSIGN ||
+                          op == TOKEN_OP_ADD_ASSIGN ||
+                          op == TOKEN_OP_SUB_ASSIGN ||
+                          op == TOKEN_OP_MUL_ASSIGN ||
+                          op == TOKEN_OP_DIV_ASSIGN ||
+                          op == TOKEN_OP_MOD_ASSIGN ||
+                          op == TOKEN_OP_AND_ASSIGN ||
+                          op == TOKEN_OP_OR_ASSIGN ||
+                          op == TOKEN_OP_XOR_ASSIGN ||
+                          op == TOKEN_OP_SHL_ASSIGN ||
+                          op == TOKEN_OP_SHR_ASSIGN);
+        if (!is_assign) {
             next_prec = (Precedence)(next_prec + 1);
         }
 

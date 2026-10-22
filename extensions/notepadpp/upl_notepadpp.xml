@@ -1,0 +1,38 @@
+<NotepadPlus>
+    <UserLang name="UPL" ext="upl">
+        <Settings>
+            <GlobalCaseIgnored>no</GlobalCaseIgnored>
+            <TreatAsSymbol>yes</TreatAsSymbol>
+        </Settings>
+        <KeywordLists>
+            <!-- Palabras Clave de Declaración (Bilingüe) -->
+            <Keywords name="Words1">module modulo fn funcion let sea mut const constante struct estructura import importar pub publico as como extern externo use usar</Keywords>
+            <!-- Control de Flujo (Bilingüe) -->
+            <Keywords name="Words2">if si else sino while mientras for para return retornar break romper continue continuar</Keywords>
+            <!-- Tipos Primitivos y de Silicio -->
+            <Keywords name="Words3">u8 u16 u32 u64 i8 i16 i32 i64 usize f32 f64 bool str void comp3 UrepSecurityContext Vector4D CpuRegisterState</Keywords>
+            <!-- Bloques de Fusión Políglota -->
+            <Keywords name="Words4">asm ensamblador embed incrustar</Keywords>
+            <!-- Literales Booleanos y Constantes -->
+            <Keywords name="Words5">true false verdadero falso null nulo</Keywords>
+            <!-- Operadores de Silicio -->
+            <Keywords name="Operators1">+ - * / % &lt;&lt; &gt;&gt; &amp; | ^ ~ == != &lt; &gt; &lt;= &gt;= = += -= *= /= %= &lt;&lt;= &gt;&gt;= &amp;= |= ^= -&gt; ! &amp;&amp; ||</Keywords>
+            <!-- Comentarios -->
+            <Keywords name="Comment1">//</Keywords>
+            <Keywords name="Comment2">/* */</Keywords>
+        </KeywordLists>
+        <Styles>
+            <WordsStyle name="DEFAULT" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" />
+            <WordsStyle name="COMMENTS" fgColor="008000" fontStyle="2" />
+            <WordsStyle name="LINE_COMMENTS" fgColor="008000" fontStyle="2" />
+            <WordsStyle name="NUMBERS" fgColor="FF8000" fontStyle="0" />
+            <WordsStyle name="STRINGS" fgColor="800000" fontStyle="0" />
+            <WordsStyle name="KEYWORDS1" fgColor="0000FF" fontStyle="1" />
+            <WordsStyle name="KEYWORDS2" fgColor="800080" fontStyle="1" />
+            <WordsStyle name="KEYWORDS3" fgColor="008080" fontStyle="1" />
+            <WordsStyle name="KEYWORDS4" fgColor="C00000" fontStyle="1" />
+            <WordsStyle name="KEYWORDS5" fgColor="000080" fontStyle="1" />
+            <WordsStyle name="OPERATORS" fgColor="000000" fontStyle="1" />
+        </Styles>
+    </UserLang>
+</NotepadPlus>

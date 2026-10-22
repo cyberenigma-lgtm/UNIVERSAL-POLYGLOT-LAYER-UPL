@@ -1,0 +1,170 @@
+modulo test_std_fs_runner;
+
+embed {
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+#ifdef _WIN32
+#  include <windows.h>
+#  include <direct.h>
+#  define upl_mkdir(p) _mkdir(p)
+#  define upl_rmdir(p) _rmdir(p)
+#else
+#  include <sys/stat.h>
+#  include <unistd.h>
+#  define upl_mkdir(p) mkdir(p, 0755)
+#  define upl_rmdir(p) rmdir(p)
+#endif
+}
+
+pub fn fs_existe(ruta: str) -> bool {
+    let mut f: *void = 0;
+    embed {
+        FILE *fp = fopen(ruta, "rb");
+        if (fp) {
+            fclose(fp);
+            return true;
+        }
+        return false;
+    }
+    retornar false;
+}
+
+pub fn fs_tamano(ruta: str) -> u64 {
+    let mut sz: u64 = 0;
+    embed {
+        FILE *fp = fopen(ruta, "rb");
+        if (!fp) return 0ULL;
+        fseek(fp, 0L, SEEK_END);
+        long bytes = ftell(fp);
+        fclose(fp);
+        return (uint64_t)(bytes > 0 ? bytes : 0);
+    }
+    retornar sz;
+}
+
+pub fn fs_guardar(ruta: str, buffer: *u8, bytes: usize) -> bool {
+    embed {
+        if (!ruta || !buffer) return false;
+        FILE *fp = fopen(ruta, "wb");
+        if (!fp) return false;
+        size_t written = fwrite(buffer, 1, bytes, fp);
+        fclose(fp);
+        return written == bytes;
+    }
+    retornar false;
+}
+
+pub fn fs_cargar(ruta: str, out_buffer: *u8, max_bytes: usize) -> usize {
+    embed {
+        if (!ruta || !out_buffer) return 0;
+        FILE *fp = fopen(ruta, "rb");
+        if (!fp) return 0;
+        size_t read_bytes = fread(out_buffer, 1, max_bytes, fp);
+        fclose(fp);
+        return read_bytes;
+    }
+    retornar 0;
+}
+
+pub fn fs_cambiar_nombre(ruta_antigua: str, ruta_nueva: str) -> bool {
+    embed {
+        if (!ruta_antigua || !ruta_nueva) return false;
+        return rename(ruta_antigua, ruta_nueva) == 0;
+    }
+    retornar false;
+}
+
+pub fn fs_cambiar_extension(ruta_origen: str, nueva_extension: str, out_buf: *u8, out_max: usize) -> bool {
+    embed {
+        if (!ruta_origen || !nueva_extension || !out_buf || out_max < 4) return false;
+        
+        size_t len = strlen(ruta_origen);
+        if (len >= out_max) return false;
+        strncpy((char*)out_buf, ruta_origen, out_max - 1);
+        out_buf[out_max - 1] = '\0';
+
+        char *dot = strrchr((char*)out_buf, '.');
+        char *slash1 = strrchr((char*)out_buf, '/');
+        char *slash2 = strrchr((char*)out_buf, '\\');
+        char *last_slash = slash1 > slash2 ? slash1 : slash2;
+
+        if (dot && (!last_slash || dot > last_slash)) {
+            *dot = '\0';
+        }
+
+        if (nueva_extension[0] != '.') {
+            strncat((char*)out_buf, ".", out_max - strlen((char*)out_buf) - 1);
+        }
+        strncat((char*)out_buf, nueva_extension, out_max - strlen((char*)out_buf) - 1);
+        return true;
+    }
+    retornar false;
+}
+
+pub fn fs_borrar(ruta: str) -> bool {
+    embed {
+        if (!ruta) return false;
+        return remove(ruta) == 0;
+    }
+    retornar false;
+}
+
+pub fn fs_crear_carpeta(ruta: str) -> bool {
+    embed {
+        if (!ruta) return false;
+        return upl_mkdir(ruta) == 0;
+    }
+    retornar false;
+}
+
+pub fn main() -> i32 {
+    let ruta_origen: str = "test_temporal.dat";
+    let texto_prueba: str = "UPL_SOVEREIGN_SYSTEM_2026";
+    let len: usize = 24;
+
+    // 1. Guardar archivo
+    let ok_save: bool = fs_guardar(ruta_origen, texto_prueba as *u8, len);
+    si !ok_save { retornar 101; }
+
+    // 2. Verificar que existe
+    si !fs_existe(ruta_origen) { retornar 102; }
+
+    // 3. Verificar tamano
+    let sz: u64 = fs_tamano(ruta_origen);
+    si sz != (len as u64) { retornar 103; }
+
+    // 4. Cargar archivo y verificar contenido
+    let mut buf_lectura: [u8; 64];
+    let leidos: usize = fs_cargar(ruta_origen, &buf_lectura[0], 64);
+    si leidos != len { retornar 104; }
+
+    // 5. Cambiar extension ("test_temporal.dat" + ".upl" -> "test_temporal.upl")
+    let mut buf_renombrado: [u8; 128];
+    let ok_ext: bool = fs_cambiar_extension(ruta_origen, ".upl", &buf_renombrado[0], 128);
+    si !ok_ext { retornar 105; }
+
+    // 6. Cambiar nombre en disco
+    let ok_ren: bool = fs_cambiar_nombre(ruta_origen, (buf_renombrado as *void) as str);
+    si !ok_ren { retornar 106; }
+
+    // 7. Verificar que el viejo no existe y el nuevo si
+    si fs_existe(ruta_origen) { retornar 107; }
+    si !fs_existe((buf_renombrado as *void) as str) { retornar 108; }
+
+    // 8. Borrar archivo renombrado
+    let ok_del: bool = fs_borrar((buf_renombrado as *void) as str);
+    si !ok_del { retornar 109; }
+
+    // 9. Verificar que fue borrado
+    si fs_existe((buf_renombrado as *void) as str) { retornar 110; }
+
+    // 10. Crear carpeta
+    let ok_dir: bool = fs_crear_carpeta("test_carpeta_temp");
+    embed {
+        upl_rmdir("test_carpeta_temp");
+    }
+
+    retornar 0; // Exito total
+}

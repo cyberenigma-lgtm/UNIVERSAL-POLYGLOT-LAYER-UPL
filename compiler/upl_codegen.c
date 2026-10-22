@@ -65,6 +65,7 @@ static void emit_binary(UplCodeGen *gen, const UplAstNode *node) {
         case TOKEN_OP_SUB:           op_str = " - "; break;
         case TOKEN_OP_MUL:           op_str = " * "; break;
         case TOKEN_OP_DIV:           op_str = " / "; break;
+        case TOKEN_OP_MOD:           op_str = " % "; break;
         case TOKEN_OP_EQUAL:         op_str = " == "; break;
         case TOKEN_OP_NOT_EQUAL:     op_str = " != "; break;
         case TOKEN_OP_LESS:          op_str = " < "; break;
@@ -76,12 +77,44 @@ static void emit_binary(UplCodeGen *gen, const UplAstNode *node) {
         case TOKEN_OP_XOR:           op_str = " ^ "; break;
         case TOKEN_OP_BIT_AND:       op_str = " & "; break;
         case TOKEN_OP_BIT_OR:        op_str = " | "; break;
+        case TOKEN_OP_SHL:           op_str = " << "; break;
+        case TOKEN_OP_SHR:           op_str = " >> "; break;
         case TOKEN_OP_ASSIGN:        op_str = " = "; break;
+        case TOKEN_OP_ADD_ASSIGN:    op_str = " += "; break;
+        case TOKEN_OP_SUB_ASSIGN:    op_str = " -= "; break;
+        case TOKEN_OP_MUL_ASSIGN:    op_str = " *= "; break;
+        case TOKEN_OP_DIV_ASSIGN:    op_str = " /= "; break;
+        case TOKEN_OP_MOD_ASSIGN:    op_str = " %= "; break;
+        case TOKEN_OP_AND_ASSIGN:    op_str = " &= "; break;
+        case TOKEN_OP_OR_ASSIGN:     op_str = " |= "; break;
+        case TOKEN_OP_XOR_ASSIGN:    op_str = " ^= "; break;
+        case TOKEN_OP_SHL_ASSIGN:    op_str = " <<= "; break;
+        case TOKEN_OP_SHR_ASSIGN:    op_str = " >>= "; break;
         default:                     op_str = " + "; break;
     }
     fprintf(gen->out, "%s", op_str);
     emit_expression(gen, node->as.binary_expr.right);
     fprintf(gen->out, ")");
+}
+
+static void upl_codegen_add_pointer_var(UplCodeGen *gen, const char *name) {
+    if (!name || gen->pointer_var_count >= 128) return;
+    for (int i = 0; i < gen->pointer_var_count; ++i) {
+        if (strcmp(gen->pointer_vars[i], name) == 0) return;
+    }
+    strncpy(gen->pointer_vars[gen->pointer_var_count++], name, 63);
+}
+
+static void upl_codegen_clear_pointer_vars(UplCodeGen *gen) {
+    gen->pointer_var_count = 0;
+}
+
+static bool upl_codegen_is_pointer_var(UplCodeGen *gen, const char *name) {
+    if (!name) return false;
+    for (int i = 0; i < gen->pointer_var_count; ++i) {
+        if (strcmp(gen->pointer_vars[i], name) == 0) return true;
+    }
+    return false;
 }
 
 static void emit_expression(UplCodeGen *gen, const UplAstNode *node) {
@@ -111,6 +144,8 @@ static void emit_expression(UplCodeGen *gen, const UplAstNode *node) {
             if (node->as.unary_expr.op == TOKEN_OP_SUB) fprintf(gen->out, "-");
             else if (node->as.unary_expr.op == TOKEN_OP_NOT) fprintf(gen->out, "!");
             else if (node->as.unary_expr.op == TOKEN_OP_MUL) fprintf(gen->out, "*");
+            else if (node->as.unary_expr.op == TOKEN_OP_BIT_NOT) fprintf(gen->out, "~");
+            else if (node->as.unary_expr.op == TOKEN_OP_BIT_AND) fprintf(gen->out, "&");
             emit_expression(gen, node->as.unary_expr.operand);
             break;
         case AST_EXPR_CALL:
@@ -122,10 +157,15 @@ static void emit_expression(UplCodeGen *gen, const UplAstNode *node) {
             }
             fprintf(gen->out, ")");
             break;
-        case AST_EXPR_MEMBER:
+        case AST_EXPR_MEMBER: {
             emit_expression(gen, node->as.member_expr.object);
-            fprintf(gen->out, ".%s", node->as.member_expr.member);
+            bool is_ptr = false;
+            if (node->as.member_expr.object && node->as.member_expr.object->kind == AST_IDENTIFIER) {
+                is_ptr = upl_codegen_is_pointer_var(gen, node->as.member_expr.object->as.ident.name);
+            }
+            fprintf(gen->out, "%s%s", is_ptr ? "->" : ".", node->as.member_expr.member);
             break;
+        }
         case AST_EXPR_INDEX:
             emit_expression(gen, node->as.index_expr.array);
             fprintf(gen->out, "[");
@@ -142,6 +182,40 @@ static void emit_expression(UplCodeGen *gen, const UplAstNode *node) {
         default:
             break;
     }
+}
+
+static void emit_asm_block(UplCodeGen *gen, const char *raw_code) {
+    if (!raw_code) return;
+    fprintf(gen->out, "__asm__ volatile (\n");
+    const char *p = raw_code;
+    while (*p) {
+        while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') p++;
+        if (!*p) break;
+        const char *end = p;
+        while (*end && *end != '\r' && *end != '\n') end++;
+        
+        size_t len = (size_t)(end - p);
+        char line[256];
+        if (len >= sizeof(line)) len = sizeof(line) - 1;
+        strncpy(line, p, len);
+        line[len] = '\0';
+        
+        char *start_str = line;
+        while (*start_str == ' ' || *start_str == '\t') start_str++;
+        if (*start_str == '"') {
+            start_str++;
+            size_t slen = strlen(start_str);
+            if (slen > 0 && start_str[slen - 1] == '"') {
+                start_str[slen - 1] = '\0';
+            }
+        }
+        
+        if (strlen(start_str) > 0) {
+            fprintf(gen->out, "    \"%s\\n\\t\"\n", start_str);
+        }
+        p = end;
+    }
+    fprintf(gen->out, ");\n");
 }
 
 static void emit_statement(UplCodeGen *gen, const UplAstNode *node);
@@ -181,13 +255,15 @@ static void emit_statement(UplCodeGen *gen, const UplAstNode *node) {
                     }
                     return;
                 } else if (node->as.stmt_let.type->kind == AST_TYPE_POINTER) {
+                    upl_codegen_add_pointer_var(gen, node->as.stmt_let.name);
                     emit_type(gen, node->as.stmt_let.type);
                     if (!node->as.stmt_let.is_mut) {
                         fprintf(gen->out, " const");
                     }
                     fprintf(gen->out, " ");
                 } else {
-                    if (!node->as.stmt_let.is_mut) {
+                    bool is_str = (node->as.stmt_let.type->kind == AST_TYPE_PRIMITIVE && node->as.stmt_let.type->as.type_spec.prim == UPL_TYPE_STR);
+                    if (!node->as.stmt_let.is_mut && !is_str) {
                         fprintf(gen->out, "const ");
                     }
                     emit_type(gen, node->as.stmt_let.type);
@@ -258,7 +334,7 @@ static void emit_statement(UplCodeGen *gen, const UplAstNode *node) {
             break;
 
         case AST_STMT_ASM:
-            fprintf(gen->out, "__asm__ volatile (\n    \"%s\"\n);\n", node->as.raw_block.raw_code);
+            emit_asm_block(gen, node->as.raw_block.raw_code);
             break;
 
         case AST_STMT_EXPR:
@@ -276,18 +352,52 @@ void upl_codegen_init(UplCodeGen *gen, FILE *out) {
     gen->indent_level = 0;
     gen->had_error = false;
     gen->error_message[0] = '\0';
+    gen->pointer_var_count = 0;
 }
 
 bool upl_codegen_generate(UplCodeGen *gen, const UplAstNode *program) {
     if (!program || program->kind != AST_PROGRAM) return false;
 
-    // 1. Cabecera C99 estándar
+    // 1. Cabecera C99 estándar con runtime autónomo
     fprintf(gen->out, "/* Codigo generado formalmente por el compilador UPL+ (Dragon Book Standard) */\n");
     fprintf(gen->out, "#include <stdio.h>\n");
     fprintf(gen->out, "#include <stdint.h>\n");
     fprintf(gen->out, "#include <stdbool.h>\n");
     fprintf(gen->out, "#include <stdlib.h>\n");
     fprintf(gen->out, "#include <string.h>\n");
+    fprintf(gen->out, "#include <math.h>\n");
+    fprintf(gen->out, "#ifdef _WIN32\n");
+    fprintf(gen->out, "#  include <conio.h>\n");
+    fprintf(gen->out, "#  include <windows.h>\n");
+    fprintf(gen->out, "static inline int upl_kbhit(void) { return _kbhit(); }\n");
+    fprintf(gen->out, "static inline int upl_getch(void) { return _getch(); }\n");
+    fprintf(gen->out, "static inline void upl_sleep_ms(int ms) { Sleep(ms); }\n");
+    fprintf(gen->out, "static inline void upl_clear_screen(void) {\n");
+    fprintf(gen->out, "    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);\n");
+    fprintf(gen->out, "    COORD coord = {0, 0};\n");
+    fprintf(gen->out, "    SetConsoleCursorPosition(hOut, coord);\n");
+    fprintf(gen->out, "}\n");
+    fprintf(gen->out, "static inline void upl_setup_console_fullscreen(void) {\n");
+    fprintf(gen->out, "    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);\n");
+    fprintf(gen->out, "    CONSOLE_CURSOR_INFO cursorInfo;\n");
+    fprintf(gen->out, "    GetConsoleCursorInfo(hOut, &cursorInfo);\n");
+    fprintf(gen->out, "    cursorInfo.bVisible = FALSE;\n");
+    fprintf(gen->out, "    SetConsoleCursorInfo(hOut, &cursorInfo);\n");
+    fprintf(gen->out, "    HWND hwnd = GetConsoleWindow();\n");
+    fprintf(gen->out, "    if (hwnd) ShowWindow(hwnd, SW_MAXIMIZE);\n");
+    fprintf(gen->out, "    system(\"cls\");\n");
+    fprintf(gen->out, "}\n");
+    fprintf(gen->out, "#else\n");
+    fprintf(gen->out, "#  include <unistd.h>\n");
+    fprintf(gen->out, "#  include <termios.h>\n");
+    fprintf(gen->out, "static inline int upl_kbhit(void) { return 0; }\n");
+    fprintf(gen->out, "static inline int upl_getch(void) { return getchar(); }\n");
+    fprintf(gen->out, "static inline void upl_sleep_ms(int ms) { usleep(ms * 1000); }\n");
+    fprintf(gen->out, "static inline void upl_clear_screen(void) { printf(\"\\033[H\"); fflush(stdout); }\n");
+    fprintf(gen->out, "static inline void upl_setup_console_fullscreen(void) { printf(\"\\033[?25l\\033[2J\\033[H\"); fflush(stdout); }\n");
+    fprintf(gen->out, "#endif\n\n");
+    fprintf(gen->out, "static inline void checkpoint_guardar(const char* nombre) { (void)nombre; }\n");
+    fprintf(gen->out, "#define salto_logico_guardar checkpoint_guardar\n\n");
     fprintf(gen->out, "#include \"upl_comp3.h\"\n\n");
 
     fprintf(gen->out, "#ifndef UPL_EXPORT\n");
@@ -361,6 +471,13 @@ bool upl_codegen_generate(UplCodeGen *gen, const UplAstNode *program) {
         if (l->node->kind == AST_DECL_FN) {
             const char *fname = l->node->as.decl_fn.name;
             bool is_entrypoint = (strcmp(fname, "main") == 0 || strcmp(fname, "kmain") == 0);
+
+            upl_codegen_clear_pointer_vars(gen);
+            for (UplAstList *p = l->node->as.decl_fn.params; p != NULL; p = p->next) {
+                if (p->node->as.decl_param.type && p->node->as.decl_param.type->kind == AST_TYPE_POINTER) {
+                    upl_codegen_add_pointer_var(gen, p->node->as.decl_param.name);
+                }
+            }
 
             if (is_entrypoint) {
                 fprintf(gen->out, "int main(int argc, char **argv) ");

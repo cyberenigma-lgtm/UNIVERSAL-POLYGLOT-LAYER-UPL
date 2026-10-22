@@ -50,9 +50,19 @@ int main(int argc, char **argv) {
     bool emit_c_only = false;
     bool dump_ast = false;
     bool dump_tokens = false;
+    bool run_after_build = false;
+    char extra_gcc_flags[1024] = "";
 
     for (int i = 1; i < argc; ++i) {
-        if (strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
+        if (strcmp(argv[i], "build") == 0 || strcmp(argv[i], "compilar") == 0) {
+            continue;
+        } else if (strcmp(argv[i], "run") == 0 || strcmp(argv[i], "ejecutar") == 0) {
+            run_after_build = true;
+            continue;
+        } else if (strcmp(argv[i], "-t") == 0 && i + 1 < argc) {
+            const char *target = argv[++i];
+            if (strcmp(target, "c") == 0) emit_c_only = true;
+        } else if (strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
             output_file = argv[++i];
         } else if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--emit-c") == 0) {
             emit_c_only = true;
@@ -63,6 +73,14 @@ int main(int argc, char **argv) {
         } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
             printf("uplc version 2.0.0 (x86_64-w64-mingw32 standard C99 pipeline)\n");
             return 0;
+        } else if (argv[i][0] == '-' && (argv[i][1] == 'l' || argv[i][1] == 'L' || argv[i][1] == 'I' || argv[i][1] == 'm' || argv[i][1] == 'W')) {
+            strcat(extra_gcc_flags, " ");
+            strcat(extra_gcc_flags, argv[i]);
+            if ((strcmp(argv[i], "-L") == 0 || strcmp(argv[i], "-I") == 0) && i + 1 < argc) {
+                strcat(extra_gcc_flags, " \"");
+                strcat(extra_gcc_flags, argv[++i]);
+                strcat(extra_gcc_flags, "\"");
+            }
         } else if (argv[i][0] != '-') {
             input_file = argv[i];
         } else {
@@ -183,12 +201,12 @@ int main(int argc, char **argv) {
 
     if (is_shared) {
         snprintf(gcc_cmd, sizeof(gcc_cmd),
-                 "gcc -O2 -s -shared \"%s\" compiler/runtime/upl_comp3.c -I compiler/runtime -Wl,--export-all-symbols -luser32 -lgdi32 -o \"%s\"",
-                 c_filename, exe_filename);
+                 "gcc -O2 -s -shared \"%s\" compiler/runtime/upl_comp3.c -I compiler/runtime -Wl,--export-all-symbols -luser32 -lgdi32 -lwinmm %s -o \"%s\"",
+                 c_filename, extra_gcc_flags, exe_filename);
     } else {
         snprintf(gcc_cmd, sizeof(gcc_cmd),
-                 "gcc -O2 \"%s\" compiler/runtime/upl_comp3.c -I compiler/runtime -luser32 -lgdi32 -o \"%s\"",
-                 c_filename, exe_filename);
+                 "gcc -O2 \"%s\" compiler/runtime/upl_comp3.c -I compiler/runtime -luser32 -lgdi32 -lwinmm %s -o \"%s\"",
+                 c_filename, extra_gcc_flags, exe_filename);
     }
 
     int ret = system(gcc_cmd);
@@ -200,6 +218,11 @@ int main(int argc, char **argv) {
     }
 
     printf("[OK] Compilacion completada con exito: %s\n", exe_filename);
+
+    if (run_after_build) {
+        printf("[RUN] Ejecutando %s...\n", exe_filename);
+        system(exe_filename);
+    }
 
     upl_arena_free(&arena);
     free(source);
