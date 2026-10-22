@@ -1,0 +1,70 @@
+modulo mandelbrot_upl;
+
+incrustar "c" {
+#include <stdio.h>
+#include <stdint.h>
+#include <windows.h>
+
+static inline double get_time_ms(void) {
+    LARGE_INTEGER freq, counter;
+    QueryPerformanceFrequency(&freq);
+    QueryPerformanceCounter(&counter);
+    return (double)counter.QuadPart * 1000.0 / (double)freq.QuadPart;
+}
+}
+
+pub fn calcular_mandelbrot(ancho: i32, alto: i32, max_iter: i32) -> i32 {
+    let mut dentro: i32 = 0;
+    let mut py: i32 = 0;
+
+    while py < alto {
+        let mut px: i32 = 0;
+        let y0: f64 = ((py como f64) * 2.0 / (alto como f64)) - 1.0;
+
+        while px < ancho {
+            let x0: f64 = ((px como f64) * 3.5 / (ancho como f64)) - 2.5;
+            let mut x: f64 = 0.0;
+            let mut y: f64 = 0.0;
+            let mut iter: i32 = 0;
+
+            while ((x * x + y * y) <= 4.0) && (iter < max_iter) {
+                let xtemp: f64 = x * x - y * y + x0;
+                y = 2.0 * x * y + y0;
+                x = xtemp;
+                iter = iter + 1;
+            }
+
+            if iter == max_iter {
+                dentro = dentro + 1;
+            }
+
+            px = px + 1;
+        }
+        py = py + 1;
+    }
+
+    return dentro;
+}
+
+pub fn main() -> i32 {
+    let w: i32 = 1000;
+    let h: i32 = 1000;
+    let max_iter: i32 = 500;
+
+    embed {
+        printf("=== BENCHMARK DE RENDIMIENTO: UPL+ MANDELBROT (1000x1000, 500 iter) ===\n");
+    }
+
+    let mut t0: f64 = 0.0;
+    let mut t1: f64 = 0.0;
+    embed { t0 = get_time_ms(); }
+    let count: i32 = calcular_mandelbrot(w, h, max_iter);
+    embed {
+        t1 = get_time_ms();
+        double ms = t1 - t0;
+        printf("[UPL+ NATIVO] Puntos convergentes: %d\n", count);
+        printf("[UPL+ NATIVO] Tiempo de computo: %.2f ms (%.3f segundos)\n", ms, ms / 1000.0);
+    }
+
+    return 0;
+}

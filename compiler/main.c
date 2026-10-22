@@ -53,6 +53,15 @@ int main(int argc, char **argv) {
     bool run_after_build = false;
     char extra_gcc_flags[1024] = "";
 
+    if (argc >= 2 && (strcmp(argv[1], "pm") == 0 || strcmp(argv[1], "pkg") == 0)) {
+        char cmd[1024] = "bin\\upl_pm.exe";
+        for (int i = 2; i < argc; ++i) {
+            strcat(cmd, " ");
+            strcat(cmd, argv[i]);
+        }
+        return system(cmd);
+    }
+
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "build") == 0 || strcmp(argv[i], "compilar") == 0) {
             continue;
