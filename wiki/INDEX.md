@@ -11,6 +11,13 @@ Bienvenido al centro de documentación técnica del **Lenguaje de Programación 
 |---|---|---|
 | 🇪🇸 **Español** | **[Wiki en Español](es/INICIO.md)** | **Completo 100%:** Sintaxis, Compilador, Diagnósticos, Ejemplos |
 | 🇬🇧 **English** | **[English Wiki](en/HOME.md)** | **Full 100%:** Syntax, Compiler Architecture, Error Dictionary, Examples |
+| 🇫🇷 **Français** | **[Wiki en Français](fr/ACCUEIL.md)** | **Disponible :** Démarrage rapide, Syntaxe, Compilation |
+| 🇮🇹 **Italiano** | **[Wiki in Italiano](it/INIZIO.md)** | **Disponibile :** Guida rapida, Sintassi, Compilazione |
+| 🇨🇳 **中文** | **[中文维基文档](zh/README.md)** | **完整可用：** 快速入门、系统架构、编译运行 |
+| 🇯🇵 **日本語** | **[日本語 Wiki](ja/README.md)** | **利用可能：** クイックスタート、基本構文、ビルド手順 |
+| 🇷🇺 **Русский** | **[Русская Wiki](ru/README.md)** | **Доступно :** Быстрый старт, Архитектура, Компиляция |
+| 🇰🇷 **한국어** | **[한국어 위키](ko/README.md)** | **사용 가능 :** 빠른 시작 가이드, 문법 및 컴파일 |
+| 🇮🇳 **हिन्दी** | **[हिन्दी विकी](hi/README.md)** | **उपलब्ध :** त्वरित आरंभ, वास्तुकला, संकलन |
 
 ---
 
