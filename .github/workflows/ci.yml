@@ -15,8 +15,13 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
+    - name: Add MinGW to PATH
+      run: |
+        "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
     - name: Compile UPLC & UPL PM
       run: |
+        if (!(Test-Path bin)) { New-Item -ItemType Directory bin }
         gcc -O2 compiler/upl_arena.c compiler/lexer.c compiler/upl_ast.c compiler/upl_parser.c compiler/upl_codegen.c compiler/runtime/upl_comp3.c compiler/main.c -I compiler -I compiler/runtime -o bin/uplc.exe
         gcc -O2 tools/upl_pm.c -o bin/upl_pm.exe
 
