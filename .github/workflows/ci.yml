@@ -1,0 +1,58 @@
+name: UPL+ Native CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test-windows:
+    name: Windows x86_64 Native Test Suite
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup MinGW GCC
+      uses: egor-trefilov/setup-mingw@v2
+      with:
+        version: 12.2.0
+
+    - name: Compile UPLC & UPL PM
+      run: |
+        gcc -O2 compiler/upl_arena.c compiler/lexer.c compiler/upl_ast.c compiler/upl_parser.c compiler/upl_codegen.c compiler/runtime/upl_comp3.c compiler/main.c -I compiler -I compiler/runtime -o bin/uplc.exe
+        gcc -O2 tools/upl_pm.c -o bin/upl_pm.exe
+
+    - name: Execute Full Verification Suite
+      run: |
+        cmd.exe /c test.bat
+
+    - name: Run Silicon Benchmarks
+      run: |
+        .\bin\uplc.exe run benchmarks\mandelbrot\mandelbrot.upl
+
+  test-linux:
+    name: Linux POSIX x86_64 Test Suite
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Install Build Tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc make
+
+    - name: Compile UPLC & UPL PM
+      run: |
+        mkdir -p bin
+        gcc -O2 compiler/upl_arena.c compiler/lexer.c compiler/upl_ast.c compiler/upl_parser.c compiler/upl_codegen.c compiler/runtime/upl_comp3.c compiler/main.c -I compiler -I compiler/runtime -o bin/uplc
+        gcc -O2 tools/upl_pm.c -o bin/upl_pm
+
+    - name: Execute Verification Suite (POSIX)
+      run: |
+        chmod +x test.sh upl.sh
+        ./test.sh
