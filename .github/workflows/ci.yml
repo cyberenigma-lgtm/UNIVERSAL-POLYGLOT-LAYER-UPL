@@ -45,18 +45,7 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    - name: Install Build Tools
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc make
-
-    - name: Compile UPLC & UPL PM
-      run: |
-        mkdir -p bin
-        gcc -O2 compiler/upl_arena.c compiler/lexer.c compiler/upl_ast.c compiler/upl_parser.c compiler/upl_codegen.c compiler/runtime/upl_comp3.c compiler/main.c -I compiler -I compiler/runtime -o bin/uplc
-        gcc -O2 tools/upl_pm.c -o bin/upl_pm
-
     - name: Execute Verification Suite (POSIX)
       run: |
         chmod +x test.sh upl.sh
-        ./test.sh
+        bash -e ./test.sh
