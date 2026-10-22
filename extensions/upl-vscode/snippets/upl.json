@@ -52,5 +52,37 @@
             "}$0"
         ],
         "description": "Bloque de ensamblador x86_64 directo"
+    },
+    "Network Socket": {
+        "prefix": "net_tcp",
+        "body": [
+            "sea sock: i64 = net_socket_tcp();",
+            "si sock >= 0 {",
+            "    net_conectar(sock, \"${1:127.0.0.1}\", ${2:8080});",
+            "    $0",
+            "    net_cerrar(sock);",
+            "}"
+        ],
+        "description": "Cliente de red TCP soberano"
+    },
+    "Mutex Lock": {
+        "prefix": "mutex",
+        "body": [
+            "sea mtx: *void = mutex_crear();",
+            "si mutex_bloquear(mtx) {",
+            "    $0",
+            "    mutex_desbloquear(mtx);",
+            "}",
+            "mutex_destruir(mtx);"
+        ],
+        "description": "Bloqueo y sincronización de hilos con Mutex"
+    },
+    "COMP-3 Financial": {
+        "prefix": "comp3",
+        "body": [
+            "let mut balance: [u8; 8];",
+            "upl_comp3_from_str(balance, 8, \"${1:1000.00}\", 10, 2);$0"
+        ],
+        "description": "Número decimal financiero exacto BCD COMP-3"
     }
 }
