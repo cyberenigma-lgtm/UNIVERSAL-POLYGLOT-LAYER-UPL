@@ -39,6 +39,7 @@ static void cmd_list(void) {
         {"std/io",       "CONSOLA", "modules/std/io.upl",       "OPERATIVO"},
         {"std/net",      "REDES",   "modules/std/net.upl",      "OPERATIVO"},
         {"std/threads",  "CONCURR", "modules/std/threads.upl",  "OPERATIVO"},
+        {"std/json",     "SERIALIZ", "modules/std/json.upl",    "OPERATIVO"},
         {"neurowill",    "MOTOR VM","modules/neurowill/",       "OPERATIVO"},
         {"nuasm",        "JIT/ASM", "modules/nuasm/",           "OPERATIVO"},
         {"neurocobol",   "COMP-3",  "modules/neurocobol/",      "OPERATIVO"},
