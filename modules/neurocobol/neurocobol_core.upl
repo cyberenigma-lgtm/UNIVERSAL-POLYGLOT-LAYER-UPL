@@ -1,0 +1,143 @@
+// ============================================================================
+// MODULO: NEUROCOBOL CORE ENGINE (UPL+ NATIVO)
+// Especificacion: Aritmetica Decimal Exacta BCD / COMP-3 de Grado Financiero
+// Rendimiento: Freestanding, Cero-CRT, Determinismo Absoluto IEEE-754 Libre
+// ============================================================================
+
+modulo neurocobol_core;
+
+publico estructura NcDecimal {
+    digits: [u8; 32],
+    length: u32,
+    scale: u32,
+    sign: i32 // 1: Positivo, -1: Negativo
+}
+
+publico estructura NcRecordField {
+    offset: u32,
+    length: u32,
+    field_type: u32 // 1: DISPLAY, 2: COMP-3 (Packed), 3: BINARY
+}
+
+publico estructura NcContext {
+    status_code: i32,
+    operations_count: u64,
+    overflow_flag: i32
+}
+
+sea mut g_nc_ctx: NcContext;
+
+publico funcion NcInit() -> i32 {
+    g_nc_ctx.status_code = 0;
+    g_nc_ctx.operations_count = 0;
+    g_nc_ctx.overflow_flag = 0;
+    retornar 0;
+}
+
+// Codificacion BCD empaquetado (COMP-3)
+// En COMP-3, cada byte contiene 2 digitos decimales; el ultimo medio byte es el signo (0xC = +, 0xD = -)
+publico funcion NcPackComp3(unpacked_ascii: *u8, len: u32, out_comp3: *u8) -> u32 {
+    sea mut in_idx: u32 = 0;
+    sea mut out_idx: u32 = 0;
+
+    mientras in_idx + 1 < len {
+        sea d1: u8 = unpacked_ascii[in_idx] - 48; // '0' = 48
+        sea d2: u8 = unpacked_ascii[in_idx + 1] - 48;
+        out_comp3[out_idx] = (d1 * 16) | (d2 & 15);
+        in_idx = in_idx + 2;
+        out_idx = out_idx + 1;
+    }
+
+    si in_idx < len {
+        sea d_last: u8 = unpacked_ascii[in_idx] - 48;
+        out_comp3[out_idx] = (d_last * 16) | 12; // 0xC = positivo
+        out_idx = out_idx + 1;
+    } sino {
+        out_comp3[out_idx] = 12; // 0x0C
+        out_idx = out_idx + 1;
+    }
+
+    retornar out_idx;
+}
+
+// Decodificacion COMP-3 a digitos legibles
+publico funcion NcUnpackComp3(comp3_data: *u8, comp3_len: u32, out_ascii: *u8) -> u32 {
+    sea mut out_idx: u32 = 0;
+    sea mut i: u32 = 0;
+
+    mientras i < comp3_len {
+        sea b: u8 = comp3_data[i];
+        sea high: u8 = (b / 16) & 15;
+        sea low: u8 = b & 15;
+
+        si i + 1 == comp3_len {
+            // Ultimo byte contiene el ultimo digito y el nibble de signo
+            out_ascii[out_idx] = high + 48;
+            out_idx = out_idx + 1;
+        } sino {
+            out_ascii[out_idx] = high + 48;
+            out_idx = out_idx + 1;
+            out_ascii[out_idx] = low + 48;
+            out_idx = out_idx + 1;
+        }
+        i = i + 1;
+    }
+
+    out_ascii[out_idx] = 0; // Null terminator
+    retornar out_idx;
+}
+
+// Suma Decimal Exacta BCD de alta precision sobre buffers de digitos
+publico funcion NcAddBcd(a: *u8, b: *u8, result: *u8, len: u32) -> u8 {
+    sea mut carry: u8 = 0;
+    sea mut i: i32 = (len como i32) - 1;
+
+    mientras i >= 0 {
+        sea idx: u32 = i como u32;
+        sea sum: u32 = (a[idx] como u32) + (b[idx] como u32) + (carry como u32);
+        si sum > 9 {
+            result[idx] = (sum - 10) como u8;
+            carry = 1;
+        } sino {
+            result[idx] = sum como u8;
+            carry = 0;
+        }
+        i = i - 1;
+    }
+
+    g_nc_ctx.operations_count = g_nc_ctx.operations_count + 1;
+    si carry > 0 {
+        g_nc_ctx.overflow_flag = 1;
+    }
+    retornar carry;
+}
+
+// Resta Decimal Exacta BCD (asumiendo a >= b)
+publico funcion NcSubBcd(a: *u8, b: *u8, result: *u8, len: u32) -> u8 {
+    sea mut borrow: i32 = 0;
+    sea mut i: i32 = (len como i32) - 1;
+
+    mientras i >= 0 {
+        sea idx: u32 = i como u32;
+        sea mut diff: i32 = (a[idx] como i32) - (b[idx] como i32) - borrow;
+        si diff < 0 {
+            diff = diff + 10;
+            borrow = 1;
+        } sino {
+            borrow = 0;
+        }
+        result[idx] = diff como u8;
+        i = i - 1;
+    }
+
+    g_nc_ctx.operations_count = g_nc_ctx.operations_count + 1;
+    retornar borrow como u8;
+}
+
+publico funcion NcGetOperationsCount() -> u64 {
+    retornar g_nc_ctx.operations_count;
+}
+
+publico funcion NcGetOverflowFlag() -> i32 {
+    retornar g_nc_ctx.overflow_flag;
+}

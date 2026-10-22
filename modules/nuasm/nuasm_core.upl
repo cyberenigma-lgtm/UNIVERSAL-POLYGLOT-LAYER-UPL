@@ -1,0 +1,115 @@
+// ============================================================================
+// MODULO: NEURO-UNIVERSAL-ASM (NUASM) JIT & OPCODE ENCODER (UPL+ NATIVO)
+// Rendimiento: Generacion binaria directa de codigo maquina x86_64 a silicio
+// Arquitectura: Cero dependencias externas, eliminacion total de Python
+// ============================================================================
+
+modulo nuasm_core;
+
+publico estructura NuasmBuffer {
+    capacity: usize,
+    size: usize,
+    instruction_count: u32,
+    error_code: i32
+}
+
+sea mut g_nuasm: NuasmBuffer;
+
+publico funcion NuasmInit(capacity: usize) -> i32 {
+    g_nuasm.capacity = capacity;
+    g_nuasm.size = 0;
+    g_nuasm.instruction_count = 0;
+    g_nuasm.error_code = 0;
+    retornar 0;
+}
+
+// Emision de byte individual al buffer binario
+publico funcion NuasmEmitByte(out_buf: *u8, b: u8) {
+    si g_nuasm.size >= g_nuasm.capacity {
+        g_nuasm.error_code = 1; // Buffer overflow
+        retornar;
+    }
+    out_buf[g_nuasm.size] = b;
+    g_nuasm.size = g_nuasm.size + 1;
+}
+
+// Emision de palabra de 32 bits (Little-Endian)
+publico funcion NuasmEmitDword(out_buf: *u8, val: u32) {
+    NuasmEmitByte(out_buf, (val & 255) como u8);
+    NuasmEmitByte(out_buf, ((val / 256) & 255) como u8);
+    NuasmEmitByte(out_buf, ((val / 65536) & 255) como u8);
+    NuasmEmitByte(out_buf, ((val / 16777216) & 255) como u8);
+}
+
+// Emision de qword de 64 bits (Little-Endian)
+publico funcion NuasmEmitQword(out_buf: *u8, low32: u32, high32: u32) {
+    NuasmEmitDword(out_buf, low32);
+    NuasmEmitDword(out_buf, high32);
+}
+
+// Calculo de Byte ModR/M: (mod << 6) | (reg << 3) | rm
+publico funcion NuasmMakeModRM(mod: u8, reg: u8, rm: u8) -> u8 {
+    retornar ((mod & 3) * 64) | ((reg & 7) * 8) | (rm & 7);
+}
+
+// NOP (0x90)
+publico funcion NuasmEmitNop(out_buf: *u8) {
+    NuasmEmitByte(out_buf, 144); // 0x90
+    g_nuasm.instruction_count = g_nuasm.instruction_count + 1;
+}
+
+// RET (0xC3)
+publico funcion NuasmEmitRet(out_buf: *u8) {
+    NuasmEmitByte(out_buf, 195); // 0xC3
+    g_nuasm.instruction_count = g_nuasm.instruction_count + 1;
+}
+
+// INT imm8 (0xCD, imm)
+publico funcion NuasmEmitInt(out_buf: *u8, interrupt_num: u8) {
+    NuasmEmitByte(out_buf, 205); // 0xCD
+    NuasmEmitByte(out_buf, interrupt_num);
+    g_nuasm.instruction_count = g_nuasm.instruction_count + 1;
+}
+
+// MOV reg, imm64: REX.W (0x48) + 0xB8+reg + Imm64
+publico funcion NuasmEmitMovRegImm64(out_buf: *u8, reg_id: u8, low32: u32, high32: u32) {
+    NuasmEmitByte(out_buf, 72); // 0x48 (REX.W)
+    NuasmEmitByte(out_buf, 184 + (reg_id & 7)); // 0xB8 + reg
+    NuasmEmitQword(out_buf, low32, high32);
+    g_nuasm.instruction_count = g_nuasm.instruction_count + 1;
+}
+
+// XOR reg, reg: REX.W (0x48) + 0x31 + ModRM(11, reg, reg)
+publico funcion NuasmEmitXorRegReg(out_buf: *u8, dst_reg: u8, src_reg: u8) {
+    NuasmEmitByte(out_buf, 72); // 0x48 (REX.W)
+    NuasmEmitByte(out_buf, 49); // 0x31 (XOR r/m64, r64)
+    sea modrm: u8 = NuasmMakeModRM(3, src_reg, dst_reg); // mod 11 = direct registers
+    NuasmEmitByte(out_buf, modrm);
+    g_nuasm.instruction_count = g_nuasm.instruction_count + 1;
+}
+
+// ADD reg, reg: REX.W (0x48) + 0x01 + ModRM(11, reg, reg)
+publico funcion NuasmEmitAddRegReg(out_buf: *u8, dst_reg: u8, src_reg: u8) {
+    NuasmEmitByte(out_buf, 72); // 0x48 (REX.W)
+    NuasmEmitByte(out_buf, 1);  // 0x01 (ADD r/m64, r64)
+    sea modrm: u8 = NuasmMakeModRM(3, src_reg, dst_reg);
+    NuasmEmitByte(out_buf, modrm);
+    g_nuasm.instruction_count = g_nuasm.instruction_count + 1;
+}
+
+// SUB reg, reg: REX.W (0x48) + 0x29 + ModRM(11, reg, reg)
+publico funcion NuasmEmitSubRegReg(out_buf: *u8, dst_reg: u8, src_reg: u8) {
+    NuasmEmitByte(out_buf, 72); // 0x48 (REX.W)
+    NuasmEmitByte(out_buf, 41); // 0x29 (SUB r/m64, r64)
+    sea modrm: u8 = NuasmMakeModRM(3, src_reg, dst_reg);
+    NuasmEmitByte(out_buf, modrm);
+    g_nuasm.instruction_count = g_nuasm.instruction_count + 1;
+}
+
+publico funcion NuasmGetByteSize() -> usize {
+    retornar g_nuasm.size;
+}
+
+publico funcion NuasmGetInstructionCount() -> u32 {
+    retornar g_nuasm.instruction_count;
+}

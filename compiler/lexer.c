@@ -95,6 +95,8 @@ static TokenType match_keyword(const char* lexeme) {
     if (strcmp(lexeme, "while") == 0 || strcmp(lexeme, "mientras") == 0) return TOKEN_KEYWORD_WHILE;
     if (strcmp(lexeme, "for") == 0 || strcmp(lexeme, "para") == 0) return TOKEN_KEYWORD_FOR;
     if (strcmp(lexeme, "return") == 0 || strcmp(lexeme, "retornar") == 0) return TOKEN_KEYWORD_RETURN;
+    if (strcmp(lexeme, "break") == 0 || strcmp(lexeme, "romper") == 0) return TOKEN_KEYWORD_BREAK;
+    if (strcmp(lexeme, "continue") == 0 || strcmp(lexeme, "continuar") == 0) return TOKEN_KEYWORD_CONTINUE;
     
     // Conversión de tipos
     if (strcmp(lexeme, "as") == 0 || strcmp(lexeme, "como") == 0) return TOKEN_KEYWORD_AS;
@@ -291,8 +293,14 @@ Token lexer_next_token(Lexer* lexer) {
         if (peek(lexer) == '>') { advance(lexer); return create_token(TOKEN_DELIM_ARROW, "->", 2, start_line, start_col); }
         return create_token(TOKEN_OP_SUB, "-", 1, start_line, start_col);
     }
-    if (c == '&' && peek(lexer) == '&') { advance(lexer); return create_token(TOKEN_OP_AND, "&&", 2, start_line, start_col); }
-    if (c == '|' && peek(lexer) == '|') { advance(lexer); return create_token(TOKEN_OP_OR, "||", 2, start_line, start_col); }
+    if (c == '&') {
+        if (peek(lexer) == '&') { advance(lexer); return create_token(TOKEN_OP_AND, "&&", 2, start_line, start_col); }
+        return create_token(TOKEN_OP_BIT_AND, "&", 1, start_line, start_col);
+    }
+    if (c == '|') {
+        if (peek(lexer) == '|') { advance(lexer); return create_token(TOKEN_OP_OR, "||", 2, start_line, start_col); }
+        return create_token(TOKEN_OP_BIT_OR, "|", 1, start_line, start_col);
+    }
 
     // Delimitadores y operadores de un solo caracter
     switch (c) {
@@ -349,6 +357,8 @@ const char* token_type_name(TokenType type) {
         case TOKEN_KEYWORD_COMP3:  return "TOKEN_KEYWORD_COMP3";
         case TOKEN_KEYWORD_ASM:    return "TOKEN_KEYWORD_ASM";
         case TOKEN_KEYWORD_EMBED:  return "TOKEN_KEYWORD_EMBED";
+        case TOKEN_KEYWORD_BREAK:  return "TOKEN_KEYWORD_BREAK";
+        case TOKEN_KEYWORD_CONTINUE: return "TOKEN_KEYWORD_CONTINUE";
         case TOKEN_OP_ASSIGN:      return "TOKEN_OP_ASSIGN";
         case TOKEN_OP_EQUAL:       return "TOKEN_OP_EQUAL";
         case TOKEN_OP_NOT_EQUAL:   return "TOKEN_OP_NOT_EQUAL";
@@ -364,6 +374,8 @@ const char* token_type_name(TokenType type) {
         case TOKEN_OP_OR:          return "TOKEN_OP_OR";
         case TOKEN_OP_NOT:         return "TOKEN_OP_NOT";
         case TOKEN_OP_XOR:         return "TOKEN_OP_XOR";
+        case TOKEN_OP_BIT_AND:     return "TOKEN_OP_BIT_AND";
+        case TOKEN_OP_BIT_OR:      return "TOKEN_OP_BIT_OR";
         case TOKEN_DELIM_LPAREN:   return "TOKEN_DELIM_LPAREN";
         case TOKEN_DELIM_RPAREN:   return "TOKEN_DELIM_RPAREN";
         case TOKEN_DELIM_LBRACE:   return "TOKEN_DELIM_LBRACE";

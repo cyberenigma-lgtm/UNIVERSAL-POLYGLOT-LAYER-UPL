@@ -1,0 +1,129 @@
+// ============================================================================
+// MODULO: NEUROWILL AUTONOMOUS NEURAL EXECUTION ENGINE (UPL+ NATIVO)
+// Especificacion: Puente Binario Neural y Maquina Virtual de Estados en Memoria
+// Rendimiento: Ejecucion In-Memory Cero-Copia (Sin Python, Sin Archivos Temporales)
+// ============================================================================
+
+modulo neurowill_core;
+
+publico estructura WillContext {
+    registers: [u64; 16],
+    ip: u32,
+    zero_flag: i32,
+    carry_flag: i32,
+    cycles_executed: u64,
+    halted: i32
+}
+
+sea mut g_will: WillContext;
+
+publico funcion WillInit() -> i32 {
+    sea mut i: usize = 0;
+    mientras i < 16 {
+        g_will.registers[i] = 0;
+        i = i + 1;
+    }
+    g_will.ip = 0;
+    g_will.zero_flag = 0;
+    g_will.carry_flag = 0;
+    g_will.cycles_executed = 0;
+    g_will.halted = 0;
+    retornar 0;
+}
+
+publico funcion WillSetRegister(reg_idx: u32, val: u64) {
+    si reg_idx < 16 {
+        g_will.registers[reg_idx] = val;
+    }
+}
+
+publico funcion WillGetRegister(reg_idx: u32) -> u64 {
+    si reg_idx < 16 {
+        retornar g_will.registers[reg_idx];
+    }
+    retornar 0;
+}
+
+// Ciclo de ejecucion de Bytecode Neural en Silicio
+publico funcion WillExecuteBytecode(bytecode: *u8, length: u32, max_cycles: u32) -> i32 {
+    g_will.ip = 0;
+    g_will.halted = 0;
+
+    mientras g_will.ip < length {
+        si g_will.halted == 1 {
+            retornar 0;
+        }
+        si (g_will.cycles_executed como u32) >= max_cycles {
+            retornar 2; // Limite de ciclos alcanzado (Timeout)
+        }
+
+        sea opcode: u8 = bytecode[g_will.ip];
+        g_will.ip = g_will.ip + 1;
+        g_will.cycles_executed = g_will.cycles_executed + 1;
+
+        // 0xFF: HALT
+        si opcode == 255 {
+            g_will.halted = 1;
+            retornar 0;
+        }
+
+        // 0x01: MOV_IMM reg, imm32 (5 bytes)
+        si opcode == 1 {
+            si g_will.ip + 4 < length {
+                sea r: u8 = bytecode[g_will.ip] & 15;
+                sea b0: u32 = bytecode[g_will.ip + 1] como u32;
+                sea b1: u32 = bytecode[g_will.ip + 2] como u32;
+                sea b2: u32 = bytecode[g_will.ip + 3] como u32;
+                sea b3: u32 = bytecode[g_will.ip + 4] como u32;
+                sea imm: u64 = (b0 | (b1 * 256) | (b2 * 65536) | (b3 * 16777216)) como u64;
+                g_will.registers[r] = imm;
+                g_will.ip = g_will.ip + 5;
+            }
+        }
+
+        // 0x02: ADD reg_dst, reg_src (2 bytes)
+        si opcode == 2 {
+            si g_will.ip + 1 < length {
+                sea r_dst: u8 = bytecode[g_will.ip] & 15;
+                sea r_src: u8 = bytecode[g_will.ip + 1] & 15;
+                g_will.registers[r_dst] = g_will.registers[r_dst] + g_will.registers[r_src];
+                g_will.ip = g_will.ip + 2;
+            }
+        }
+
+        // 0x03: SUB reg_dst, reg_src (2 bytes)
+        si opcode == 3 {
+            si g_will.ip + 1 < length {
+                sea r_dst: u8 = bytecode[g_will.ip] & 15;
+                sea r_src: u8 = bytecode[g_will.ip + 1] & 15;
+                g_will.registers[r_dst] = g_will.registers[r_dst] - g_will.registers[r_src];
+                g_will.ip = g_will.ip + 2;
+            }
+        }
+
+        // 0x07: XOR reg_dst, reg_src (2 bytes)
+        si opcode == 7 {
+            si g_will.ip + 1 < length {
+                sea r_dst: u8 = bytecode[g_will.ip] & 15;
+                sea r_src: u8 = bytecode[g_will.ip + 1] & 15;
+                g_will.registers[r_dst] = g_will.registers[r_dst] ^ g_will.registers[r_src];
+                si g_will.registers[r_dst] == 0 {
+                    g_will.zero_flag = 1;
+                } sino {
+                    g_will.zero_flag = 0;
+                }
+                g_will.ip = g_will.ip + 2;
+            }
+        }
+    }
+
+    retornar 0;
+}
+
+publico funcion WillGetCyclesExecuted() -> u64 {
+    retornar g_will.cycles_executed;
+}
+
+publico funcion WillGetZeroFlag() -> i32 {
+    retornar g_will.zero_flag;
+}

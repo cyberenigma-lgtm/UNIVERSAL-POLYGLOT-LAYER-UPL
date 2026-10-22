@@ -1,0 +1,127 @@
+// ============================================================================
+// MODULO: NEURO-GFX LOW-LEVEL FRAMEBUFFER & RASTER ENGINE (UPL+ NATIVO)
+// Rendimiento: Acceso directo a VRAM / Memoria Lineal ARGB32
+// Compatibilidad: Modo 13h VGA + Extensiones SVGA / ARGB de 32 bits
+// ============================================================================
+
+modulo neuro_gfx_core;
+
+publico estructura GfxContext {
+    width: u32,
+    height: u32,
+    stride: u32,
+    frame_count: u64,
+    initialized: i32
+}
+
+sea mut g_gfx: GfxContext;
+
+publico funcion GfxInit(width: u32, height: u32) -> i32 {
+    g_gfx.width = width;
+    g_gfx.height = height;
+    g_gfx.stride = width * 4;
+    g_gfx.frame_count = 0;
+    g_gfx.initialized = 1;
+    retornar 0;
+}
+
+// Limpieza de buffer lineal con color de 32 bits (0xAARRGGBB)
+publico funcion GfxClear(buffer: *u32, pixel_count: u32, color: u32) {
+    sea mut i: u32 = 0;
+    mientras i < pixel_count {
+        buffer[i] = color;
+        i = i + 1;
+    }
+}
+
+// Dibujo de pixel con clipping en caliente
+publico funcion GfxSetPixel(buffer: *u32, x: i32, y: i32, color: u32) {
+    si x < 0 { retornar; }
+    si y < 0 { retornar; }
+    si (x como u32) >= g_gfx.width { retornar; }
+    si (y como u32) >= g_gfx.height { retornar; }
+
+    sea offset: u32 = (y como u32) * g_gfx.width + (x como u32);
+    buffer[offset] = color;
+}
+
+// Mapeo de paleta VGA clasica (Modo 13h de 256 colores) a 32bpp ARGB
+publico funcion GfxBlitVgaPalette(src_vga: *u8, dst_argb: *u32, palette_table: *u32, count: u32) {
+    sea mut i: u32 = 0;
+    mientras i < count {
+        sea color_index: u32 = src_vga[i] como u32;
+        dst_argb[i] = palette_table[color_index];
+        i = i + 1;
+    }
+}
+
+// Trazado de linea Bresenham de alto rendimiento sin punto flotante
+publico funcion GfxDrawLine(buffer: *u32, x0: i32, y0: i32, x1: i32, y1: i32, color: u32) {
+    sea mut dx: i32 = x1 - x0;
+    si dx < 0 { dx = 0 - dx; }
+    sea mut dy: i32 = y1 - y0;
+    si dy < 0 { dy = 0 - dy; }
+
+    sea mut sx: i32 = -1;
+    si x0 < x1 { sx = 1; }
+    sea mut sy: i32 = -1;
+    si y0 < y1 { sy = 1; }
+
+    sea mut err: i32 = dx - dy;
+    sea mut cx: i32 = x0;
+    sea mut cy: i32 = y0;
+
+    mientras 1 == 1 {
+        GfxSetPixel(buffer, cx, cy, color);
+        si cx == x1 {
+            si cy == y1 {
+                retornar;
+            }
+        }
+
+        sea e2: i32 = 2 * err;
+        si e2 > (0 - dy) {
+            err = err - dy;
+            cx = cx + sx;
+        }
+        si e2 < dx {
+            err = err + dx;
+            cy = cy + sy;
+        }
+    }
+}
+
+// Mezcla Alpha en enteros (Src Over: (src * a + dst * (255 - a)) / 256)
+publico funcion GfxBlendPixel(dst: u32, src: u32) -> u32 {
+    sea alpha: u32 = (src / 16777216) & 255; // (src >> 24) & 0xFF
+    si alpha == 255 {
+        retornar src;
+    }
+    si alpha == 0 {
+        retornar dst;
+    }
+
+    sea inv_a: u32 = 255 - alpha;
+
+    sea sr: u32 = (src / 65536) & 255;
+    sea sg: u32 = (src / 256) & 255;
+    sea sb: u32 = src & 255;
+
+    sea dr: u32 = (dst / 65536) & 255;
+    sea dg: u32 = (dst / 256) & 255;
+    sea db: u32 = dst & 255;
+
+    sea out_r: u32 = (sr * alpha + dr * inv_a) / 255;
+    sea out_g: u32 = (sg * alpha + dg * inv_a) / 255;
+    sea out_b: u32 = (sb * alpha + db * inv_a) / 255;
+
+    retornar 4278190080 | (out_r * 65536) | (out_g * 256) | out_b;
+}
+
+publico funcion GfxGetFrameCount() -> u64 {
+    retornar g_gfx.frame_count;
+}
+
+publico funcion GfxNextFrame() {
+    g_gfx.frame_count = g_gfx.frame_count + 1;
+}

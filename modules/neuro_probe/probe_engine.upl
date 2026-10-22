@@ -1,0 +1,125 @@
+// ============================================================================
+// MODULO: NEURO-PROBE HARDWARE INTROSPECTION & SERIAL TELEMETRY (UPL+ NATIVO)
+// Proposito: Analisis de ejecucion de kernel, telemetria serial y paridad de silicio
+// Rendimiento: Analizador Cero-Copia en tiempo real sin dependencias externas
+// ============================================================================
+
+modulo probe_engine;
+
+publico estructura ProbeReport {
+    total_bytes_analyzed: u64,
+    valid_markers_count: u32,
+    divergence_count: u32,
+    anomaly_flags: u32,
+    start_cycle: u64,
+    elapsed_cycles: u64
+}
+
+publico estructura ProbeConfig {
+    strict_marker_mode: i32,
+    max_divergence_threshold: u32,
+    initialized: i32
+}
+
+sea mut g_probe_cfg: ProbeConfig;
+sea mut g_last_report: ProbeReport;
+
+publico funcion ProbeInit(strict_mode: i32, max_div: u32) -> i32 {
+    g_probe_cfg.strict_marker_mode = strict_mode;
+    g_probe_cfg.max_divergence_threshold = max_div;
+    g_probe_cfg.initialized = 1;
+
+    g_last_report.total_bytes_analyzed = 0;
+    g_last_report.valid_markers_count = 0;
+    g_last_report.divergence_count = 0;
+    g_last_report.anomaly_flags = 0;
+    g_last_report.start_cycle = 0;
+    g_last_report.elapsed_cycles = 0;
+
+    retornar 0;
+}
+
+// Comprobacion rapida de caracter marker valido (ASCII alfanumerico o delimitador)
+publico funcion ProbeIsMarker(ch: u8) -> i32 {
+    // Delimitadores: [ ] { } ! ? # $ :
+    si ch == 91 { retornar 1; }  // '['
+    si ch == 93 { retornar 1; }  // ']'
+    si ch == 123 { retornar 1; } // '{'
+    si ch == 125 { retornar 1; } // '}'
+    si ch == 33 { retornar 1; }  // '!'
+    si ch == 63 { retornar 1; }  // '?'
+    si ch == 35 { retornar 1; }  // '#'
+    si ch == 36 { retornar 1; }  // '$'
+    si ch == 58 { retornar 1; }  // ':'
+
+    // 0-9: 48 a 57
+    si ch >= 48 {
+        si ch <= 57 {
+            retornar 1;
+        }
+    }
+
+    // A-Z: 65 a 90
+    si ch >= 65 {
+        si ch <= 90 {
+            retornar 1;
+        }
+    }
+
+    // a-z: 97 a 122
+    si ch >= 97 {
+        si ch <= 122 {
+            retornar 1;
+        }
+    }
+
+    retornar 0;
+}
+
+// Analisis de flujo serial crudo y extraccion de markers
+publico funcion ProbeScanSerialStream(stream: *u8, len: usize, out_markers: *u8) -> u32 {
+    sea mut i: usize = 0;
+    sea mut marker_idx: u32 = 0;
+
+    mientras i < len {
+        sea b: u8 = stream[i];
+        si ProbeIsMarker(b) == 1 {
+            out_markers[marker_idx] = b;
+            marker_idx = marker_idx + 1;
+        }
+        i = i + 1;
+    }
+
+    out_markers[marker_idx] = 0; // Null terminator
+    g_last_report.total_bytes_analyzed = g_last_report.total_bytes_analyzed + (len como u64);
+    g_last_report.valid_markers_count = marker_idx;
+    retornar marker_idx;
+}
+
+// Comparador diferencial de paridad entre dos flujos (ej: QEMU vs VirtualBox / Hardware)
+publico funcion ProbeCompareStreams(stream_a: *u8, stream_b: *u8, len: usize) -> u32 {
+    sea mut i: usize = 0;
+    sea mut divergences: u32 = 0;
+
+    mientras i < len {
+        si stream_a[i] != stream_b[i] {
+            divergences = divergences + 1;
+        }
+        i = i + 1;
+    }
+
+    g_last_report.divergence_count = divergences;
+    si divergences > g_probe_cfg.max_divergence_threshold {
+        g_last_report.anomaly_flags = g_last_report.anomaly_flags | 1;
+    }
+
+    retornar divergences;
+}
+
+publico funcion ProbeGetDivergenceCount() -> u32 {
+    retornar g_last_report.divergence_count;
+}
+
+publico funcion ProbeGetValidMarkersCount() -> u32 {
+    retornar g_last_report.valid_markers_count;
+}

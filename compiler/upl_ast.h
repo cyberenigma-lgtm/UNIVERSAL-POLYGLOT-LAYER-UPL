@@ -48,6 +48,8 @@ typedef enum {
     AST_STMT_BLOCK,
     AST_STMT_EMBED,
     AST_STMT_ASM,
+    AST_STMT_BREAK,
+    AST_STMT_CONTINUE,
 
     // Declaraciones de alto nivel
     AST_DECL_PARAM,
@@ -244,6 +246,8 @@ UplAstNode* upl_ast_new_stmt_return(UPL_Arena *arena, UplAstNode *expr, size_t l
 UplAstNode* upl_ast_new_stmt_expr(UPL_Arena *arena, UplAstNode *expr, size_t line, size_t col);
 UplAstNode* upl_ast_new_block(UPL_Arena *arena, UplAstList *stmts, size_t line, size_t col);
 UplAstNode* upl_ast_new_raw_block(UPL_Arena *arena, UplAstKind kind, const char *raw_code, size_t line, size_t col);
+UplAstNode* upl_ast_new_stmt_break(UPL_Arena *arena, size_t line, size_t col);
+UplAstNode* upl_ast_new_stmt_continue(UPL_Arena *arena, size_t line, size_t col);
 
 UplAstNode* upl_ast_new_decl_param(UPL_Arena *arena, const char *name, UplAstNode *type, size_t line, size_t col);
 UplAstNode* upl_ast_new_decl_fn(UPL_Arena *arena, const char *name, UplAstList *params, UplAstNode *ret_type, UplAstNode *body, bool is_pub, size_t line, size_t col);

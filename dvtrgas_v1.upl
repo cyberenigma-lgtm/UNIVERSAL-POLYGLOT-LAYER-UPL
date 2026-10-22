@@ -1,0 +1,188 @@
+// Generado automaticamente por c2upl (C99 a UPL+ Transpiler)
+
+embed "c" {
+#include "dvtrga_security_bridge.h" // Private security module (gitignored)
+}
+
+embed "c" {
+#include <stdint.h>
+}
+
+embed "c" {
+#include <windows.h>
+}
+
+pub struct DVTRGA_CONTEXT {
+    hwnd: HWND,
+    hdc: HDC,
+    hBitmap: HBITMAP,
+    pBits: *void,
+    width: u32,
+    height: u32,
+    pitch: u32,
+    bpp: u8,
+    initialized: u8,
+}
+
+pub fn __declspec(dllexport: ) pub fn DvtrgaInit(width: u32, height: u32, license_key: *i8) -> i32 {
+    if g_ctx . initialized     return 0 ; 
+    if ! Dvtrga_Security_Validate ( license_key , NULL ) {
+OutputDebugStringA ( "DVTRGA: FAILED TO INITIALIZE - INVALID OR EXPIRED LICENSE." ) ; 
+    return - 1 ; 
+}
+    let mut wc: WNDCLASSA = {
+0 }
+; 
+wc . style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW ; 
+wc . lpfnWndProc = DefWindowProcA ; 
+wc . hInstance = GetModuleHandle ( NULL ) ; 
+wc . lpszClassName = "DVTRGA_CPU_Class" ; 
+wc . hCursor = LoadCursor ( NULL , IDC_ARROW ) ; 
+RegisterClassA ( & wc ) ; 
+g_ctx . hwnd = CreateWindowExA ( WS_EX_APPWINDOW | WS_EX_TOPMOST , "DVTRGA_CPU_Class" , "DVTRGA CPU RASTERIZER - U9 DEDICATED" , WS_POPUP | WS_VISIBLE , 0 , 0 , width , height , NULL , NULL , wc . hInstance , NULL ) ; 
+    if ! g_ctx . hwnd {
+g_ctx . hwnd = GetDesktopWindow ( ) ; 
+}
+g_ctx . hdc = GetDC ( g_ctx . hwnd ) ; 
+    if ! g_ctx . hdc     return - 1 ; 
+    let mut bmi: BITMAPINFO = {
+0 }
+; 
+bmi . bmiHeader . biSize = sizeof ( BITMAPINFOHEADER ) ; 
+bmi . bmiHeader . biWidth = width ; 
+bmi . bmiHeader . biHeight = - ( int32_t ) height ; 
+bmi . bmiHeader . biPlanes = 1 ; 
+bmi . bmiHeader . biBitCount = 32 ; 
+bmi . bmiHeader . biCompression = BI_RGB ; 
+g_ctx . hBitmap = CreateDIBSection ( g_ctx . hdc , & bmi , DIB_RGB_COLORS , & g_ctx . pBits , NULL , 0 ) ; 
+    if ! g_ctx . hBitmap || ! g_ctx . pBits {
+ReleaseDC ( g_ctx . hwnd , g_ctx . hdc ) ; 
+    return - 1 ; 
+}
+g_ctx . width = width ; 
+g_ctx . height = height ; 
+g_ctx . pitch = 4 ; 
+g_ctx . bpp = 32 ; 
+g_ctx . initialized = 1 ; 
+    return 0 ; 
+}
+
+pub fn __declspec(dllexport: ) pub fn DvtrgaClear(color: u32) {
+    if ! g_ctx . initialized || ! g_ctx . pBits     return ; 
+    let mut pixels: *u32 = ( ) g_ctx . pBits ; 
+    let mut totalPixels: u32 = g_ctx .     let mut g_ctx: *width . height ; 
+for (     let mut i: u32 = 0 ; 
+i < totalPixels ; 
+i + + ) {
+pixels [ i ] = color ; 
+}
+}
+
+pub fn __declspec(dllexport: ) pub fn DvtrgaPutPixel(x: u32, y: u32, color: u32) {
+    if ! g_ctx . initialized || ! g_ctx . pBits     return ; 
+    if x >= g_ctx . width || y >= g_ctx . height     return ; 
+    let mut pixels: *u32 = ( ) g_ctx . pBits ; 
+pixels [     let mut g_ctx: *y . width + x ] = color ; 
+}
+
+pub fn __declspec(dllexport: ) pub fn DvtrgaGetPixel(x: u32, y: u32) -> u32 {
+    if ! g_ctx . initialized || ! g_ctx . pBits     return 0 ; 
+    if x >= g_ctx . width || y >= g_ctx . height     return 0 ; 
+    let mut pixels: *u32 = ( ) g_ctx . pBits ; 
+    return pixels [     let mut g_ctx: *y . width + x ] ; 
+}
+
+pub fn __declspec(dllexport: ) pub fn DvtrgaFillRect(x: u32, y: u32, w: u32, h: u32, color: u32) {
+    if ! g_ctx . initialized     return ; 
+for (     let mut dy: u32 = 0 ; 
+dy < h ; 
+dy + + ) {
+for (     let mut dx: u32 = 0 ; 
+dx < w ; 
+dx + + ) {
+DvtrgaPutPixel ( x + dx , y + dy , color ) ; 
+}
+}
+}
+
+pub fn __declspec(dllexport: ) pub fn DvtrgaDrawLine(x1: u32, y1: u32, x2: u32, y2: u32, color: u32) {
+    if ! g_ctx . initialized     return ; 
+    let mut dx: i32 = abs ( ( ) x2 - ( ) x1 ) ; 
+    let mut dy: i32 = abs ( ( ) y2 - ( ) y1 ) ; 
+    let mut sx: i32 = x1 <     let mut ?: x2 1 : - 1 ; 
+    let mut sy: i32 = y1 <     let mut ?: y2 1 : - 1 ; 
+    let mut err: i32 = dx - dy ; 
+    while 1 {
+DvtrgaPutPixel ( x1 , y1 , color ) ; 
+    if x1 == x2 && y1 == y2 break ; 
+    let mut e2: i32 = 2 * err ; 
+    if e2 > - dy {
+err - = dy ; 
+x1 + = sx ; 
+}
+    if e2 < dx {
+err + = dx ; 
+y1 + = sy ; 
+}
+}
+}
+
+pub fn __declspec(dllexport: ) pub fn DvtrgaPresent() {
+    if ! g_ctx . initialized || ! g_ctx . pBits     return ; 
+    let mut bmi: BITMAPINFO = {
+0 }
+; 
+bmi . bmiHeader . biSize = sizeof ( BITMAPINFOHEADER ) ; 
+bmi . bmiHeader . biWidth = g_ctx . width ; 
+bmi . bmiHeader . biHeight = - ( int32_t ) g_ctx . height ; 
+bmi . bmiHeader . biPlanes = 1 ; 
+bmi . bmiHeader . biBitCount = 32 ; 
+bmi . bmiHeader . biCompression = BI_RGB ; 
+SetDIBitsToDevice ( g_ctx . hdc , 0 , 0 , g_ctx . width , g_ctx . height , 0 , 0 , 0 , g_ctx . height , g_ctx . pBits , & bmi , DIB_RGB_COLORS ) ; 
+}
+
+pub fn __declspec(dllexport: ) pub fn DvtrgaSaveBMP(filename: *i8) -> i32 {
+    if ! g_ctx . initialized || ! g_ctx . hBitmap     return - 1 ; 
+    let mut bfh: BITMAPFILEHEADER = {
+0 }
+; 
+    let mut bih: BITMAPINFOHEADER = {
+0 }
+; 
+bfh . bfType = 0x4D42 ; 
+bfh . bfOffBits = sizeof ( BITMAPFILEHEADER ) + sizeof ( BITMAPINFOHEADER ) ; 
+bfh . bfSize = bfh . bfOffBits + ( g_ctx .     let mut g_ctx: *width . 4 ) ; 
+bih . biSize = sizeof ( BITMAPINFOHEADER ) ; 
+bih . biWidth = g_ctx . width ; 
+bih . biHeight = - ( int32_t ) g_ctx . height ; 
+bih . biPlanes = 1 ; 
+bih . biBitCount = 32 ; 
+bih . biCompression = BI_RGB ; 
+    let mut hFile: HANDLE = CreateFileA ( filename , GENERIC_WRITE , 0 , NULL , CREATE_ALWAYS , FILE_ATTRIBUTE_NORMAL , NULL ) ; 
+    if hFile == INVALID_HANDLE_VALUE     return - 1 ; 
+    let mut written: DWORD ; 
+WriteFile ( hFile , & bfh , sizeof ( bfh ) , & written , NULL ) ; 
+WriteFile ( hFile , & bih , sizeof ( bih ) , & written , NULL ) ; 
+WriteFile ( hFile , g_ctx . pBits , g_ctx .     let mut g_ctx: *width . 4 , & written , NULL ) ; 
+CloseHandle ( hFile ) ; 
+    return 0 ; 
+}
+
+pub fn __declspec(dllexport: ) pub fn DvtrgaClose() {
+    if ! g_ctx . initialized     return ; 
+    if g_ctx . hBitmap DeleteObject ( g_ctx . hBitmap ) ; 
+    if g_ctx . hdc ReleaseDC ( g_ctx . hwnd , g_ctx . hdc ) ; 
+memset ( & g_ctx , 0 , sizeof ( g_ctx ) ) ; 
+}
+
+pub fn __declspec(dllexport: ) pub fn DvtrgaGetRawBuffer() -> *u32 {
+    if g_ctx . initialized     return ( ) g_ctx . pBits ; 
+    return NULL ; 
+}
+
+pub fn __declspec(dllexport: ) pub fn DvtrgaGetInfo(width: *u32, height: *u32, bpp: *u32) {
+    if width * width = g_ctx . width ; 
+    if height * height = g_ctx . height ; 
+    if bpp * bpp = g_ctx . bpp ; 
+}
+

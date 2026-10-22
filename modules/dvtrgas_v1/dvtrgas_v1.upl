@@ -1,0 +1,187 @@
+// ============================================================================
+// DVTRGA-v1 — UPL+ HIGH-PERFORMANCE GRAPHICS MODULE
+// Direct Visual Transport & Render Graphics Architecture (v1.0 UPL Port)
+// Language: Universal Polyglot Layer (UPL-v5 / Dragon Book Architecture)
+// Author: José Manuel Moreno (Noxferion)
+// License: SafeCreative Protected / Neuro-OS Sovereign Architecture
+// ============================================================================
+
+module dvtrgas_v1;
+
+@snapshot
+struct DvtrgaContext {
+    width: u32,
+    height: u32,
+    pitch: u32,
+    bpp: u8,
+    initialized: u8,
+    frame_count: u64,
+    pixels: *u32
+}
+
+@baremetal
+pub fn dvtrga_init(ctx: *DvtrgaContext, width: u32, height: u32, buffer: *u32) -> i32 {
+    ctx.width = width;
+    ctx.height = height;
+    ctx.pitch = width * 4;
+    ctx.bpp = 32;
+    ctx.initialized = 1;
+    ctx.frame_count = 0;
+    ctx.pixels = buffer;
+    return 0;
+}
+
+@baremetal
+pub fn dvtrga_clear(ctx: *DvtrgaContext, color: u32) -> void {
+    if (ctx.initialized == 0) {
+        return;
+    }
+    let total_pixels: u32 = ctx.width * ctx.height;
+    let mut i: u32 = 0;
+    while (i < total_pixels) {
+        let p: *u32 = ctx.pixels + i;
+        *p = color;
+        i = i + 1;
+    }
+    ctx.frame_count = ctx.frame_count + 1;
+}
+
+@baremetal
+pub fn dvtrga_put_pixel(ctx: *DvtrgaContext, x: u32, y: u32, color: u32) -> void {
+    if (ctx.initialized == 0) {
+        return;
+    }
+    if (x >= ctx.width) {
+        return;
+    }
+    if (y >= ctx.height) {
+        return;
+    }
+    let offset: u32 = y * ctx.width + x;
+    let p: *u32 = ctx.pixels + offset;
+    *p = color;
+}
+
+@baremetal
+pub fn dvtrga_get_pixel(ctx: *DvtrgaContext, x: u32, y: u32) -> u32 {
+    if (ctx.initialized == 0) {
+        return 0;
+    }
+    if (x >= ctx.width) {
+        return 0;
+    }
+    if (y >= ctx.height) {
+        return 0;
+    }
+    let offset: u32 = y * ctx.width + x;
+    let p: *u32 = ctx.pixels + offset;
+    return *p;
+}
+
+@baremetal
+pub fn dvtrga_fill_rect(ctx: *DvtrgaContext, x: u32, y: u32, w: u32, h: u32, color: u32) -> void {
+    if (ctx.initialized == 0) {
+        return;
+    }
+    let mut max_x: u32 = x + w;
+    if (max_x > ctx.width) {
+        max_x = ctx.width;
+    }
+    let mut max_y: u32 = y + h;
+    if (max_y > ctx.height) {
+        max_y = ctx.height;
+    }
+    
+    let mut cy: u32 = y;
+    while (cy < max_y) {
+        let row_offset: u32 = cy * ctx.width;
+        let mut cx: u32 = x;
+        while (cx < max_x) {
+            let p: *u32 = ctx.pixels + (row_offset + cx);
+            *p = color;
+            cx = cx + 1;
+        }
+        cy = cy + 1;
+    }
+}
+
+@baremetal
+pub fn dvtrga_draw_line(ctx: *DvtrgaContext, x1: i32, y1: i32, x2: i32, y2: i32, color: u32) -> void {
+    if (ctx.initialized == 0) {
+        return;
+    }
+    
+    let mut dx: i32 = x2 - x1;
+    if (dx < 0) {
+        dx = -dx;
+    }
+    let mut dy: i32 = y2 - y1;
+    if (dy < 0) {
+        dy = -dy;
+    }
+    
+    let mut sx: i32 = -1;
+    if (x1 < x2) {
+        sx = 1;
+    }
+    let mut sy: i32 = -1;
+    if (y1 < y2) {
+        sy = 1;
+    }
+    
+    let mut err: i32 = dx - dy;
+    let mut cx: i32 = x1;
+    let mut cy: i32 = y1;
+    
+    while (1 == 1) {
+        if (cx >= 0) {
+            if (cy >= 0) {
+                if (cx < ctx.width as i32) {
+                    if (cy < ctx.height as i32) {
+                        let offset: u32 = (cy as u32) * ctx.width + (cx as u32);
+                        let p: *u32 = ctx.pixels + offset;
+                        *p = color;
+                    }
+                }
+            }
+        }
+        
+        if (cx == x2) {
+            if (cy == y2) {
+                return;
+            }
+        }
+        
+        let e2: i32 = err * 2;
+        if (e2 > -dy) {
+            err = err - dy;
+            cx = cx + sx;
+        }
+        if (e2 < dx) {
+            err = err + dx;
+            cy = cy + sy;
+        }
+    }
+}
+
+@baremetal
+pub fn dvtrga_draw_particles_fast(ctx: *DvtrgaContext, positions: *u32, count: u32, color: u32) -> void {
+    if (ctx.initialized == 0) {
+        return;
+    }
+    let mut i: u32 = 0;
+    while (i < count) {
+        let p_x: *u32 = positions + (i * 2);
+        let p_y: *u32 = positions + (i * 2 + 1);
+        let px: u32 = *p_x;
+        let py: u32 = *p_y;
+        if (px < ctx.width) {
+            if (py < ctx.height) {
+                let offset: u32 = py * ctx.width + px;
+                let target: *u32 = ctx.pixels + offset;
+                *target = color;
+            }
+        }
+        i = i + 1;
+    }
+}

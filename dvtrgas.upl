@@ -1,0 +1,282 @@
+// ============================================================================
+// MODULO: DVTRGAS V1 (NATIVO UPL+)
+// Optimizado para compilación Freestanding y reducción drástica de binario (~22 KB)
+// ============================================================================
+
+modulo dvtrgas;
+
+incrustar "c" {
+    #include <stdint.h>
+    #include <windows.h>
+    #include "dvtrga_security_bridge.h" // Módulo privado de validación de licencia
+}
+
+// Estructura de contexto alineada para Win32 GDI Renders
+publico estructura DVTRGA_CONTEXT {
+    hwnd: *void,        // HWND mapeado a puntero opaco en UPL+
+    hdc: *void,         // HDC mapeado
+    hBitmap: *void,     // HBITMAP mapeado
+    pBits: *u32,        // Buffer directo de píxeles (RGBA 32-bit)
+    width: i32,
+    height: i32,
+    pitch: i32,
+    bpp: i8,
+    initialized: i8
+}
+
+// Instancia global del contexto (Sustituye la grasa de asignaciones dinámicas de C)
+sea mut g_ctx: DVTRGA_CONTEXT;
+
+// ============================================================================
+// FUNCIONES API DE RASTERIZADO (EXPORTABLES)
+// ============================================================================
+
+publico funcion DvtrgaInit(width: i32, height: i32, license_key: *i8) -> i32 {
+    si g_ctx.initialized == 1 {
+        retornar 0;
+    }
+
+    // Validación de seguridad directa sin Marshalling
+    sea mut valid: i32 = 0;
+    incrustar "c" {
+        if (Dvtrga_Security_Validate((const char*)license_key, NULL)) {
+            valid = 1;
+        } else {
+            OutputDebugStringA("DVTRGA: FAILED TO INITIALIZE - INVALID OR EXPIRED LICENSE.");
+        }
+    }
+
+    si valid == 0 {
+        retornar -1;
+    }
+
+    // Inicialización del subsistema de vídeo Win32 embebido
+    incrustar "c" {
+        WNDCLASSA wc = {0};
+        wc.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
+        wc.lpfnWndProc = DefWindowProcA;
+        wc.hInstance = GetModuleHandle(NULL);
+        wc.lpszClassName = "DVTRGA_CPU_Class";
+        wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+        RegisterClassA(&wc);
+
+        g_ctx.hwnd = CreateWindowExA(
+            WS_EX_APPWINDOW | WS_EX_TOPMOST,
+            "DVTRGA_CPU_Class",
+            "DVTRGA CPU RASTERIZER - U9 DEDICATED",
+            WS_POPUP | WS_VISIBLE,
+            0, 0, width, height,
+            NULL, NULL, wc.hInstance, NULL
+        );
+
+        if (!g_ctx.hwnd) {
+            g_ctx.hwnd = GetDesktopWindow();
+        }
+
+        g_ctx.hdc = GetDC((HWND)g_ctx.hwnd);
+        if (!g_ctx.hdc) {
+            return -1;
+        }
+
+        BITMAPINFO bmi = {0};
+        bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+        bmi.bmiHeader.biWidth = width;
+        bmi.bmiHeader.biHeight = -height; // Top-down DIB
+        bmi.bmiHeader.biPlanes = 1;
+        bmi.bmiHeader.biBitCount = 32;
+        bmi.bmiHeader.biCompression = BI_RGB;
+
+        g_ctx.hBitmap = CreateDIBSection((HDC)g_ctx.hdc, &bmi, DIB_RGB_COLORS, (void**)&g_ctx.pBits, NULL, 0);
+        if (!g_ctx.hBitmap || !g_ctx.pBits) {
+            ReleaseDC((HWND)g_ctx.hwnd, (HDC)g_ctx.hdc);
+            return -1;
+        }
+    }
+
+    g_ctx.width = width;
+    g_ctx.height = height;
+    g_ctx.pitch = width * 4;
+    g_ctx.bpp = 32;
+    g_ctx.initialized = 1;
+
+    retornar 0;
+}
+
+publico funcion DvtrgaClear(color: u32) {
+    si g_ctx.initialized == 0 { retornar; }
+    
+    sea mut i: i32 = 0;
+    sea totalPixels: i32 = g_ctx.width * g_ctx.height;
+    sea pixels: *u32 = g_ctx.pBits;
+
+    mientras i < totalPixels {
+        pixels[i] = color;
+        i = i + 1;
+    }
+}
+
+publico funcion DvtrgaPutPixel(x: i32, y: i32, color: u32) {
+    si g_ctx.initialized == 0 { retornar; }
+    si x < 0 { retornar; }
+    si y < 0 { retornar; }
+    si x >= g_ctx.width { retornar; }
+    si y >= g_ctx.height { retornar; }
+
+    sea pixels: *u32 = g_ctx.pBits;
+    sea index: i32 = (y * g_ctx.width) + x;
+    pixels[index] = color;
+}
+
+publico funcion DvtrgaGetPixel(x: i32, y: i32) -> u32 {
+    si g_ctx.initialized == 0 { retornar 0; }
+    si x < 0 { retornar 0; }
+    si y < 0 { retornar 0; }
+    si x >= g_ctx.width { retornar 0; }
+    si y >= g_ctx.height { retornar 0; }
+
+    sea pixels: *u32 = g_ctx.pBits;
+    sea index: i32 = (y * g_ctx.width) + x;
+    retornar pixels[index];
+}
+
+publico funcion DvtrgaFillRect(x: i32, y: i32, w: i32, h: i32, color: u32) {
+    si g_ctx.initialized == 0 { retornar; }
+    
+    sea mut dy: i32 = 0;
+    mientras dy < h {
+        sea mut dx: i32 = 0;
+        mientras dx < w {
+            DvtrgaPutPixel(x + dx, y + dy, color);
+            dx = dx + 1;
+        }
+        dy = dy + 1;
+    }
+}
+
+publico funcion DvtrgaDrawLine(x1: i32, y1: i32, x2: i32, y2: i32, color: u32) {
+    si g_ctx.initialized == 0 { retornar; }
+
+    // Implementación limpia del Algoritmo de Bresenham en registros contiguos
+    sea mut cx1: i32 = x1;
+    sea mut cy1: i32 = y1;
+    
+    sea mut dx: i32 = x2 - cx1;
+    sea mut dy: i32 = y2 - cy1;
+    
+    si dx < 0 { dx = -dx; }
+    si dy < 0 { dy = -dy; }
+
+    sea mut sx: i32 = -1;
+    si cx1 < x2 { sx = 1; }
+    
+    sea mut sy: i32 = -1;
+    si cy1 < y2 { sy = 1; }
+
+    sea mut err: i32 = dx - dy;
+    sea mut e2: i32 = 0;
+
+    mientras 1 == 1 {
+        DvtrgaPutPixel(cx1, cy1, color);
+        
+        si cx1 == x2 {
+            si cy1 == y2 {
+                romper;
+            }
+        }
+        
+        e2 = 2 * err;
+        si e2 > -dy {
+            err = err - dy;
+            cx1 = cx1 + sx;
+        }
+        si e2 < dx {
+            err = err + dx;
+            cy1 = cy1 + sy;
+        }
+    }
+}
+
+publico funcion DvtrgaPresent() {
+    si g_ctx.initialized == 0 { retornar; }
+    
+    incrustar "c" {
+        BITMAPINFO bmi = {0};
+        bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+        bmi.bmiHeader.biWidth = g_ctx.width;
+        bmi.bmiHeader.biHeight = -g_ctx.height;
+        bmi.bmiHeader.biPlanes = 1;
+        bmi.bmiHeader.biBitCount = 32;
+        bmi.bmiHeader.biCompression = BI_RGB;
+
+        SetDIBitsToDevice(
+            (HDC)g_ctx.hdc, 0, 0, g_ctx.width, g_ctx.height,
+            0, 0, 0, g_ctx.height, g_ctx.pBits, &bmi, DIB_RGB_COLORS
+        );
+    }
+}
+
+publico funcion DvtrgaSaveBMP(filename: *i8) -> i32 {
+    si g_ctx.initialized == 0 { retornar -1; }
+    
+    sea mut result: i32 = 0;
+    incrustar "c" {
+        BITMAPFILEHEADER bfh = {0};
+        BITMAPINFOHEADER bih = {0};
+        
+        bfh.bfType = 0x4D42; // "BM"
+        bfh.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+        bfh.bfSize = bfh.bfOffBits + (g_ctx.width * g_ctx.height * 4);
+        
+        bih.biSize = sizeof(BITMAPINFOHEADER);
+        bih.biWidth = g_ctx.width;
+        bih.biHeight = -g_ctx.height;
+        bih.biPlanes = 1;
+        bih.biBitCount = 32;
+        bih.biCompression = BI_RGB;
+        
+        HANDLE hFile = CreateFileA((const char*)filename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (hFile != INVALID_HANDLE_VALUE) {
+            DWORD written;
+            WriteFile(hFile, &bfh, sizeof(bfh), &written, NULL);
+            WriteFile(hFile, &bih, sizeof(bih), &written, NULL);
+            WriteFile(hFile, g_ctx.pBits, g_ctx.width * g_ctx.height * 4, &written, NULL);
+            CloseHandle(hFile);
+        } else {
+            result = -1;
+        }
+    }
+    retornar result;
+}
+
+publico funcion DvtrgaClose() {
+    si g_ctx.initialized == 0 { retornar; }
+    
+    incrustar "c" {
+        if (g_ctx.hBitmap) DeleteObject((HBITMAP)g_ctx.hBitmap);
+        if (g_ctx.hdc) ReleaseDC((HWND)g_ctx.hwnd, (HDC)g_ctx.hdc);
+    }
+    
+    g_ctx.hwnd = NULL;
+    g_ctx.hdc = NULL;
+    g_ctx.hBitmap = NULL;
+    g_ctx.pBits = NULL;
+    g_ctx.width = 0;
+    g_ctx.height = 0;
+    g_ctx.pitch = 0;
+    g_ctx.bpp = 0;
+    g_ctx.initialized = 0;
+}
+
+publico funcion DvtrgaGetRawBuffer() -> *u32 {
+    si g_ctx.initialized == 1 {
+        retornar g_ctx.pBits;
+    }
+    retornar NULL;
+}
+
+publico funcion DvtrgaGetInfo(width: *u32, height: *u32, bpp: *u32) {
+    // Almacenamiento indirecto seguro a través de punteros nativos de UPL+
+    si width != NULL { width[0] = g_ctx.width como u32; }
+    si height != NULL { height[0] = g_ctx.height como u32; }
+    si bpp != NULL { bpp[0] = g_ctx.bpp como u32; }
+}

@@ -49,6 +49,12 @@ AUDITORIA_CLI.upl
 # Assets/Binary
 bin/
 *.exe
+*.dll
+*.lib
+*.so
+*.dylib
+*.pdb
+*.exp
 *.bin
 *.iso
 *.qcow2

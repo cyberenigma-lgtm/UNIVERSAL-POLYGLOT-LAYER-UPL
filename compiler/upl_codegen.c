@@ -40,6 +40,10 @@ static void emit_type(UplCodeGen *gen, const UplAstNode *type) {
             emit_type(gen, type->as.type_spec.base_or_elem_type);
             fprintf(gen->out, "*");
             break;
+        case AST_TYPE_ARRAY:
+            emit_type(gen, type->as.type_spec.base_or_elem_type);
+            fprintf(gen->out, "*");
+            break;
         case AST_TYPE_CUSTOM:
             fprintf(gen->out, "%s", type->as.type_spec.custom_name);
             break;
@@ -70,6 +74,8 @@ static void emit_binary(UplCodeGen *gen, const UplAstNode *node) {
         case TOKEN_OP_AND:           op_str = " && "; break;
         case TOKEN_OP_OR:            op_str = " || "; break;
         case TOKEN_OP_XOR:           op_str = " ^ "; break;
+        case TOKEN_OP_BIT_AND:       op_str = " & "; break;
+        case TOKEN_OP_BIT_OR:        op_str = " | "; break;
         case TOKEN_OP_ASSIGN:        op_str = " = "; break;
         default:                     op_str = " + "; break;
     }
@@ -158,11 +164,12 @@ static void emit_statement(UplCodeGen *gen, const UplAstNode *node) {
 
     switch (node->kind) {
         case AST_STMT_LET:
-            if (!node->as.stmt_let.is_mut) {
-                fprintf(gen->out, "const ");
-            }
             if (node->as.stmt_let.type) {
-                if (node->as.stmt_let.type->kind == AST_TYPE_COMP3) {
+                if (node->as.stmt_let.type->kind == AST_TYPE_ARRAY) {
+                    emit_type(gen, node->as.stmt_let.type->as.type_spec.base_or_elem_type);
+                    fprintf(gen->out, " %s[%zu];\n", node->as.stmt_let.name, node->as.stmt_let.type->as.type_spec.array_len);
+                    return;
+                } else if (node->as.stmt_let.type->kind == AST_TYPE_COMP3) {
                     int prec = node->as.stmt_let.type->as.type_spec.comp3_precision;
                     size_t bytes = (size_t)((prec / 2) + 1);
                     fprintf(gen->out, "uint8_t %s[%zu];\n", node->as.stmt_let.name, bytes);
@@ -173,11 +180,23 @@ static void emit_statement(UplCodeGen *gen, const UplAstNode *node) {
                         fprintf(gen->out, ", %d, %d);\n", prec, node->as.stmt_let.type->as.type_spec.comp3_scale);
                     }
                     return;
+                } else if (node->as.stmt_let.type->kind == AST_TYPE_POINTER) {
+                    emit_type(gen, node->as.stmt_let.type);
+                    if (!node->as.stmt_let.is_mut) {
+                        fprintf(gen->out, " const");
+                    }
+                    fprintf(gen->out, " ");
                 } else {
+                    if (!node->as.stmt_let.is_mut) {
+                        fprintf(gen->out, "const ");
+                    }
                     emit_type(gen, node->as.stmt_let.type);
                     fprintf(gen->out, " ");
                 }
             } else {
+                if (!node->as.stmt_let.is_mut) {
+                    fprintf(gen->out, "const ");
+                }
                 fprintf(gen->out, "__auto_type ");
             }
             fprintf(gen->out, "%s", node->as.stmt_let.name);
@@ -186,6 +205,14 @@ static void emit_statement(UplCodeGen *gen, const UplAstNode *node) {
                 emit_expression(gen, node->as.stmt_let.init_expr);
             }
             fprintf(gen->out, ";\n");
+            break;
+
+        case AST_STMT_BREAK:
+            fprintf(gen->out, "break;\n");
+            break;
+
+        case AST_STMT_CONTINUE:
+            fprintf(gen->out, "continue;\n");
             break;
 
         case AST_STMT_RETURN:
@@ -263,7 +290,23 @@ bool upl_codegen_generate(UplCodeGen *gen, const UplAstNode *program) {
     fprintf(gen->out, "#include <string.h>\n");
     fprintf(gen->out, "#include \"upl_comp3.h\"\n\n");
 
-    // 2. Declaración de estructuras (typedefs)
+    fprintf(gen->out, "#ifndef UPL_EXPORT\n");
+    fprintf(gen->out, "#  if defined(_WIN32) || defined(__CYGWIN__)\n");
+    fprintf(gen->out, "#    define UPL_EXPORT __declspec(dllexport)\n");
+    fprintf(gen->out, "#  else\n");
+    fprintf(gen->out, "#    define UPL_EXPORT __attribute__((visibility(\"default\")))\n");
+    fprintf(gen->out, "#  endif\n");
+    fprintf(gen->out, "#endif\n\n");
+
+    // 2. Bloques embed de nivel superior (cabeceras nativas C/Win32)
+    for (UplAstList *l = program->as.program.items; l != NULL; l = l->next) {
+        if (l->node->kind == AST_STMT_EMBED) {
+            emit_statement(gen, l->node);
+            fprintf(gen->out, "\n");
+        }
+    }
+
+    // 3. Declaración de estructuras (typedefs)
     for (UplAstList *l = program->as.program.items; l != NULL; l = l->next) {
         if (l->node->kind == AST_DECL_STRUCT) {
             fprintf(gen->out, "typedef struct %s {\n", l->node->as.decl_struct.name);
@@ -273,6 +316,9 @@ bool upl_codegen_generate(UplCodeGen *gen, const UplAstNode *program) {
                     int prec = f->node->as.decl_field.type->as.type_spec.comp3_precision;
                     size_t bytes = (size_t)((prec / 2) + 1);
                     fprintf(gen->out, "uint8_t %s[%zu]; /* comp3(%d) */\n", f->node->as.decl_field.name, bytes, prec);
+                } else if (f->node->as.decl_field.type && f->node->as.decl_field.type->kind == AST_TYPE_ARRAY) {
+                    emit_type(gen, f->node->as.decl_field.type->as.type_spec.base_or_elem_type);
+                    fprintf(gen->out, " %s[%zu];\n", f->node->as.decl_field.name, f->node->as.decl_field.type->as.type_spec.array_len);
                 } else {
                     emit_type(gen, f->node->as.decl_field.type);
                     fprintf(gen->out, " %s;\n", f->node->as.decl_field.name);
@@ -282,11 +328,22 @@ bool upl_codegen_generate(UplCodeGen *gen, const UplAstNode *program) {
         }
     }
 
-    // 3. Prototipos de funciones
+    // 4. Variables globales a nivel de módulo (sea / sea mut)
+    for (UplAstList *l = program->as.program.items; l != NULL; l = l->next) {
+        if (l->node->kind == AST_STMT_LET) {
+            emit_statement(gen, l->node);
+        }
+    }
+    fprintf(gen->out, "\n");
+
+    // 5. Prototipos de funciones
     for (UplAstList *l = program->as.program.items; l != NULL; l = l->next) {
         if (l->node->kind == AST_DECL_FN) {
             const char *fname = l->node->as.decl_fn.name;
             if (strcmp(fname, "main") == 0 || strcmp(fname, "kmain") == 0) continue;
+            if (l->node->as.decl_fn.is_pub) {
+                fprintf(gen->out, "UPL_EXPORT ");
+            }
             emit_type(gen, l->node->as.decl_fn.return_type);
             fprintf(gen->out, " %s(", fname);
             for (UplAstList *p = l->node->as.decl_fn.params; p != NULL; p = p->next) {
@@ -299,7 +356,7 @@ bool upl_codegen_generate(UplCodeGen *gen, const UplAstNode *program) {
     }
     fprintf(gen->out, "\n");
 
-    // 4. Definición de funciones y bloques de nivel superior
+    // 6. Definición de funciones
     for (UplAstList *l = program->as.program.items; l != NULL; l = l->next) {
         if (l->node->kind == AST_DECL_FN) {
             const char *fname = l->node->as.decl_fn.name;
@@ -308,6 +365,9 @@ bool upl_codegen_generate(UplCodeGen *gen, const UplAstNode *program) {
             if (is_entrypoint) {
                 fprintf(gen->out, "int main(int argc, char **argv) ");
             } else {
+                if (l->node->as.decl_fn.is_pub) {
+                    fprintf(gen->out, "UPL_EXPORT ");
+                }
                 emit_type(gen, l->node->as.decl_fn.return_type);
                 fprintf(gen->out, " %s(", fname);
                 for (UplAstList *p = l->node->as.decl_fn.params; p != NULL; p = p->next) {
@@ -319,9 +379,6 @@ bool upl_codegen_generate(UplCodeGen *gen, const UplAstNode *program) {
             }
 
             emit_block(gen, l->node->as.decl_fn.body);
-            fprintf(gen->out, "\n");
-        } else if (l->node->kind == AST_STMT_EMBED) {
-            emit_statement(gen, l->node);
             fprintf(gen->out, "\n");
         }
     }

@@ -175,9 +175,21 @@ int main(int argc, char **argv) {
     }
 
     char gcc_cmd[2048];
-    // Se enlaza con el runtime comp3 nativo
-    snprintf(gcc_cmd, sizeof(gcc_cmd), "gcc -O2 \"%s\" compiler/runtime/upl_comp3.c -I compiler/runtime -o \"%s\"",
-             c_filename, exe_filename);
+    bool is_shared = false;
+    size_t out_len = strlen(exe_filename);
+    if (out_len >= 4 && (_stricmp(exe_filename + out_len - 4, ".dll") == 0)) {
+        is_shared = true;
+    }
+
+    if (is_shared) {
+        snprintf(gcc_cmd, sizeof(gcc_cmd),
+                 "gcc -O2 -s -shared \"%s\" compiler/runtime/upl_comp3.c -I compiler/runtime -Wl,--export-all-symbols -luser32 -lgdi32 -o \"%s\"",
+                 c_filename, exe_filename);
+    } else {
+        snprintf(gcc_cmd, sizeof(gcc_cmd),
+                 "gcc -O2 \"%s\" compiler/runtime/upl_comp3.c -I compiler/runtime -luser32 -lgdi32 -o \"%s\"",
+                 c_filename, exe_filename);
+    }
 
     int ret = system(gcc_cmd);
     if (ret != 0) {

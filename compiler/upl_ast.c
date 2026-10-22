@@ -187,6 +187,14 @@ UplAstNode* upl_ast_new_raw_block(UPL_Arena *arena, UplAstKind kind, const char 
     return n;
 }
 
+UplAstNode* upl_ast_new_stmt_break(UPL_Arena *arena, size_t line, size_t col) {
+    return alloc_node(arena, AST_STMT_BREAK, line, col);
+}
+
+UplAstNode* upl_ast_new_stmt_continue(UPL_Arena *arena, size_t line, size_t col) {
+    return alloc_node(arena, AST_STMT_CONTINUE, line, col);
+}
+
 UplAstNode* upl_ast_new_decl_param(UPL_Arena *arena, const char *name, UplAstNode *type, size_t line, size_t col) {
     UplAstNode *n = alloc_node(arena, AST_DECL_PARAM, line, col);
     if (n) {
@@ -296,6 +304,8 @@ const char* upl_ast_kind_name(UplAstKind kind) {
         case AST_STMT_BLOCK:     return "StmtBlock";
         case AST_STMT_EMBED:     return "StmtEmbed";
         case AST_STMT_ASM:       return "StmtAsm";
+        case AST_STMT_BREAK:     return "StmtBreak";
+        case AST_STMT_CONTINUE:  return "StmtContinue";
         case AST_DECL_PARAM:     return "DeclParam";
         case AST_DECL_FN:        return "DeclFn";
         case AST_DECL_FIELD:     return "DeclField";

@@ -177,7 +177,9 @@ static Precedence get_precedence(TokenType type) {
         case TOKEN_OP_ASSIGN:        return PREC_ASSIGNMENT;
         case TOKEN_OP_OR:            return PREC_OR;
         case TOKEN_OP_AND:           return PREC_AND;
+        case TOKEN_OP_BIT_OR:        return PREC_BIT_OR;
         case TOKEN_OP_XOR:           return PREC_BIT_XOR;
+        case TOKEN_OP_BIT_AND:       return PREC_BIT_AND;
         case TOKEN_OP_EQUAL:
         case TOKEN_OP_NOT_EQUAL:     return PREC_EQUALITY;
         case TOKEN_OP_LESS:
@@ -335,9 +337,16 @@ static UplAstNode* parse_block(UplParser *p) {
 
     UplAstList *stmts = NULL;
     while (!check(p, TOKEN_DELIM_RBRACE) && !check(p, TOKEN_EOF)) {
+        size_t prev_line = p->current.line;
+        size_t prev_col = p->current.column;
+        TokenType prev_type = p->current.type;
+
         UplAstNode *stmt = upl_parser_parse_statement(p);
         if (stmt) {
             upl_ast_list_append(p->arena, &stmts, stmt);
+        }
+        if (p->current.line == prev_line && p->current.column == prev_col && p->current.type == prev_type) {
+            advance(p);
         }
     }
 
@@ -371,11 +380,7 @@ UplAstNode* upl_parser_parse_statement(UplParser *p) {
 
     // 2. Sentencia If (si / if)
     if (match(p, TOKEN_KEYWORD_IF)) {
-        bool has_paren = match(p, TOKEN_DELIM_LPAREN);
         UplAstNode *cond = upl_parser_parse_expression(p);
-        if (has_paren) {
-            consume(p, TOKEN_DELIM_RPAREN, "Esperaba ')' tras condicion de if");
-        }
         UplAstNode *then_block = parse_block(p);
         UplAstNode *else_branch = NULL;
 
@@ -391,11 +396,7 @@ UplAstNode* upl_parser_parse_statement(UplParser *p) {
 
     // 3. Sentencia While (mientras / while)
     if (match(p, TOKEN_KEYWORD_WHILE)) {
-        bool has_paren = match(p, TOKEN_DELIM_LPAREN);
         UplAstNode *cond = upl_parser_parse_expression(p);
-        if (has_paren) {
-            consume(p, TOKEN_DELIM_RPAREN, "Esperaba ')' tras condicion de while");
-        }
         UplAstNode *body = parse_block(p);
         return upl_ast_new_stmt_while(p->arena, cond, body, line, col);
     }
@@ -412,6 +413,9 @@ UplAstNode* upl_parser_parse_statement(UplParser *p) {
 
     // 5. Bloque Embed inline (incrustar / embed)
     if (match(p, TOKEN_KEYWORD_EMBED)) {
+        if (check(p, TOKEN_LITERAL_STRING)) {
+            advance(p);
+        }
         if (!check(p, TOKEN_DELIM_LBRACE)) {
             error_at(p, &p->current, "Esperaba '{' para iniciar bloque embed/incrustar");
             return NULL;
@@ -426,6 +430,18 @@ UplAstNode* upl_parser_parse_statement(UplParser *p) {
         token_free(&raw);
         advance(p);
         return node;
+    }
+
+    // Sentencia Break (break / romper)
+    if (match(p, TOKEN_KEYWORD_BREAK)) {
+        consume(p, TOKEN_DELIM_SEMICOLON, "Esperaba ';' tras break/romper");
+        return upl_ast_new_stmt_break(p->arena, line, col);
+    }
+
+    // Sentencia Continue (continue / continuar)
+    if (match(p, TOKEN_KEYWORD_CONTINUE)) {
+        consume(p, TOKEN_DELIM_SEMICOLON, "Esperaba ';' tras continue/continuar");
+        return upl_ast_new_stmt_continue(p->arena, line, col);
     }
 
     // 6. Bloque ASM inline (ensamblador / asm)
@@ -580,12 +596,15 @@ static UplAstNode* parse_declaration(UplParser *p) {
         return upl_ast_new_decl_import(p->arena, path, line, col);
     }
 
-    // Función pública
+    // Función o estructura pública
     if (match(p, TOKEN_KEYWORD_PUB)) {
         if (match(p, TOKEN_KEYWORD_FN)) {
             return parse_fn_declaration(p, true);
         }
-        error_at(p, &p->current, "Esperaba 'fn' o 'funcion' tras modificador pub");
+        if (match(p, TOKEN_KEYWORD_STRUCT)) {
+            return parse_struct_declaration(p);
+        }
+        error_at(p, &p->current, "Esperaba 'fn'/'funcion' o 'struct'/'estructura' tras modificador pub/publico");
         return NULL;
     }
 

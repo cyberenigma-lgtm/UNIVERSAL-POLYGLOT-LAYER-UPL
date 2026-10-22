@@ -34,6 +34,8 @@ typedef enum {
     TOKEN_KEYWORD_COMP3,    /* comp3 (tipo decimal exacto) */
     TOKEN_KEYWORD_ASM,      /* asm / ensamblador */
     TOKEN_KEYWORD_EMBED,    /* embed / incrustar */
+    TOKEN_KEYWORD_BREAK,    /* break / romper */
+    TOKEN_KEYWORD_CONTINUE, /* continue / continuar */
 
     /* Operadores */
     TOKEN_OP_ASSIGN,        /* = */
@@ -51,6 +53,8 @@ typedef enum {
     TOKEN_OP_OR,            /* || */
     TOKEN_OP_NOT,           /* ! */
     TOKEN_OP_XOR,           /* ^ */
+    TOKEN_OP_BIT_AND,       /* & */
+    TOKEN_OP_BIT_OR,        /* | */
 
     /* Delimitadores */
     TOKEN_DELIM_LPAREN,     /* ( */
