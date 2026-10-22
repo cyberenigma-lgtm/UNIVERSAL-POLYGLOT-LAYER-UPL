@@ -46,4 +46,10 @@ Bienvenido al centro de documentación técnica del **Lenguaje de Programación 
 
 ---
 
+> 💬 **Contacto y Sugerencias / Contact & Feedback:**  
+> Cualquier sugerencia podéis mandarla por un mensaje privado.  
+> *Any suggestion or feedback can be sent via private message.*
+
+---
+
 **Universal Polyglot Layer (UPL) — Propiedad Intelectual Registrada en SafeCreative.**

@@ -418,3 +418,9 @@ Obra Protegida bajo registro legal de Propiedad Intelectual en **SafeCreative**.
 Protected work under legal Intellectual Property registration with **SafeCreative**.  
 Todos los derechos reservados. All rights reserved.  
 **Autor / Author:** José Manuel Moreno (Noxferion)
+
+---
+
+> 💬 **Contacto y Sugerencias / Contact & Feedback:**  
+> Cualquier sugerencia podéis mandarla por un mensaje privado.  
+> *Any suggestion or feedback can be sent via private message.*
