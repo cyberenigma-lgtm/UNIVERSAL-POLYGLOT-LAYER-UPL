@@ -6,7 +6,7 @@
 **Versión / Version:** 2.0.0-Release (Dragon Book Architecture)  
 **Licencia / License:** GNU General Public License v3.0 (GPLv3) — Autoría y especificación registradas defensivamente en SafeCreative
 
-[![CI Native Tests](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/actions/workflows/ci.yml/badge.svg)](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/actions/workflows/ci.yml)
+[![CI Native Tests](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/actions/workflows/ci.yml)
 [![Release: v2.0.0](https://img.shields.io/badge/Release-v2.0.0--Dragon%20Book-blue.svg)](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/releases/tag/v2.0.0-Release)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![SafeCreative Protected](https://img.shields.io/badge/SafeCreative-Obra%20Protegida-blue.svg)](https://www.safecreative.org)
