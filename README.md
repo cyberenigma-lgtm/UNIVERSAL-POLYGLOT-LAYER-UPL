@@ -180,7 +180,7 @@ test.bat
 * **[1/6] Lexer Bilingüe:** 6/6 tests PASS.
 * **[2/6] Parser Pratt & AST:** 6/6 tests PASS.
 * **[3/6] Motor COMP-3 BCD:** 4/4 tests PASS.
-* **[4/6] Supervisor Antidivagaciones:** 3/3 tests PASS.
+* **[4/6] Preprocesador y Sanitizador de Código:** 3/3 tests PASS.
 * **[5/6] Compilación End-to-End con `uplc`:** PASS (Cálculo exacto: 1000 EUR + 21% = 1210 EUR).
 * **[6/6] Transpilador C99 a UPL+ (`c2upl`):** 5/5 tests PASS.
 
@@ -344,7 +344,7 @@ test.bat
 * **[1/6] Bilingual Lexer:** 6/6 tests PASS.
 * **[2/6] Pratt Parser & AST:** 6/6 tests PASS.
 * **[3/6] COMP-3 BCD Engine:** 4/4 tests PASS.
-* **[4/6] Anti-Hallucination Supervisor:** 3/3 tests PASS.
+* **[4/6] Source Code Preprocessor & Sanitizer:** 3/3 tests PASS.
 * **[5/6] End-to-End Compilation:** PASS (Exact tax calculation: 1000 EUR + 21% = 1210 EUR).
 * **[6/6] C99 to UPL+ Transpiler (`c2upl`):** 5/5 tests PASS.
 

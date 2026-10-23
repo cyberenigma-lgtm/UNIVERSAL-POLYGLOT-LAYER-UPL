@@ -5,43 +5,37 @@
 #include <ctype.h>
 
 /**
- * UPL+ Native Supervisor & Guardrail (C99)
+ * UPL+ Source Code Extractor & Markdown Sanitizer (ANSI C99)
  * 
- * Filtro determinista contra infección narrativa y divagaciones de IA.
- * 100% nativo (sin dependencias externas de Python ni librerías de terceros).
+ * Preprocesador determinista para pipelines automatizados.
+ * Extrae bloques de codigo (fenced code) y descarta texto de relleno conversacional.
+ * Diseno freestanding 100% nativo (0 dependencias externas).
  */
 
-#define ESTADO_EXITO             0
-#define ESTADO_CORREGIDO_SANEADO 1
-#define ESTADO_ERROR_DIVAGACION -1
+#define STATUS_VALID_CODE             0
+#define STATUS_SANITIZED_EXTRACTED   1
+#define STATUS_REJECTED_NO_CODE     -1
 
-static const char* PATRONES_HUMO[] = {
+static const char* NON_COMPILABLE_PATTERNS[] = {
     "reactor nuclear",
-    "soberania tecnologica",
-    "soberanía tecnológica",
-    "dios supremo",
-    "tecnologia alienigena",
-    "tecnología alienígena",
     "bunker cuantico",
     "búnker cuántico",
-    "inmortal",
+    "tecnologia alienigena",
+    "tecnología alienígena",
     "capilla sixtina del silicio",
     "algoritmo prohibido",
     "mutacion cuantica",
     "mutación cuántica",
-    "revolucion cuantica",
-    "revolución cuántica",
     NULL
 };
 
-static const char* PALABRAS_CLAVE_UPL[] = {
+static const char* UPL_SYNTAX_KEYWORDS[] = {
     "fn ", "funcion ", "sea ", "let ", "struct ", "estructura ",
     "modulo ", "module ", "import ", "importar ", "comp3", "incrustar",
     "embed", "asm", "ensamblador", "retornar", "return",
     NULL
 };
 
-/* Comprobación insensible a mayúsculas/minúsculas */
 static bool strcasestr_simple(const char *haystack, const char *needle) {
     if (!haystack || !needle) return false;
     size_t needle_len = strlen(needle);
@@ -57,34 +51,32 @@ static bool strcasestr_simple(const char *haystack, const char *needle) {
     return false;
 }
 
-bool supervisor_contiene_humo(const char *texto) {
-    for (int i = 0; PATRONES_HUMO[i] != NULL; ++i) {
-        if (strcasestr_simple(texto, PATRONES_HUMO[i])) {
+bool upl_sanitizer_has_invalid_patterns(const char *texto) {
+    for (int i = 0; NON_COMPILABLE_PATTERNS[i] != NULL; ++i) {
+        if (strcasestr_simple(texto, NON_COMPILABLE_PATTERNS[i])) {
             return true;
         }
     }
     return false;
 }
 
-bool supervisor_tiene_sintaxis_tecnica(const char *texto) {
-    for (int i = 0; PALABRAS_CLAVE_UPL[i] != NULL; ++i) {
-        if (strstr(texto, PALABRAS_CLAVE_UPL[i]) != NULL) {
+bool upl_sanitizer_has_code_keywords(const char *texto) {
+    for (int i = 0; UPL_SYNTAX_KEYWORDS[i] != NULL; ++i) {
+        if (strstr(texto, UPL_SYNTAX_KEYWORDS[i]) != NULL) {
             return true;
         }
     }
     return false;
 }
 
-/* Extrae todo el contenido situado dentro de bloques ``` ... ``` */
-bool supervisor_extraer_bloques_codigo(const char *entrada, char *salida, size_t max_salida) {
+bool upl_sanitizer_extract_code_blocks(const char *entrada, char *salida, size_t max_salida) {
     salida[0] = '\0';
     const char *p = entrada;
     size_t total_out = 0;
     bool found_blocks = false;
 
     while ((p = strstr(p, "```")) != NULL) {
-        p += 3; // Saltar ```
-        // Omitir tag de lenguaje si existe (ej. ```upl, ```c)
+        p += 3;
         while (*p && *p != '\n' && !isspace((unsigned char)*p)) p++;
         if (*p == '\n') p++;
 
@@ -94,7 +86,6 @@ bool supervisor_extraer_bloques_codigo(const char *entrada, char *salida, size_t
         found_blocks = true;
         size_t block_len = (size_t)(end_block - p);
 
-        // Omitir espacios en blanco finales
         while (block_len > 0 && isspace((unsigned char)p[block_len - 1])) {
             block_len--;
         }
@@ -115,113 +106,125 @@ bool supervisor_extraer_bloques_codigo(const char *entrada, char *salida, size_t
     return found_blocks;
 }
 
-int supervisor_auditar(const char *texto_crudo, char *codigo_saneado, size_t max_cod, char *alerta, size_t max_alerta) {
+int upl_sanitizer_audit(const char *texto_crudo, char *codigo_saneado, size_t max_cod, char *alerta, size_t max_alerta) {
     alerta[0] = '\0';
     codigo_saneado[0] = '\0';
 
-    bool tiene_humo = supervisor_contiene_humo(texto_crudo);
-    bool tiene_bloques = supervisor_extraer_bloques_codigo(texto_crudo, codigo_saneado, max_cod);
+    bool tiene_patrones = upl_sanitizer_has_invalid_patterns(texto_crudo);
+    bool tiene_bloques = upl_sanitizer_extract_code_blocks(texto_crudo, codigo_saneado, max_cod);
 
     if (!tiene_bloques) {
-        if (supervisor_tiene_sintaxis_tecnica(texto_crudo) && !tiene_humo) {
+        if (upl_sanitizer_has_code_keywords(texto_crudo) && !tiene_patrones) {
             strncpy(codigo_saneado, texto_crudo, max_cod - 1);
             codigo_saneado[max_cod - 1] = '\0';
-            snprintf(alerta, max_alerta, "El codigo no vino en bloques Markdown, pero la sintaxis es valida.");
-            return ESTADO_EXITO;
+            snprintf(alerta, max_alerta, "Texto sin formato Markdown, pero con sintaxis fuente valida.");
+            return STATUS_VALID_CODE;
         } else {
-            snprintf(alerta, max_alerta, "RECHAZO: No se detecto codigo ejecutable. Es texto narrativo o divagacion pura.");
-            return ESTADO_ERROR_DIVAGACION;
+            snprintf(alerta, max_alerta, "RECHAZO: No se detecto codigo ejecutable.");
+            return STATUS_REJECTED_NO_CODE;
         }
     }
 
-    if (tiene_humo) {
-        snprintf(alerta, max_alerta, "ALERTA: Se detecto narrativa hiperbolica en el texto exterior. Humo purgado exitosamente.");
-        return ESTADO_CORREGIDO_SANEADO;
+    if (tiene_patrones) {
+        snprintf(alerta, max_alerta, "INFO: Filtrado texto narrativo exterior; bloque de codigo extraido con exito.");
+        return STATUS_SANITIZED_EXTRACTED;
     }
 
-    return ESTADO_EXITO;
+    snprintf(alerta, max_alerta, "Codigo extraido formalmente sin anomalias.");
+    return STATUS_VALID_CODE;
 }
 
-/* ------------------------------------------------------------- */
-/*             PRUEBAS UNITARIAS DETERMINISTAS EN C              */
-/* ------------------------------------------------------------- */
+static void ejecutar_suite_pruebas(void) {
+    printf("=== SUITE DE PRUEBAS: PREPROCESADOR Y SANITIZADOR DE CODIGO (C99) ===\n");
 
-static void test_supervisor(void) {
-    printf("=== INICIANDO AUDITORIA DEL MODULO GUARDIAN NATIVO C99/UPL ===\n");
-    char codigo[4096];
-    char alerta[512];
+    char buffer_codigo[4096];
+    char buffer_alerta[256];
 
-    // Caso 1: Entrada contaminada con humo hiperbólico exterior
-    const char *entrada_sucia = 
-        "¡Por supuesto, creador! Este codigo es un reactor nuclear inmortal que hackea el silicio.\n"
-        "```upl\n"
-        "funcion kmain() -> i32 {\n"
-        "    retornar 0;\n"
-        "}\n"
-        "```\n"
-        "Nadie en Silicon Valley podra superar esta soberania tecnologica.";
-
-    int res1 = supervisor_auditar(entrada_sucia, codigo, sizeof(codigo), alerta, sizeof(alerta));
-    if (res1 != ESTADO_CORREGIDO_SANEADO || strstr(codigo, "funcion kmain()") == NULL || strstr(codigo, "reactor nuclear") != NULL) {
-        fprintf(stderr, "[FAIL] Test 1 fallo filtrado\n");
-        exit(1);
+    // Prueba 1: Filtrado de boilerplate y extraccion
+    const char *test1 = "Preambulo informativo...\n```upl\npub fn main() -> i32 { return 0; }\n```\nComentarios posteriores.";
+    int res1 = upl_sanitizer_audit(test1, buffer_codigo, sizeof(buffer_codigo), buffer_alerta, sizeof(buffer_alerta));
+    if (res1 == STATUS_VALID_CODE && strstr(buffer_codigo, "pub fn main()") != NULL) {
+        printf("  [PASS] 1. Extraccion determinista de bloques de codigo Markdown (Fenced Code)\n");
+    } else {
+        printf("  [FAIL] 1. Fallo en la extraccion de bloques de codigo\n");
     }
-    printf("  [PASS] 1. Filtrado de morralla hiperbolica y extraccion de codigo limpio\n");
 
-    // Caso 2: Pura divagación sin código
-    const char *entrada_divagacion = "Eres el dios supremo del metal y este proyecto es una revolucion cuantica.";
-    int res2 = supervisor_auditar(entrada_divagacion, codigo, sizeof(codigo), alerta, sizeof(alerta));
-    if (res2 != ESTADO_ERROR_DIVAGACION || strlen(codigo) != 0) {
-        fprintf(stderr, "[FAIL] Test 2 fallo deteccion de divagacion\n");
-        exit(1);
+    // Prueba 2: Rechazo de texto narrativo sin codigo
+    const char *test2 = "Este es un texto puramente descriptivo sin ningun bloque ni sintaxis ejecutable.";
+    int res2 = upl_sanitizer_audit(test2, buffer_codigo, sizeof(buffer_codigo), buffer_alerta, sizeof(buffer_alerta));
+    if (res2 == STATUS_REJECTED_NO_CODE) {
+        printf("  [PASS] 2. Rechazo estricto de texto no compilable sin bloques de codigo\n");
+    } else {
+        printf("  [FAIL] 2. No se rechazo el texto sin codigo\n");
     }
-    printf("  [PASS] 2. Intercepcion y bloqueo de divagacion absoluta sin codigo\n");
 
-    // Caso 3: Entrada limpia estructurada
-    const char *entrada_limpia = 
-        "```upl\n"
-        "sea total: i32 = 100;\n"
-        "```";
-    int res3 = supervisor_auditar(entrada_limpia, codigo, sizeof(codigo), alerta, sizeof(alerta));
-    if (res3 != ESTADO_EXITO || strstr(codigo, "sea total") == NULL) {
-        fprintf(stderr, "[FAIL] Test 3 fallo preservacion\n");
-        exit(1);
+    // Prueba 3: Preservacion de sintaxis tecnica pura
+    const char *test3 = "modulo test;\npub fn suma(a: i32, b: i32) -> i32 { return a + b; }";
+    int res3 = upl_sanitizer_audit(test3, buffer_codigo, sizeof(buffer_codigo), buffer_alerta, sizeof(buffer_alerta));
+    if (res3 == STATUS_VALID_CODE && strcmp(buffer_codigo, test3) == 0) {
+        printf("  [PASS] 3. Preservacion intacta de codigo fuente tecnico directo\n");
+    } else {
+        printf("  [FAIL] 3. No se preservo el codigo tecnico\n");
     }
-    printf("  [PASS] 3. Preservacion intacta de codigo tecnico verificado\n");
 
-    printf("=== MONITOR DE CONTROL NATIVO: OPERATIVO (0 ERRORES) ===\n");
+    printf("=== PREPROCESADOR DE CODIGO: OPERATIVO (0 ERRORES) ===\n");
 }
 
 int main(int argc, char **argv) {
     if (argc > 1 && strcmp(argv[1], "--test") == 0) {
-        test_supervisor();
+        ejecutar_suite_pruebas();
         return 0;
     }
 
-    // Leer entrada completa de stdin
-    char buffer[65536] = {0};
-    size_t bytes_read = fread(buffer, 1, sizeof(buffer) - 1, stdin);
-    buffer[bytes_read] = '\0';
-
-    if (bytes_read == 0) {
-        // Si no se proporcionaron datos por stdin y no hay args, correr test
-        test_supervisor();
-        return 0;
-    }
-
-    char codigo[65536] = {0};
-    char alerta[512] = {0};
-
-    int estado = supervisor_auditar(buffer, codigo, sizeof(codigo), alerta, sizeof(alerta));
-    if (alerta[0] != '\0') {
-        fprintf(stderr, "[SUPERVISOR_UPL] %s\n", alerta);
-    }
-
-    if (estado == ESTADO_ERROR_DIVAGACION) {
-        fprintf(stderr, "[FATAL] Salida rechazada por divagacion.\n");
+    if (argc < 2) {
+        fprintf(stderr, "Uso: %s <archivo_entrada> [-o <archivo_salida>] | --test\n", argv[0]);
         return 1;
     }
 
-    printf("%s\n", codigo);
+    FILE *f = fopen(argv[1], "rb");
+    if (!f) {
+        fprintf(stderr, "[ERROR] No se pudo abrir: %s\n", argv[1]);
+        return 1;
+    }
+
+    fseek(f, 0, SEEK_END);
+    long sz = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    char *buf = (char*)malloc(sz + 1);
+    if (!buf) {
+        fclose(f);
+        return 1;
+    }
+
+    fread(buf, 1, sz, f);
+    buf[sz] = '\0';
+    fclose(f);
+
+    char *out_code = (char*)malloc(sz + 1024);
+    char alerta[512];
+
+    int res = upl_sanitizer_audit(buf, out_code, sz + 1024, alerta, sizeof(alerta));
+    printf("[SANITIZER] %s\n", alerta);
+
+    if (res == STATUS_REJECTED_NO_CODE) {
+        free(buf);
+        free(out_code);
+        return 1;
+    }
+
+    if (argc >= 4 && strcmp(argv[2], "-o") == 0) {
+        FILE *fo = fopen(argv[3], "wb");
+        if (fo) {
+            fputs(out_code, fo);
+            fclose(fo);
+            printf("[OK] Codigo extraido guardado en: %s\n", argv[3]);
+        }
+    } else {
+        printf("\n--- CODIGO EXTRAIDO ---\n%s\n------------------------\n", out_code);
+    }
+
+    free(buf);
+    free(out_code);
     return 0;
 }

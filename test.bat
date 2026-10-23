@@ -35,10 +35,10 @@ if %ERRORLEVEL% neq 0 (
     exit /b %ERRORLEVEL%
 )
 
-echo [4/6] Verificando Supervisor y Guardian Nativo contra Divagaciones...
+echo [4/6] Verificando Preprocesador y Sanitizador de Codigo Fuente...
 "%~dp0bin\upl_supervisor.exe" --test
 if %ERRORLEVEL% neq 0 (
-    echo [ERROR] Fallo en la suite del Supervisor.
+    echo [ERROR] Fallo en la suite del Preprocesador.
     exit /b %ERRORLEVEL%
 )
 

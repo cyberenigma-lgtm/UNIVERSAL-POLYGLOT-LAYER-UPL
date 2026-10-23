@@ -42,7 +42,7 @@ echo "[2/6] Verificando Analizador Sintactico y AST (Parser)..."
 echo "[3/6] Verificando Motor Matematico Decimal Exacto (COMP-3 BCD)..."
 "$BIN_DIR/test_comp3"
 
-echo "[4/6] Verificando Supervisor y Guardian Nativo contra Divagaciones..."
+echo "[4/6] Verificando Preprocesador y Sanitizador de Codigo Fuente..."
 "$BIN_DIR/upl_supervisor" --test
 
 echo "[5/6] Verificando Compilacion Binaria End-to-End con uplc..."

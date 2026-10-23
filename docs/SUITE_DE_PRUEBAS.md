@@ -62,11 +62,11 @@ Valida el subsistema de aritmética empaquetada en software:
 * **Test 3.3 - Aritmética sin Deriva IEEE-754:** Valida operaciones de suma y resta decimal (`0.1 + 0.2 = 0.3000...`) donde la aritmética binaria tradicional produce `0.30000000000000004`.
 * **Test 3.4 - Comparaciones Algebraicas:** Valida operadores de comparación (`<`, `==`, `>`) teniendo en cuenta signos y escalas.
 
-### Suite 4: Guardián Técnico y Supervisor Antidivagación (`tools/upl_supervisor.c`)
-Valida el filtro determinista contra alucinaciones o jerga narrativa de modelos de lenguaje:
-* **Test 4.1 - Filtrado de Jerga:** Verifica la eliminación de párrafos introductorios o conclusiones hiperbólicas, conservando exclusivamente bloques de código limpios.
-* **Test 4.2 - Intercepción de Divagación:** Bloquea y emite código de salida no-cero cuando una respuesta contiene texto grandilocuente sin ningún bloque de código válido.
-* **Test 4.3 - Preservación de Código Técnico:** Verifica que código fuente C99 o UPL válido no sufra alteraciones en su sintaxis al pasar por el supervisor.
+### Suite 4: Preprocesador y Sanitizador de Código Fuente (`tools/upl_supervisor.c`)
+Valida la extracción determinista de bloques de código y el filtrado de artefactos no ejecutables en pipelines automatizados:
+* **Test 4.1 - Extracción de Bloques:** Verifica la extracción precisa de bloques de código delimitados (fenced code), descartando preámbulos y comentarios conversacionales exteriores.
+* **Test 4.2 - Rechazo de Entradas Sin Código:** Emite código de retorno no-cero cuando una entrada carece por completo de sintaxis ejecutable o bloques válidos.
+* **Test 4.3 - Preservación de Código Técnico:** Valida que el código fuente C99 o UPL+ válido mantenga su integridad sintáctica intacta byte a byte sin alteraciones.
 
 ### Suite 5: Compilación End-to-End con `uplc`
 Prueba de integración completa del pipeline:
