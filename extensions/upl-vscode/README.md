@@ -12,24 +12,26 @@ Extensión de soporte de lenguaje para **Universal Polyglot Layer (UPL)**. Compa
 - ⚡ **Snippets de Código:**
   - `main` -> Genera la función principal de entrada.
   - `fn` -> Genera una función tipada.
-  - `struct` -> Genera una estructura protegida `@snapshot`.
-  - `imp` -> Importa módulos del ecosistema.
+  - `struct` -> Genera una estructura con tipado estático.
+  - `net_tcp` -> Plantilla para cliente y conexión de socket TCP nativo.
+  - `mutex` -> Bloqueo y sincronización de hilos en hardware.
+  - `comp3` -> Aritmética decimal financiera exacta (Packed Decimal BCD).
 - ⚙️ **Integración de Tareas de Compilación (`tasks.json`):**
   - `Ctrl + Shift + B` -> Compilar binario nativo optimizado con `bin/uplc.exe`.
-  - Tareas para empaquetado directo a `.deb`, `.rpm`, `.app` (macOS) y `.apk` (Android).
-  - Tarea para listar módulos disponibles en el sistema.
+  - Soporte integrado para `uplc pm list` (Gestor de módulos de silicio).
 
 ## Instalación en Visual Studio Code / Antigravity IDE
 
-### Opción 1: Enlace directo en carpeta de extensiones (Recomendada para desarrollo)
-Copia o crea un enlace simbólico de la carpeta `extensions/upl-vscode` a la carpeta de extensiones de tu editor:
-
-- **VS Code:** `%USERPROFILE%\.vscode\extensions\upl-lang`
-- **Antigravity IDE:** `%USERPROFILE%\.gemini\antigravity-ide\extensions\upl-lang`
-
-### Opción 2: Empaquetar con vsce
+### Opción 1: Instalación directa desde archivo VSIX
+Ejecuta en tu terminal:
 ```bash
-cd extensions/upl-vscode
-npx @vscode/vsce package
-code --install-extension upl-lang-1.5.0.vsix
+antigravity-ide --install-extension extensions/upl-lang-1.6.0.vsix
+# O en Visual Studio Code:
+code --install-extension extensions/upl-lang-1.6.0.vsix
+```
+
+### Opción 2: Script de 1 clic (Windows)
+Haz doble clic en:
+```
+extensions/instalar_extension.bat
 ```

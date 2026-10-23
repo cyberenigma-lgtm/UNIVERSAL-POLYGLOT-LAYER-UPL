@@ -5,8 +5,8 @@ echo ====================================================================
 echo.
 
 set EXT_SRC=%~dp0upl-vscode
-set VSCODE_EXT_DIR=%USERPROFILE%\.vscode\extensions\upl-lang-1.5.0
-set ANTIGRAVITY_EXT_DIR=%USERPROFILE%\.antigravity\extensions\upl-lang-1.5.0
+set VSCODE_EXT_DIR=%USERPROFILE%\.vscode\extensions\upl-lang-1.6.0
+set ANTIGRAVITY_EXT_DIR=%USERPROFILE%\.antigravity\extensions\upl-lang-1.6.0
 
 echo [1/3] Instalando extension para VS Code / Cursor / VSCodium...
 if exist "%USERPROFILE%\.vscode\extensions" (
