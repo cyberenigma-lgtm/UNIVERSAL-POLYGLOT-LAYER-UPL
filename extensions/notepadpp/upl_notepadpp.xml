@@ -8,7 +8,7 @@
             <!-- Palabras Clave de Declaración (Bilingüe) -->
             <Keywords name="Words1">module modulo fn funcion let sea mut const constante struct estructura import importar pub publico as como extern externo use usar</Keywords>
             <!-- Control de Flujo (Bilingüe) -->
-            <Keywords name="Words2">if si else sino while mientras for para return retornar break romper continue continuar</Keywords>
+            <Keywords name="Words2">if si else sino while mientras for para return retornar break romper continue continuar defer diferir</Keywords>
             <!-- Tipos Primitivos y de Silicio -->
             <Keywords name="Words3">u8 u16 u32 u64 i8 i16 i32 i64 usize f32 f64 bool str void comp3 UrepSecurityContext Vector4D CpuRegisterState</Keywords>
             <!-- Bloques de Fusión Políglota -->

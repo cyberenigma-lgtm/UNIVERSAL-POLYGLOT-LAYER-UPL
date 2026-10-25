@@ -195,6 +195,31 @@ UplAstNode* upl_ast_new_stmt_continue(UPL_Arena *arena, size_t line, size_t col)
     return alloc_node(arena, AST_STMT_CONTINUE, line, col);
 }
 
+UplAstNode* upl_ast_new_stmt_defer(UPL_Arena *arena, UplAstNode *stmt, size_t line, size_t col) {
+    UplAstNode *n = alloc_node(arena, AST_STMT_DEFER, line, col);
+    if (n) n->as.stmt_defer.stmt = stmt;
+    return n;
+}
+
+UplAstNode* upl_ast_new_stmt_match(UPL_Arena *arena, UplAstNode *expr, UplAstList *cases, size_t line, size_t col) {
+    UplAstNode *n = alloc_node(arena, AST_STMT_MATCH, line, col);
+    if (n) {
+        n->as.stmt_match.expr = expr;
+        n->as.stmt_match.cases = cases;
+    }
+    return n;
+}
+
+UplAstNode* upl_ast_new_match_case(UPL_Arena *arena, UplAstNode *pattern, UplAstNode *body, bool is_default, size_t line, size_t col) {
+    UplAstNode *n = alloc_node(arena, AST_MATCH_CASE, line, col);
+    if (n) {
+        n->as.match_case.pattern = pattern;
+        n->as.match_case.body = body;
+        n->as.match_case.is_default = is_default;
+    }
+    return n;
+}
+
 UplAstNode* upl_ast_new_decl_param(UPL_Arena *arena, const char *name, UplAstNode *type, size_t line, size_t col) {
     UplAstNode *n = alloc_node(arena, AST_DECL_PARAM, line, col);
     if (n) {

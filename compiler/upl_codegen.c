@@ -222,11 +222,17 @@ static void emit_statement(UplCodeGen *gen, const UplAstNode *node);
 
 static void emit_block(UplCodeGen *gen, const UplAstNode *node) {
     if (!node || node->kind != AST_STMT_BLOCK) return;
+    int prev_defers = gen->defer_count;
     fprintf(gen->out, "{\n");
     gen->indent_level++;
     for (UplAstList *l = node->as.block.stmts; l != NULL; l = l->next) {
         emit_statement(gen, l->node);
     }
+    // Ejecutar sentencias diferidas (defer/diferir) en orden LIFO
+    for (int d = gen->defer_count - 1; d >= prev_defers; --d) {
+        emit_statement(gen, gen->defer_stack[d]);
+    }
+    gen->defer_count = prev_defers;
     gen->indent_level--;
     emit_indent(gen);
     fprintf(gen->out, "}\n");
@@ -291,13 +297,72 @@ static void emit_statement(UplCodeGen *gen, const UplAstNode *node) {
             fprintf(gen->out, "continue;\n");
             break;
 
-        case AST_STMT_RETURN:
-            fprintf(gen->out, "return");
-            if (node->as.stmt_return.expr) {
-                fprintf(gen->out, " ");
-                emit_expression(gen, node->as.stmt_return.expr);
+        case AST_STMT_DEFER:
+            if (gen->defer_count < 64) {
+                gen->defer_stack[gen->defer_count++] = node->as.stmt_defer.stmt;
             }
-            fprintf(gen->out, ";\n");
+            break;
+
+        case AST_STMT_MATCH:
+            fprintf(gen->out, "switch (");
+            emit_expression(gen, node->as.stmt_match.expr);
+            fprintf(gen->out, ") {\n");
+            gen->indent_level++;
+            for (UplAstList *c = node->as.stmt_match.cases; c != NULL; c = c->next) {
+                UplAstNode *item = c->node;
+                emit_indent(gen);
+                if (item->as.match_case.is_default || !item->as.match_case.pattern) {
+                    fprintf(gen->out, "default: {\n");
+                } else {
+                    fprintf(gen->out, "case ");
+                    emit_expression(gen, item->as.match_case.pattern);
+                    fprintf(gen->out, ": {\n");
+                }
+                gen->indent_level++;
+                emit_statement(gen, item->as.match_case.body);
+                emit_indent(gen);
+                fprintf(gen->out, "break;\n");
+                gen->indent_level--;
+                emit_indent(gen);
+                fprintf(gen->out, "}\n");
+            }
+            gen->indent_level--;
+            emit_indent(gen);
+            fprintf(gen->out, "}\n");
+            break;
+
+        case AST_STMT_RETURN:
+            if (gen->defer_count > 0) {
+                if (node->as.stmt_return.expr) {
+                    fprintf(gen->out, "{\n");
+                    gen->indent_level++;
+                    emit_indent(gen);
+                    fprintf(gen->out, "__auto_type __ret_val = ");
+                    emit_expression(gen, node->as.stmt_return.expr);
+                    fprintf(gen->out, ";\n");
+                    for (int d = gen->defer_count - 1; d >= 0; --d) {
+                        emit_statement(gen, gen->defer_stack[d]);
+                    }
+                    emit_indent(gen);
+                    fprintf(gen->out, "return __ret_val;\n");
+                    gen->indent_level--;
+                    emit_indent(gen);
+                    fprintf(gen->out, "}\n");
+                } else {
+                    for (int d = gen->defer_count - 1; d >= 0; --d) {
+                        emit_statement(gen, gen->defer_stack[d]);
+                    }
+                    emit_indent(gen);
+                    fprintf(gen->out, "return;\n");
+                }
+            } else {
+                fprintf(gen->out, "return");
+                if (node->as.stmt_return.expr) {
+                    fprintf(gen->out, " ");
+                    emit_expression(gen, node->as.stmt_return.expr);
+                }
+                fprintf(gen->out, ";\n");
+            }
             break;
 
         case AST_STMT_IF:
@@ -353,6 +418,7 @@ void upl_codegen_init(UplCodeGen *gen, FILE *out) {
     gen->had_error = false;
     gen->error_message[0] = '\0';
     gen->pointer_var_count = 0;
+    gen->defer_count = 0;
 }
 
 bool upl_codegen_generate(UplCodeGen *gen, const UplAstNode *program) {

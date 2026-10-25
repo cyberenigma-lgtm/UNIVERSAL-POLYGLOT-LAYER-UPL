@@ -437,6 +437,50 @@ UplAstNode* upl_parser_parse_statement(UplParser *p) {
         return upl_ast_new_stmt_return(p->arena, expr, line, col);
     }
 
+    // Sentencia Defer (diferir / defer)
+    if (match(p, TOKEN_KEYWORD_DEFER)) {
+        UplAstNode *deferred = upl_parser_parse_statement(p);
+        return upl_ast_new_stmt_defer(p->arena, deferred, line, col);
+    }
+
+    // Sentencia Match / Segun (coincidencia de patrones / switch)
+    if (match(p, TOKEN_KEYWORD_MATCH)) {
+        UplAstNode *target = upl_parser_parse_expression(p);
+        consume(p, TOKEN_DELIM_LBRACE, "Esperaba '{' para iniciar bloque de casos en match/segun");
+        
+        UplAstList *cases = NULL;
+        while (!check(p, TOKEN_DELIM_RBRACE) && !check(p, TOKEN_EOF)) {
+            size_t c_line = p->current.line;
+            size_t c_col = p->current.column;
+            bool is_def = false;
+            UplAstNode *pattern = NULL;
+
+            if (match(p, TOKEN_KEYWORD_DEFAULT)) {
+                is_def = true;
+            } else if (check(p, TOKEN_IDENTIFIER) && strcmp(p->current.lexeme, "_") == 0) {
+                advance(p);
+                is_def = true;
+            } else if (match(p, TOKEN_KEYWORD_CASE)) {
+                pattern = upl_parser_parse_expression(p);
+            } else {
+                pattern = upl_parser_parse_expression(p);
+            }
+
+            if (!match(p, TOKEN_FAT_ARROW)) {
+                consume(p, TOKEN_DELIM_COLON, "Esperaba '=>' o ':' tras caso en match/segun");
+            }
+
+            UplAstNode *body = upl_parser_parse_statement(p);
+            UplAstNode *cnode = upl_ast_new_match_case(p->arena, pattern, body, is_def, c_line, c_col);
+            upl_ast_list_append(p->arena, &cases, cnode);
+
+            match(p, TOKEN_DELIM_COMMA);
+        }
+
+        consume(p, TOKEN_DELIM_RBRACE, "Esperaba '}' para finalizar bloque match/segun");
+        return upl_ast_new_stmt_match(p->arena, target, cases, line, col);
+    }
+
     // 5. Bloque Embed inline (incrustar / embed)
     if (match(p, TOKEN_KEYWORD_EMBED)) {
         if (check(p, TOKEN_LITERAL_STRING)) {
@@ -630,7 +674,24 @@ static UplAstNode* parse_declaration(UplParser *p) {
         if (match(p, TOKEN_KEYWORD_STRUCT)) {
             return parse_struct_declaration(p);
         }
-        error_at(p, &p->current, "Esperaba 'fn'/'funcion' o 'struct'/'estructura' tras modificador pub/publico");
+        if (match(p, TOKEN_KEYWORD_CONST)) {
+            consume(p, TOKEN_IDENTIFIER, "Esperaba identificador para declaracion const");
+            const char *name = upl_arena_strdup(p->arena, p->previous.lexeme);
+            UplAstNode *type = NULL;
+            UplAstNode *init_expr = NULL;
+
+            if (match(p, TOKEN_DELIM_COLON)) {
+                type = upl_parser_parse_type(p);
+            }
+
+            if (match(p, TOKEN_OP_ASSIGN)) {
+                init_expr = upl_parser_parse_expression(p);
+            }
+
+            consume(p, TOKEN_DELIM_SEMICOLON, "Esperaba ';' al finalizar declaracion const");
+            return upl_ast_new_stmt_let(p->arena, name, type, init_expr, false, line, col);
+        }
+        error_at(p, &p->current, "Esperaba 'fn'/'funcion', 'struct'/'estructura' o 'const' tras modificador pub/publico");
         return NULL;
     }
 
@@ -657,8 +718,7 @@ UplAstNode* upl_parser_parse_program(UplParser *p) {
         UplAstNode *decl = parse_declaration(p);
         if (decl) {
             upl_ast_list_append(p->arena, &items, decl);
-        } else if (p->had_error) {
-            // Sincronización en caso de error para continuar analizando
+        } else {
             advance(p);
         }
     }

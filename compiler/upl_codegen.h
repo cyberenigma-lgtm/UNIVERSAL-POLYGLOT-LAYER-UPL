@@ -19,6 +19,8 @@ typedef struct {
     char error_message[256];
     char pointer_vars[128][64];
     int pointer_var_count;
+    const UplAstNode *defer_stack[64];
+    int defer_count;
 } UplCodeGen;
 
 /* Inicializar el generador con un flujo de salida */

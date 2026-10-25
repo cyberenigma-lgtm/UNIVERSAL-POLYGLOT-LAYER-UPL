@@ -97,6 +97,10 @@ static TokenType match_keyword(const char* lexeme) {
     if (strcmp(lexeme, "return") == 0 || strcmp(lexeme, "retornar") == 0) return TOKEN_KEYWORD_RETURN;
     if (strcmp(lexeme, "break") == 0 || strcmp(lexeme, "romper") == 0) return TOKEN_KEYWORD_BREAK;
     if (strcmp(lexeme, "continue") == 0 || strcmp(lexeme, "continuar") == 0) return TOKEN_KEYWORD_CONTINUE;
+    if (strcmp(lexeme, "defer") == 0 || strcmp(lexeme, "diferir") == 0) return TOKEN_KEYWORD_DEFER;
+    if (strcmp(lexeme, "match") == 0 || strcmp(lexeme, "segun") == 0) return TOKEN_KEYWORD_MATCH;
+    if (strcmp(lexeme, "case") == 0 || strcmp(lexeme, "caso") == 0) return TOKEN_KEYWORD_CASE;
+    if (strcmp(lexeme, "default") == 0 || strcmp(lexeme, "defecto") == 0) return TOKEN_KEYWORD_DEFAULT;
     
     // Conversión de tipos
     if (strcmp(lexeme, "as") == 0 || strcmp(lexeme, "como") == 0) return TOKEN_KEYWORD_AS;
@@ -275,6 +279,7 @@ Token lexer_next_token(Lexer* lexer) {
     // Operadores de múltiples caracteres y asignaciones compuestas
     if (c == '=') {
         if (peek(lexer) == '=') { advance(lexer); return create_token(TOKEN_OP_EQUAL, "==", 2, start_line, start_col); }
+        if (peek(lexer) == '>') { advance(lexer); return create_token(TOKEN_FAT_ARROW, "=>", 2, start_line, start_col); }
         return create_token(TOKEN_OP_ASSIGN, "=", 1, start_line, start_col);
     }
     if (c == '!') {
@@ -391,6 +396,11 @@ const char* token_type_name(TokenType type) {
         case TOKEN_KEYWORD_EMBED:  return "TOKEN_KEYWORD_EMBED";
         case TOKEN_KEYWORD_BREAK:  return "TOKEN_KEYWORD_BREAK";
         case TOKEN_KEYWORD_CONTINUE: return "TOKEN_KEYWORD_CONTINUE";
+        case TOKEN_KEYWORD_DEFER:  return "TOKEN_KEYWORD_DEFER";
+        case TOKEN_KEYWORD_MATCH:  return "TOKEN_KEYWORD_MATCH";
+        case TOKEN_KEYWORD_CASE:   return "TOKEN_KEYWORD_CASE";
+        case TOKEN_KEYWORD_DEFAULT:return "TOKEN_KEYWORD_DEFAULT";
+        case TOKEN_FAT_ARROW:      return "TOKEN_FAT_ARROW";
         case TOKEN_OP_ASSIGN:      return "TOKEN_OP_ASSIGN";
         case TOKEN_OP_EQUAL:       return "TOKEN_OP_EQUAL";
         case TOKEN_OP_NOT_EQUAL:   return "TOKEN_OP_NOT_EQUAL";

@@ -1,0 +1,264 @@
+modulo demo_dvtrga_gui;
+
+// ============================================================================
+// UPL+ FLAGSHIP DEMO: MOTOR GRAFICO DVTRGAS & DEFER LIFO RESOURCE CLEANUP
+// Renderizado de Silicio Directo: Paneles Glass, Antialiasing ESAA y Defer
+// ============================================================================
+
+incrustar "c" {
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <windows.h>
+
+// Mezclador de canal alfa RGBA (0-255)
+static inline uint32_t blend_color_alpha(uint32_t bg, uint32_t fg, uint8_t alpha) {
+    if (alpha == 0) return bg;
+    if (alpha >= 255) return fg;
+    
+    uint32_t inv_a = 255 - alpha;
+    uint32_t rb = (bg & 0xFF00FF) * inv_a + (fg & 0xFF00FF) * alpha;
+    uint32_t g  = (bg & 0x00FF00) * inv_a + (fg & 0x00FF00) * alpha;
+    
+    return ((rb >> 8) & 0xFF00FF) | ((g >> 8) & 0x00FF00);
+}
+}
+
+// Estructura de contexto DVTRGA
+publico estructura DVTRGA_CONTEXT {
+    hwnd: *void,
+    hdc: *void,
+    hBitmap: *void,
+    pBits: *u32,
+    width: i32,
+    height: i32,
+    pitch: i32,
+    bpp: i8,
+    initialized: i8
+}
+
+sea mut g_ctx: DVTRGA_CONTEXT;
+
+// 1. Inicialización del motor
+pub fn DvtrgaInit(width: i32, height: i32) -> i32 {
+    si g_ctx.initialized == 1 { retornar 0; }
+
+    incrustar "c" {
+        WNDCLASSA wc = {0};
+        wc.style = CS_OWNDC;
+        wc.lpfnWndProc = DefWindowProcA;
+        wc.hInstance = GetModuleHandle(NULL);
+        wc.lpszClassName = "UPL_DVTRGA_DemoClass";
+        RegisterClassA(&wc);
+
+        HWND hwnd = CreateWindowExA(
+            WS_EX_TOOLWINDOW, wc.lpszClassName, "UPL+ DVTRGA Engine Demo",
+            WS_POPUP, 0, 0, width, height, NULL, NULL, wc.hInstance, NULL
+        );
+
+        g_ctx.hwnd = (void*)hwnd;
+        g_ctx.hdc = (void*)GetDC(hwnd);
+
+        BITMAPINFO bmi = {0};
+        bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+        bmi.bmiHeader.biWidth = width;
+        bmi.bmiHeader.biHeight = -height;
+        bmi.bmiHeader.biPlanes = 1;
+        bmi.bmiHeader.biBitCount = 32;
+        bmi.bmiHeader.biCompression = BI_RGB;
+
+        g_ctx.hBitmap = (void*)CreateDIBSection((HDC)g_ctx.hdc, &bmi, DIB_RGB_COLORS, (void**)&g_ctx.pBits, NULL, 0);
+        if (!g_ctx.hBitmap || !g_ctx.pBits) {
+            ReleaseDC(hwnd, (HDC)g_ctx.hdc);
+            return -1;
+        }
+    }
+
+    g_ctx.width = width;
+    g_ctx.height = height;
+    g_ctx.pitch = width * 4;
+    g_ctx.bpp = 32;
+    g_ctx.initialized = 1;
+
+    retornar 0;
+}
+
+// 2. Cierre y liberación de recursos
+pub fn DvtrgaClose() {
+    si g_ctx.initialized == 0 { retornar; }
+
+    incrustar "c" {
+        printf("[DVTRGA DEFER] Liberando recursos de memoria y contexto grafico DIB...\n");
+        if (g_ctx.hBitmap) DeleteObject((HBITMAP)g_ctx.hBitmap);
+        if (g_ctx.hdc) ReleaseDC((HWND)g_ctx.hwnd, (HDC)g_ctx.hdc);
+        if (g_ctx.hwnd) DestroyWindow((HWND)g_ctx.hwnd);
+    }
+
+    g_ctx.hwnd = NULL;
+    g_ctx.hdc = NULL;
+    g_ctx.hBitmap = NULL;
+    g_ctx.pBits = NULL;
+    g_ctx.initialized = 0;
+    incrustar "c" { printf("[DVTRGA DEFER] Contexto cerrado con 0 fugas de memoria.\n"); }
+}
+
+// 3. Pintar pixel con canal Alpha
+pub fn DvtrgaDrawPixelAlpha(x: i32, y: i32, color: u32, alpha: u8) {
+    si x < 0 { retornar; }
+    si y < 0 { retornar; }
+    si x >= g_ctx.width { retornar; }
+    si y >= g_ctx.height { retornar; }
+
+    sea pixels: *u32 = g_ctx.pBits;
+    sea idx: i32 = (y * g_ctx.width) + x;
+    sea bg: u32 = pixels[idx];
+
+    sea mut blended: u32 = 0;
+    incrustar "c" {
+        blended = blend_color_alpha(bg, color, alpha);
+    }
+    pixels[idx] = blended;
+}
+
+// 4. Panel Glass traslúcido con esquinas redondeadas
+pub fn DvtrgaDrawGlassPanel(x: i32, y: i32, w: i32, h: i32, color: u32, alpha: u8, border_color: u32) {
+    sea mut py: i32 = 0;
+    mientras py < h {
+        sea mut px: i32 = 0;
+        mientras px < w {
+            // Fondo traslúcido
+            DvtrgaDrawPixelAlpha(x + px, y + py, color, alpha);
+
+            // Borde sutil del panel
+            si py == 0 || py == h - 1 || px == 0 || px == w - 1 {
+                DvtrgaDrawPixelAlpha(x + px, y + py, border_color, 240);
+            }
+            px = px + 1;
+        }
+        py = py + 1;
+    }
+}
+
+// 5. Filtro Espacial de Antialiasing de 5 Puntos (5-Tap Spatial Smoothing - ESAA)
+pub fn DvtrgaApplyESAA(x: i32, y: i32, w: i32, h: i32) {
+    sea mut py: i32 = y + 1;
+    sea max_y: i32 = y + h - 1;
+    sea max_x: i32 = x + w - 1;
+    sea pixels: *u32 = g_ctx.pBits;
+    sea width: i32 = g_ctx.width;
+
+    mientras py < max_y {
+        sea mut px: i32 = x + 1;
+        mientras px < max_x {
+            sea c: u32 = pixels[(py * width) + px];
+            sea c_n: u32 = pixels[((py - 1) * width) + px];
+            sea c_s: u32 = pixels[((py + 1) * width) + px];
+            sea c_e: u32 = pixels[(py * width) + (px + 1)];
+            sea c_w: u32 = pixels[(py * width) + (px - 1)];
+
+            sea mut mixed: u32 = 0;
+            incrustar "c" {
+                uint32_t m1 = blend_color_alpha(c_n, c_s, 128);
+                uint32_t m2 = blend_color_alpha(c, m1, 64);
+                uint32_t m3 = blend_color_alpha(c_e, c_w, 128);
+                mixed = blend_color_alpha(m2, m3, 64);
+            }
+            pixels[(py * width) + px] = mixed;
+            px = px + 1;
+        }
+        py = py + 1;
+    }
+}
+
+// 6. Guardar renderizado en formato BMP
+pub fn DvtrgaSaveBMP(filename: str) -> i32 {
+    sea mut res: i32 = 0;
+    incrustar "c" {
+        BITMAPFILEHEADER bfh = {0};
+        BITMAPINFOHEADER bih = {0};
+        
+        bfh.bfType = 0x4D42;
+        bfh.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+        bfh.bfSize = bfh.bfOffBits + (g_ctx.width * g_ctx.height * 4);
+        
+        bih.biSize = sizeof(BITMAPINFOHEADER);
+        bih.biWidth = g_ctx.width;
+        bih.biHeight = -g_ctx.height;
+        bih.biPlanes = 1;
+        bih.biBitCount = 32;
+        bih.biCompression = BI_RGB;
+        
+        HANDLE hFile = CreateFileA(filename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (hFile != INVALID_HANDLE_VALUE) {
+            DWORD written;
+            WriteFile(hFile, &bfh, sizeof(bfh), &written, NULL);
+            WriteFile(hFile, &bih, sizeof(bih), &written, NULL);
+            WriteFile(hFile, g_ctx.pBits, g_ctx.width * g_ctx.height * 4, &written, NULL);
+            CloseHandle(hFile);
+        } else {
+            res = -1;
+        }
+    }
+    retornar res;
+}
+
+pub fn main() -> i32 {
+    incrustar "c" {
+        printf("====================================================================\n");
+        printf("  UPL+ FLAGSHIP DEMO: MOTOR GRAFICO DVTRGAS (SILICIO NATIVO)\n");
+        printf("  Gestion Determinista de Recursos con defer / diferir\n");
+        printf("====================================================================\n");
+    }
+
+    // Inicializar framebuffer HD a 800x600
+    sea init_ok: i32 = DvtrgaInit(800, 600);
+    si init_ok != 0 {
+        incrustar "c" { printf("[ERROR] No se pudo inicializar DVTRGAS\n"); }
+        retornar 1;
+    }
+
+    // GARANTIA DE GESTION DE RECURSOS: Se ejecutara automaticamente al salir
+    diferir {
+        DvtrgaClose();
+    }
+
+    incrustar "c" { printf("[DVTRGA] Generando fondo con gradiente visual oscuro...\n"); }
+    sea mut y: i32 = 0;
+    sea pixels: *u32 = g_ctx.pBits;
+    mientras y < 600 {
+        sea mut x: i32 = 0;
+        sea r: u32 = (y * 25 / 600) como u32;
+        sea g: u32 = (y * 35 / 600) como u32;
+        sea b: u32 = (40 + (y * 50 / 600)) como u32;
+        sea grad_color: u32 = (r << 16) | (g << 8) | b;
+
+        mientras x < 800 {
+            pixels[(y * 800) + x] = grad_color;
+            x = x + 1;
+        }
+        y = y + 1;
+    }
+
+    incrustar "c" { printf("[DVTRGA] Renderizando paneles de cristal (Glassmorphism)...\n"); }
+    // Panel Principal Centro: Glass azul cian traslúcido
+    DvtrgaDrawGlassPanel(100, 80, 600, 440, 0x15253A, 180, 0x00E5FF);
+
+    // Sub-tarjetas internas
+    DvtrgaDrawGlassPanel(140, 140, 240, 160, 0x1A1528, 190, 0x9D00FF);
+    DvtrgaDrawGlassPanel(420, 140, 240, 160, 0x102820, 190, 0x00FF88);
+    DvtrgaDrawGlassPanel(140, 330, 520, 140, 0x0F1B29, 210, 0x3388FF);
+
+    incrustar "c" { printf("[DVTRGA] Aplicando filtro de antialiasing espacial ESAA (5-Tap)...\n"); }
+    DvtrgaApplyESAA(99, 79, 602, 442);
+
+    // Guardar renderizado en BMP
+    sea save_res: i32 = DvtrgaSaveBMP("bin/dvtrga_render_demo.bmp");
+    si save_res == 0 {
+        incrustar "c" { printf("[OK] Renderizado guardado con exito: bin/dvtrga_render_demo.bmp\n"); }
+    } sino {
+        incrustar "c" { printf("[ERROR] No se pudo escribir el archivo BMP\n"); }
+    }
+
+    incrustar "c" { printf("[DVTRGA] Finalizando funcion main()...\n"); }
+    retornar 0;
+}

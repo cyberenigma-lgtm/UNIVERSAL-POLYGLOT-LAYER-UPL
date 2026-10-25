@@ -14,8 +14,14 @@
 #endif
 
 static void print_usage(const char *prog_name) {
-    fprintf(stderr, "UPL+ Compilador Oficial (v2.0 Dragon Book Architecture)\n");
-    fprintf(stderr, "Uso: %s [opciones] <archivo.upl>\n\n", prog_name);
+    fprintf(stderr, "UPL+ Compilador Oficial (v2.1 Dragon Book Architecture)\n");
+    fprintf(stderr, "Uso: %s [subcomando|opciones] [archivo.upl]\n\n", prog_name);
+    fprintf(stderr, "Subcomandos:\n");
+    fprintf(stderr, "  run <archivo.upl> Compilar y ejecutar inmediatamente\n");
+    fprintf(stderr, "  test, probar      Ejecutar la suite integral de pruebas\n");
+    fprintf(stderr, "  init <proyecto>   Inicializar nuevo proyecto UPL+\n");
+    fprintf(stderr, "  migrate <orig.c>  Migrar codigo C99 existente a UPL+ (c2upl)\n");
+    fprintf(stderr, "  pm, pkg           Gestor de paquetes UPL\n\n");
     fprintf(stderr, "Opciones:\n");
     fprintf(stderr, "  -o <salida>       Especificar nombre del binario ejecutable de salida\n");
     fprintf(stderr, "  -c, --emit-c      Generar solo codigo fuente C99 sin invocar gcc\n");
@@ -56,6 +62,74 @@ int main(int argc, char **argv) {
     bool run_after_build = false;
     char extra_gcc_flags[1024] = "";
 
+    // Subcomando TEST: uplc test / uplc probar
+    if (argc >= 2 && (strcmp(argv[1], "test") == 0 || strcmp(argv[1], "probar") == 0)) {
+        printf("====================================================================\n");
+        printf("  UPLC TEST RUNNER: EJECUTANDO SUITE INTEGRAL DE PRUEBAS (C99)\n");
+        printf("====================================================================\n");
+#ifdef _WIN32
+        return system("cmd /c test.bat");
+#else
+        return system("./test.sh");
+#endif
+    }
+
+    // Subcomando INIT: uplc init <nombre_proyecto>
+    if (argc >= 2 && (strcmp(argv[1], "init") == 0 || strcmp(argv[1], "nuevo") == 0)) {
+        const char *proj = (argc >= 3) ? argv[2] : "mi_proyecto_upl";
+        printf("[UPLC INIT] Inicializando nuevo proyecto UPL+: '%s'...\n", proj);
+#ifdef _WIN32
+        char cmd[1024];
+        snprintf(cmd, sizeof(cmd), "mkdir \"%s\" \"%s\\src\" \"%s\\modules\" \"%s\\tests\" 2>nul", proj, proj, proj, proj);
+        system(cmd);
+
+        char main_path[512];
+        snprintf(main_path, sizeof(main_path), "%s\\src\\main.upl", proj);
+        FILE *f = fopen(main_path, "wb");
+        if (f) {
+            fprintf(f, "// Proyecto UPL+: %s\nmodulo main;\n\nincrustar \"c\" {\n#include <stdio.h>\n}\n\npub fn main() -> i32 {\n    incrustar \"c\" {\n        printf(\"¡Hola desde UPL+ (Universal Polyglot Layer)!\\n\");\n    }\n    retornar 0;\n}\n", proj);
+            fclose(f);
+        }
+
+        char json_path[512];
+        snprintf(json_path, sizeof(json_path), "%s\\upl.json", proj);
+        f = fopen(json_path, "wb");
+        if (f) {
+            fprintf(f, "{\n  \"nombre\": \"%s\",\n  \"version\": \"1.0.0\",\n  \"autor\": \"Noxferion\",\n  \"punto_entrada\": \"src/main.upl\"\n}\n", proj);
+            fclose(f);
+        }
+#endif
+        printf("[OK] Estructura creada con exito:\n");
+        printf("     - %s/src/main.upl\n", proj);
+        printf("     - %s/modules/\n", proj);
+        printf("     - %s/tests/\n", proj);
+        printf("     - %s/upl.json\n", proj);
+        printf("[TIP] Para compilar y ejecutar: uplc run %s/src/main.upl\n", proj);
+        return 0;
+    }
+
+    // Subcomando MIGRATE / C2UPL: uplc migrate <archivo.c> [-o salida.upl]
+    if (argc >= 2 && (strcmp(argv[1], "migrate") == 0 || strcmp(argv[1], "migrar") == 0 || strcmp(argv[1], "c2upl") == 0)) {
+        if (argc < 3) {
+            fprintf(stderr, "Uso: uplc migrate [opciones] <archivo.c>\n");
+            fprintf(stderr, "Opciones:\n");
+            fprintf(stderr, "  -o <salida.upl>     Ruta del archivo UPL+ generado\n");
+            fprintf(stderr, "  -l <en|es>          Dialecto de destino (por defecto: es)\n");
+            return 1;
+        }
+#ifdef _WIN32
+        char cmd[2048] = "bin\\c2upl.exe";
+#else
+        char cmd[2048] = "./bin/c2upl";
+#endif
+        for (int i = 2; i < argc; ++i) {
+            strcat(cmd, " \"");
+            strcat(cmd, argv[i]);
+            strcat(cmd, "\"");
+        }
+        return system(cmd);
+    }
+
     if (argc >= 2 && (strcmp(argv[1], "pm") == 0 || strcmp(argv[1], "pkg") == 0)) {
 #ifdef _WIN32
         char cmd[1024] = "bin\\upl_pm.exe";
@@ -87,7 +161,7 @@ int main(int argc, char **argv) {
         } else if (strcmp(argv[i], "--dump-tokens") == 0) {
             dump_tokens = true;
         } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
-            printf("uplc version 2.0.0 (x86_64-w64-mingw32 standard C99 pipeline)\n");
+            printf("uplc version 2.1.0 (x86_64-w64-mingw32 standard C99 Dragon Book pipeline)\n");
             return 0;
         } else if (argv[i][0] == '-' && (argv[i][1] == 'l' || argv[i][1] == 'L' || argv[i][1] == 'I' || argv[i][1] == 'm' || argv[i][1] == 'W')) {
             strcat(extra_gcc_flags, " ");
@@ -255,6 +329,11 @@ int main(int argc, char **argv) {
 
     if (run_after_build) {
         printf("[RUN] Ejecutando %s...\n", exe_filename);
+#ifdef _WIN32
+        for (char *p = exe_filename; *p; ++p) {
+            if (*p == '/') *p = '\\';
+        }
+#endif
         system(exe_filename);
     }
 

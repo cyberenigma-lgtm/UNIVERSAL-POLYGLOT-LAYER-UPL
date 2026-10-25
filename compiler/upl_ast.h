@@ -50,6 +50,9 @@ typedef enum {
     AST_STMT_ASM,
     AST_STMT_BREAK,
     AST_STMT_CONTINUE,
+    AST_STMT_DEFER,
+    AST_STMT_MATCH,
+    AST_MATCH_CASE,
 
     // Declaraciones de alto nivel
     AST_DECL_PARAM,
@@ -171,6 +174,24 @@ struct UplAstNode {
             UplAstNode *expr;
         } stmt_return;
 
+        // Sentencia Defer (defer / diferir)
+        struct {
+            UplAstNode *stmt;
+        } stmt_defer;
+
+        // Sentencia Match (match / segun)
+        struct {
+            UplAstNode *expr;
+            UplAstList *cases;
+        } stmt_match;
+
+        // Brazo de Match (Case)
+        struct {
+            UplAstNode *pattern;
+            UplAstNode *body;
+            bool is_default;
+        } match_case;
+
         // Bloque de sentencias
         struct {
             UplAstList *stmts;
@@ -248,6 +269,9 @@ UplAstNode* upl_ast_new_block(UPL_Arena *arena, UplAstList *stmts, size_t line, 
 UplAstNode* upl_ast_new_raw_block(UPL_Arena *arena, UplAstKind kind, const char *raw_code, size_t line, size_t col);
 UplAstNode* upl_ast_new_stmt_break(UPL_Arena *arena, size_t line, size_t col);
 UplAstNode* upl_ast_new_stmt_continue(UPL_Arena *arena, size_t line, size_t col);
+UplAstNode* upl_ast_new_stmt_defer(UPL_Arena *arena, UplAstNode *stmt, size_t line, size_t col);
+UplAstNode* upl_ast_new_stmt_match(UPL_Arena *arena, UplAstNode *expr, UplAstList *cases, size_t line, size_t col);
+UplAstNode* upl_ast_new_match_case(UPL_Arena *arena, UplAstNode *pattern, UplAstNode *body, bool is_default, size_t line, size_t col);
 
 UplAstNode* upl_ast_new_decl_param(UPL_Arena *arena, const char *name, UplAstNode *type, size_t line, size_t col);
 UplAstNode* upl_ast_new_decl_fn(UPL_Arena *arena, const char *name, UplAstList *params, UplAstNode *ret_type, UplAstNode *body, bool is_pub, size_t line, size_t col);

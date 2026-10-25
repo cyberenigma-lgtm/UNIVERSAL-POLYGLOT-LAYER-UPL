@@ -1,0 +1,86 @@
+modulo test_match;
+
+// ============================================================================
+// VERIFICACION FORMAL: SELECCION MULTIPLE Y COINCIDENCIA (MATCH / SEGUN)
+// Precedencia O(1) con Tabla de Salto C99 Vectorizada y Defer LIFO
+// ============================================================================
+
+incrustar "c" {
+#include <stdio.h>
+#include <stdint.h>
+}
+
+pub fn evaluar_codigo_estado(estado: i32) -> i32 {
+    sea mut resultado: i32 = 0;
+
+    // Sintaxis en español: segun ...
+    segun estado {
+        200 => {
+            incrustar "c" { printf("[SEGUN] Estado 200: OK / Exito en Silicio\n"); }
+            resultado = 1;
+        }
+        404 => {
+            incrustar "c" { printf("[SEGUN] Estado 404: No Encontrado\n"); }
+            resultado = 2;
+        }
+        500 => {
+            incrustar "c" { printf("[SEGUN] Estado 500: Error Interno\n"); }
+            resultado = 3;
+        }
+        _ => {
+            incrustar "c" { printf("[SEGUN] Estado Desconocido / Caso por Defecto\n"); }
+            resultado = 99;
+        }
+    }
+
+    retornar resultado;
+}
+
+pub fn evaluar_modo_ingles(modo: i32) -> i32 {
+    sea mut res: i32 = 0;
+
+    // Sintaxis en inglés: match ...
+    match modo {
+        1 => {
+            incrustar "c" { printf("[MATCH] Mode 1: High Performance AVX2\n"); }
+            res = 10;
+        }
+        2 => {
+            incrustar "c" { printf("[MATCH] Mode 2: Energy Saver NPU\n"); }
+            res = 20;
+        }
+        default => {
+            incrustar "c" { printf("[MATCH] Mode Default: Balanced Pure C99\n"); }
+            res = 30;
+        }
+    }
+
+    retornar res;
+}
+
+pub fn main() -> i32 {
+    incrustar "c" {
+        printf("====================================================================\n");
+        printf("  VERIFICACION FORMAL: SENTENCIA MATCH / SEGUN EN UPL+\n");
+        printf("====================================================================\n");
+    }
+
+    sea r1: i32 = evaluar_codigo_estado(200);
+    sea r2: i32 = evaluar_codigo_estado(404);
+    sea r3: i32 = evaluar_codigo_estado(999);
+
+    sea m1: i32 = evaluar_modo_ingles(1);
+    sea m2: i32 = evaluar_modo_ingles(5);
+
+    si r1 == 1 && r2 == 2 && r3 == 99 && m1 == 10 && m2 == 30 {
+        incrustar "c" {
+            printf("[PASS] Todas las pruebas de match/segun superadas con exito (0 fallos).\n");
+        }
+        retornar 0;
+    }
+
+    incrustar "c" {
+        printf("[FAIL] Error en la evaluacion de match/segun.\n");
+    }
+    retornar 1;
+}

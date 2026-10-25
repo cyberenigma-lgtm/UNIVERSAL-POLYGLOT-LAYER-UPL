@@ -33,6 +33,11 @@ test.bat
 ./test.sh
 ```
 
+<p align="center">
+  <img src="../assets/upl_test_launcher_screen.png" alt="UPL+ Laboratory Test Center" width="850"/><br/>
+  <i>Entorno Empírico de Pruebas Win32 Unicode (upl_test_launcher.exe) — Ejecución integral certificada de compilador y módulos de silicio.</i>
+</p>
+
 ---
 
 ## 3. Detalle de las 6 Suites de Verificación

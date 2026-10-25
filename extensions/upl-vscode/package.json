@@ -2,7 +2,7 @@
     "name": "upl-lang",
     "displayName": "Universal Polyglot Layer (UPL)",
     "description": "Soporte oficial de lenguaje para Universal Polyglot Layer (UPL): sintaxis bilingüe, módulos de sistemas, decoradores y compilador nativo UPLC.",
-    "version": "1.6.0",
+    "version": "2.1.0",
     "publisher": "noxferion",
     "icon": "images/icon.png",
     "engines": {

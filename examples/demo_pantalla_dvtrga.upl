@@ -1,0 +1,332 @@
+modulo demo_pantalla_dvtrga;
+
+// ============================================================================
+// UPL+ & DVTRGAS-30: DEMOSTRACION GRAFICA EN VIVO EN PANTALLA DE ESCRITORIO
+// Ventana Nativa Win32 a 60 FPS con Paneles Glassmorphism y Defer LIFO
+// ============================================================================
+
+incrustar "c" {
+#include <windows.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <math.h>
+
+static LRESULT CALLBACK UPL_WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
+    if (msg == WM_DESTROY || msg == WM_CLOSE) {
+        PostQuitMessage(0);
+        return 0;
+    }
+    if (msg == WM_KEYDOWN && wp == VK_ESCAPE) {
+        PostQuitMessage(0);
+        return 0;
+    }
+    return DefWindowProcA(hwnd, msg, wp, lp);
+}
+
+// Mezclador rápido de color con canal alfa
+static inline uint32_t blend_alpha_fast(uint32_t bg, uint32_t fg, uint8_t a) {
+    if (a == 0) return bg;
+    if (a >= 255) return fg;
+    uint32_t inv = 255 - a;
+    uint32_t rb = (bg & 0xFF00FF) * inv + (fg & 0xFF00FF) * a;
+    uint32_t g  = (bg & 0x00FF00) * inv + (fg & 0x00FF00) * a;
+    return ((rb >> 8) & 0xFF00FF) | ((g >> 8) & 0x00FF00);
+}
+}
+
+publico estructura DVTRGA_ScreenContext {
+    hwnd: *void,
+    hdc_win: *void,
+    hdc_mem: *void,
+    hbitmap: *void,
+    pixels: *u32,
+    width: i32,
+    height: i32,
+    running: i8
+}
+
+sea mut g_scr: DVTRGA_ScreenContext;
+
+// 1. Inicialización y creación de ventana visible en pantalla
+pub fn iniciar_ventana_grafica(w: i32, h: i32, titulo: str) -> i32 {
+    g_scr.width = w;
+    g_scr.height = h;
+    g_scr.running = 0;
+
+    incrustar "c" {
+        WNDCLASSA wc = {0};
+        wc.style = CS_HREDRAW | CS_VREDRAW;
+        wc.lpfnWndProc = UPL_WndProc;
+        wc.hInstance = GetModuleHandleA(NULL);
+        wc.lpszClassName = "UPL_DVTRGAS_Window";
+        wc.hCursor = LoadCursorA(NULL, IDC_ARROW);
+        RegisterClassA(&wc);
+
+        int screen_w = GetSystemMetrics(SM_CXSCREEN);
+        int screen_h = GetSystemMetrics(SM_CYSCREEN);
+        int pos_x = (screen_w - w) / 2;
+        int pos_y = (screen_h - h) / 2;
+
+        RECT rc = {0, 0, w, h};
+        AdjustWindowRect(&rc, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, FALSE);
+        int win_w = rc.right - rc.left;
+        int win_h = rc.bottom - rc.top;
+
+        HWND hwnd = CreateWindowExA(
+            WS_EX_APPWINDOW,
+            wc.lpszClassName,
+            titulo,
+            WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_VISIBLE,
+            pos_x, pos_y, win_w, win_h,
+            NULL, NULL, wc.hInstance, NULL
+        );
+
+        if (!hwnd) return -1;
+
+        HDC hdc_win = GetDC(hwnd);
+        HDC hdc_mem = CreateCompatibleDC(hdc_win);
+
+        BITMAPINFO bmi = {0};
+        bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+        bmi.bmiHeader.biWidth = w;
+        bmi.bmiHeader.biHeight = -h; // Top-down DIB
+        bmi.bmiHeader.biPlanes = 1;
+        bmi.bmiHeader.biBitCount = 32;
+        bmi.bmiHeader.biCompression = BI_RGB;
+
+        void *pBits = NULL;
+        HBITMAP hbitmap = CreateDIBSection(hdc_mem, &bmi, DIB_RGB_COLORS, &pBits, NULL, 0);
+        if (!hbitmap || !pBits) {
+            ReleaseDC(hwnd, hdc_win);
+            DeleteDC(hdc_mem);
+            DestroyWindow(hwnd);
+            return -2;
+        }
+
+        SelectObject(hdc_mem, hbitmap);
+
+        g_scr.hwnd = (void*)hwnd;
+        g_scr.hdc_win = (void*)hdc_win;
+        g_scr.hdc_mem = (void*)hdc_mem;
+        g_scr.hbitmap = (void*)hbitmap;
+        g_scr.pixels = (uint32_t*)pBits;
+        g_scr.running = 1;
+
+        ShowWindow(hwnd, SW_SHOW);
+        SetForegroundWindow(hwnd);
+        UpdateWindow(hwnd);
+    }
+
+    retornar 0;
+}
+
+// 2. Destrucción determinista de recursos (compatible con diferir)
+pub fn cerrar_ventana_grafica() {
+    si g_scr.running == 0 { retornar; }
+    
+    incrustar "c" {
+        printf("[DEFER] Liberando recursos Win32 de pantalla y memoria DIB...\n");
+        if (g_scr.hbitmap) DeleteObject((HBITMAP)g_scr.hbitmap);
+        if (g_scr.hdc_mem) DeleteDC((HDC)g_scr.hdc_mem);
+        if (g_scr.hdc_win && g_scr.hwnd) ReleaseDC((HWND)g_scr.hwnd, (HDC)g_scr.hdc_win);
+        if (g_scr.hwnd) DestroyWindow((HWND)g_scr.hwnd);
+        printf("[DEFER] Ventana cerrada y memoria liberada con exito (0 fugas).\n");
+    }
+
+    g_scr.running = 0;
+}
+
+// 3. Dibujo de panel Glass traslúcido
+pub fn dibujar_panel_glass(x: i32, y: i32, w: i32, h: i32, bg_col: u32, alpha: u8, borde_col: u32) {
+    sea scr_w: i32 = g_scr.width;
+    sea scr_h: i32 = g_scr.height;
+    sea pixels: *u32 = g_scr.pixels;
+
+    sea mut py: i32 = 0;
+    mientras py < h {
+        sea cy: i32 = y + py;
+        si cy >= 0 && cy < scr_h {
+            sea mut px: i32 = 0;
+            mientras px < w {
+                sea cx: i32 = x + px;
+                si cx >= 0 && cx < scr_w {
+                    sea idx: i32 = (cy * scr_w) + cx;
+                    sea actual: u32 = pixels[idx];
+                    sea mut nuevo: u32 = 0;
+                    
+                    si py == 0 || py == h - 1 || px == 0 || px == w - 1 {
+                        // Borde brillante
+                        incrustar "c" { nuevo = blend_alpha_fast(actual, borde_col, 230); }
+                    } sino {
+                        // Relleno traslúcido
+                        incrustar "c" { nuevo = blend_alpha_fast(actual, bg_col, alpha); }
+                    }
+                    pixels[idx] = nuevo;
+                }
+                px = px + 1;
+            }
+        }
+        py = py + 1;
+    }
+}
+
+// 4. Filtro de Antialiasing Espacial de 5 Puntos (ESAA)
+pub fn aplicar_filtro_esaa(x: i32, y: i32, w: i32, h: i32) {
+    sea scr_w: i32 = g_scr.width;
+    sea scr_h: i32 = g_scr.height;
+    sea pixels: *u32 = g_scr.pixels;
+
+    sea mut py: i32 = y + 1;
+    sea max_y: i32 = y + h - 1;
+    sea max_x: i32 = x + w - 1;
+
+    mientras py < max_y {
+        si py > 0 && py < scr_h - 1 {
+            sea mut px: i32 = x + 1;
+            mientras px < max_x {
+                si px > 0 && px < scr_w - 1 {
+                    sea c: u32   = pixels[(py * scr_w) + px];
+                    sea c_n: u32 = pixels[((py - 1) * scr_w) + px];
+                    sea c_s: u32 = pixels[((py + 1) * scr_w) + px];
+                    sea c_e: u32 = pixels[(py * scr_w) + (px + 1)];
+                    sea c_w: u32 = pixels[(py * scr_w) + (px - 1)];
+
+                    sea mut suavizado: u32 = 0;
+                    incrustar "c" {
+                        uint32_t m1 = blend_alpha_fast(c_n, c_s, 128);
+                        uint32_t m2 = blend_alpha_fast(c, m1, 64);
+                        uint32_t m3 = blend_alpha_fast(c_e, c_w, 128);
+                        suavizado = blend_alpha_fast(m2, m3, 64);
+                    }
+                    pixels[(py * scr_w) + px] = suavizado;
+                }
+                px = px + 1;
+            }
+        }
+        py = py + 1;
+    }
+}
+
+// 5. Presentación al monitor mediante BitBlt directo
+pub fn presentar_frame() {
+    incrustar "c" {
+        BitBlt((HDC)g_scr.hdc_win, 0, 0, g_scr.width, g_scr.height, (HDC)g_scr.hdc_mem, 0, 0, SRCCOPY);
+    }
+}
+
+// 6. Procesar eventos de ventana de Windows
+pub fn procesar_mensajes_windows() -> i32 {
+    sea mut seguir: i32 = 1;
+    incrustar "c" {
+        MSG msg;
+        while (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE)) {
+            if (msg.message == WM_QUIT) {
+                seguir = 0;
+                break;
+            }
+            TranslateMessage(&msg);
+            DispatchMessageA(&msg);
+        }
+    }
+    retornar seguir;
+}
+
+pub fn main() -> i32 {
+    sea ancho: i32 = 960;
+    sea alto: i32 = 600;
+
+    incrustar "c" {
+        printf("====================================================================\n");
+        printf("  LENGUAJE UPL+ & DVTRGAS: DEMOSTRACION EN VIVO EN TU PANTALLA\n");
+        printf("  Presiona ESC o cierra la ventana para finalizar en cualquier momento\n");
+        printf("====================================================================\n");
+    }
+
+    sea err: i32 = iniciar_ventana_grafica(ancho, alto, "UPL+ & DVTRGAS-30 | Motor Grafico de Silicio Nativo (C99 Freestanding)");
+    si err != 0 {
+        incrustar "c" { printf("[ERROR] No se pudo crear la ventana grafica en pantalla.\n"); }
+        retornar 1;
+    }
+
+    // GESTION DETERMINISTA CON DIFERIR (DEFER):
+    // Se ejecutará automáticamente al salir de main() liberando todo
+    diferir {
+        cerrar_ventana_grafica();
+    }
+
+    sea pixels: *u32 = g_scr.pixels;
+    sea mut tick: i32 = 0;
+    sea mut corriendo: i32 = 1;
+
+    mientras corriendo == 1 {
+        // Verificar si el usuario presionó la 'X' o ESC
+        corriendo = procesar_mensajes_windows();
+        si corriendo == 0 {
+            romper;
+        }
+
+        // Renderizado del Fondo con Gradiente Dinámico
+        sea mut y: i32 = 0;
+        mientras y < alto {
+            sea r: u32 = ((y * 22 / alto) + ((tick / 4) & 15)) como u32;
+            sea g: u32 = ((y * 32 / alto) + ((tick / 6) & 15)) como u32;
+            sea b: u32 = (35 + (y * 55 / alto)) como u32;
+            sea color_fondo: u32 = (r << 16) | (g << 8) | b;
+
+            sea mut x: i32 = 0;
+            mientras x < ancho {
+                pixels[(y * ancho) + x] = color_fondo;
+                x = x + 1;
+            }
+            y = y + 1;
+        }
+
+        // Renderizar Haz de Luz Vectorial Dinámico (animado a 60 FPS)
+        sea rayo_x: i32 = 150 + ((tick * 3) % (ancho - 300));
+        sea mut ry: i32 = 60;
+        mientras ry < alto - 60 {
+            sea mut rx: i32 = -30;
+            mientras rx <= 30 {
+                sea px: i32 = rayo_x + rx;
+                si px >= 0 && px < ancho {
+                    sea mut dist: i32 = rx;
+                    si dist < 0 { dist = -dist; }
+                    sea brillo: u8 = (255 - (dist * 7)) como u8;
+                    sea actual: u32 = pixels[(ry * ancho) + px];
+                    sea mut haz: u32 = 0;
+                    incrustar "c" { haz = blend_alpha_fast(actual, 0x00E5FF, brillo); }
+                    pixels[(ry * ancho) + px] = haz;
+                }
+                rx = rx + 1;
+            }
+            ry = ry + 1;
+        }
+
+        // Panel Principal Glass Central (Transparencia Glassmorphism)
+        dibujar_panel_glass(120, 80, 720, 440, 0x101C2B, 185, 0x00E5FF);
+
+        // Tarjetas HUD Internas (Arquitectura DVTRGAS-30)
+        dibujar_panel_glass(160, 130, 300, 150, 0x1A1226, 195, 0xBD00FF);
+        dibujar_panel_glass(500, 130, 300, 150, 0x0E261D, 195, 0x00FF88);
+        dibujar_panel_glass(160, 310, 640, 170, 0x0C1826, 210, 0x3388FF);
+
+        // Aplicar Filtro de Antialiasing Espacial (5-Tap ESAA) en los bordes
+        aplicar_filtro_esaa(119, 79, 722, 442);
+
+        // Volcar fotograma en el monitor
+        presentar_frame();
+
+        // Control de temporización a 60 FPS (~16 ms por cuadro)
+        incrustar "c" { Sleep(16); }
+        tick = tick + 1;
+
+        // La ventana se mantiene abierta en pantalla hasta pulsar ESC o cerrarla
+    }
+
+    incrustar "c" {
+        printf("[OK] Demostracion grafica en pantalla finalizada con exito.\n");
+    }
+
+    retornar 0;
+}

@@ -36,6 +36,11 @@ typedef enum {
     TOKEN_KEYWORD_EMBED,    /* embed / incrustar */
     TOKEN_KEYWORD_BREAK,    /* break / romper */
     TOKEN_KEYWORD_CONTINUE, /* continue / continuar */
+    TOKEN_KEYWORD_DEFER,    /* defer / diferir */
+    TOKEN_KEYWORD_MATCH,    /* match / segun */
+    TOKEN_KEYWORD_CASE,     /* case / caso */
+    TOKEN_KEYWORD_DEFAULT,  /* default / defecto */
+    TOKEN_FAT_ARROW,        /* => */
 
     /* Operadores Aritméticos y Lógicos */
     TOKEN_OP_ASSIGN,        /* = */

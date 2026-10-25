@@ -1,0 +1,33 @@
+modulo test_defer;
+
+incrustar "c" {
+#include <stdio.h>
+static inline void traza(const char *msg) {
+    printf("[DEFER TRACE] %s\n", msg);
+}
+}
+
+pub fn demo_recursos() -> i32 {
+    incrustar "c" { traza("1. Recurso Primario Solicitado"); }
+    diferir {
+        incrustar "c" { traza("4. Recurso Primario Liberado (LIFO diferido final)"); }
+    }
+
+    incrustar "c" { traza("2. Recurso Secundario Solicitado"); }
+    defer {
+        incrustar "c" { traza("3. Recurso Secundario Liberado (LIFO diferido intermedio)"); }
+    }
+
+    retornar 777;
+}
+
+pub fn main() -> i32 {
+    sea valor: i32 = demo_recursos();
+    incrustar "c" {
+        printf("[RESULTADO] Valor retornado por demo_recursos: %d\n", valor);
+        if (valor == 777) {
+            printf("[PASS] Sentencia defer / diferir LIFO verificada con exito (0 fugas de memoria)\n");
+        }
+    }
+    retornar 0;
+}

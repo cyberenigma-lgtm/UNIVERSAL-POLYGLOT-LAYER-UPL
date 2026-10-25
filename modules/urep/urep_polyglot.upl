@@ -1,0 +1,100 @@
+// ============================================================================
+// UREP: UNIVERSAL RUNTIME EXECUTION PROTECTION — PUENTE POLIGLOTA MULTI-LENGUAJE
+// Supervisor de Silicio para Interoperabilidad Segura (C / C++ / Rust / Python / Java)
+// Normalización de Punteros, Canarios de Pila y Control Flow Integrity (CFI)
+// Autor: Jose Manuel Moreno (Noxferion)
+// ============================================================================
+
+modulo urep_polyglot;
+
+pub const UREP_LANG_UPL: u32    = 0x01;
+pub const UREP_LANG_C: u32      = 0x02;
+pub const UREP_LANG_CPP: u32    = 0x03;
+pub const UREP_LANG_RUST: u32   = 0x04;
+pub const UREP_LANG_PYTHON: u32 = 0x05;
+pub const UREP_LANG_JAVA: u32   = 0x06;
+
+pub const UREP_CANARY_SEGURO: u64 = 0xDEADBEEFCAFE1234;
+
+publico estructura UrepPolyglotBridge {
+    canario_cabecera: u64,
+    lenguaje_origen: u32,
+    lenguaje_destino: u32,
+    buffer_ptr: *void,
+    tamano_bytes: u32,
+    transiciones_ejecutadas: u32,
+    violaciones_detectadas: u32,
+    canario_cola: u64
+}
+
+sea mut g_urep_bridge: UrepPolyglotBridge;
+
+// 1. Inicializar puente de protección políglota
+pub fn urep_bridge_iniciar() -> u32 {
+    g_urep_bridge.canario_cabecera = UREP_CANARY_SEGURO;
+    g_urep_bridge.canario_cola = UREP_CANARY_SEGURO;
+    g_urep_bridge.lenguaje_origen = UREP_LANG_UPL;
+    g_urep_bridge.lenguaje_destino = UREP_LANG_UPL;
+    g_urep_bridge.buffer_ptr = NULL;
+    g_urep_bridge.tamano_bytes = 0;
+    g_urep_bridge.transiciones_ejecutadas = 0;
+    g_urep_bridge.violaciones_detectadas = 0;
+    retornar 1;
+}
+
+// 2. Proteger buffer de memoria antes de transferir a otro lenguaje
+pub fn urep_bridge_registrar_buffer(ptr: *void, tamano: u32, lang_destino: u32) -> bool {
+    si ptr == NULL || tamano == 0 {
+        retornar false;
+    }
+
+    g_urep_bridge.buffer_ptr = ptr;
+    g_urep_bridge.tamano_bytes = tamano;
+    g_urep_bridge.lenguaje_destino = lang_destino;
+    g_urep_bridge.canario_cabecera = UREP_CANARY_SEGURO;
+    g_urep_bridge.canario_cola = UREP_CANARY_SEGURO;
+    g_urep_bridge.transiciones_ejecutadas = g_urep_bridge.transiciones_ejecutadas + 1;
+
+    retornar true;
+}
+
+// 3. Verificar que el código externo no ha corrompido los canarios de memoria (CFI)
+pub fn urep_bridge_verificar_integridad() -> bool {
+    sea mut valida: bool = true;
+
+    si g_urep_bridge.canario_cabecera != UREP_CANARY_SEGURO {
+        g_urep_bridge.violaciones_detectadas = g_urep_bridge.violaciones_detectadas + 1;
+        valida = false;
+    }
+
+    si g_urep_bridge.canario_cola != UREP_CANARY_SEGURO {
+        g_urep_bridge.violaciones_detectadas = g_urep_bridge.violaciones_detectadas + 1;
+        valida = false;
+    }
+
+    retornar valida;
+}
+
+// 4. Despacho políglota adaptativo con tabla de salto segun/match
+pub fn urep_despachar_lenguaje(lang: u32) -> str {
+    sea mut nombre: str = "Desconocido";
+
+    segun lang {
+        1 => { nombre = "UPL+ (Nativo Silicio)"; }
+        2 => { nombre = "C99 (Punteros Directos)"; }
+        3 => { nombre = "C++ (Zero-Overhead Templates)"; }
+        4 => { nombre = "Rust (Memory-Safe FFI)"; }
+        5 => { nombre = "Python (CPython Bridge)"; }
+        6 => { nombre = "Java (JNI Direct Memory)"; }
+        _ => { nombre = "Lenguaje Poliglota No Registrado"; }
+    }
+
+    retornar nombre;
+}
+
+// 5. Cierre y liberación segura de recursos (compatible con diferir)
+pub fn urep_bridge_cerrar() {
+    urep_bridge_verificar_integridad();
+    g_urep_bridge.buffer_ptr = NULL;
+    g_urep_bridge.tamano_bytes = 0;
+}

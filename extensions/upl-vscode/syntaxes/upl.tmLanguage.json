@@ -76,7 +76,7 @@
             "patterns": [
                 {
                     "name": "keyword.control.upl",
-                    "match": "\\b(if|si|else|sino|while|mientras|for|para|return|retornar|break|romper|continue|continuar)\\b"
+                    "match": "\\b(if|si|else|sino|while|mientras|for|para|return|retornar|break|romper|continue|continuar|defer|diferir)\\b"
                 },
                 {
                     "name": "keyword.declaration.upl",

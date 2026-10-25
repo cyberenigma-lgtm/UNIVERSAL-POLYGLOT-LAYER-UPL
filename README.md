@@ -3,21 +3,21 @@
 ### High-Performance Deterministic Systems Language & Standalone C99 Native Compiler
 
 **Autor / Author:** José Manuel Moreno (Noxferion)  
-**Versión / Version:** 2.0.0-Release (Dragon Book Architecture)  
-**Licencia / License:** GNU General Public License v3.0 (GPLv3) — Autoría y especificación registradas defensivamente en SafeCreative
+**Versión / Version:** 2.1.0-Release (Dragon Book Architecture - Enterprise & Laboratory Edition)  
+**Licencia / License:** GNU General Public License v3.0 (GPLv3) — Autoría y especificación técnica registradas en SafeCreative
 
 [![CI Native Tests](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/actions/workflows/ci.yml)
-[![Release: v2.0.0](https://img.shields.io/badge/Release-v2.0.0--Dragon%20Book-blue.svg)](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/releases/tag/v2.0.0-Release)
+[![Release: v2.1.0](https://img.shields.io/badge/Release-v2.1.0--Dragon%20Book-blue.svg)](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/releases/tag/v2.1.0)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![SafeCreative Protected](https://img.shields.io/badge/SafeCreative-Obra%20Protegida-blue.svg)](https://www.safecreative.org)
-[![Language Specification](https://img.shields.io/badge/Spec-Formal%20EBNF%20v2.0-green.svg)](docs/SPEC_GRAMATICA_Y_SISTEMA_TIPOS.md)
+[![Language Specification](https://img.shields.io/badge/Spec-Formal%20EBNF%20v2.1-green.svg)](docs/SPEC_GRAMATICA_Y_SISTEMA_TIPOS.md)
 [![Compiler Architecture](https://img.shields.io/badge/Compiler-ANSI%20C99%20Pipeline-blue.svg)](docs/ARQUITECTURA_COMPILADOR.md)
 [![Verification Suite](https://img.shields.io/badge/Tests-6%2F6%20Suites%20PASS-brightgreen.svg)](docs/SUITE_DE_PRUEBAS.md)
 [![C99 Transpiler](https://img.shields.io/badge/Transpiler-c2upl%20(C99%20to%20UPL%2B)-orange.svg)](tools/c2upl.c)
 [![Python Dependency](https://img.shields.io/badge/Python-0%25%20(Pure%20C99)-lightgrey.svg)](#-toolchain-aut%C3%B3noma-cero-dependencias)
 
-> **COMUNICADO DE PROPIEDAD INTELECTUAL / INTELLECTUAL PROPERTY NOTICE:**  
-> ***UPL+*** *(Universal Polyglot Layer Plus)* es una obra de sistemas protegida legalmente en **SafeCreative**. La arquitectura del compilador (`compiler/`), la especificación de gramática formal EBNF (`docs/SPEC_GRAMATICA_Y_SISTEMA_TIPOS.md`), los motores de aritmética exacta COMP-3 BCD y los módulos de protección de memoria están reservados conforme a las leyes internacionales de propiedad intelectual.
+> **COMUNICADO TÉCNICO Y DE PROPIEDAD INTELECTUAL:**  
+> ***UPL+*** *(Universal Polyglot Layer Plus)* es una tecnología de sistemas protegida legalmente en **SafeCreative**. La arquitectura del compilador (`compiler/`), la especificación de gramática formal EBNF (`docs/SPEC_GRAMATICA_Y_SISTEMA_TIPOS.md`), los motores de aritmética exacta COMP-3 BCD y los módulos de protección de memoria están reservados conforme a las leyes internacionales de propiedad intelectual.
 
 ---
 
@@ -32,12 +32,11 @@
 Todo el ecosistema está completamente autocontenido en este repositorio:
 
 1. **Extensión Oficial para Antigravity IDE y VS Code:**
-   - Haz doble clic en el instalador automático: [`extensions/instalar_extension.bat`](extensions/instalar_extension.bat).
-   - O instala el paquete oficial en 1 clic: [`extensions/upl-lang-1.5.2.vsix`](extensions/upl-lang-1.5.2.vsix) (*Menú Extensiones `...` -> Install from VSIX...*).
+   - Instala el paquete oficial en 1 clic: [`extensions/upl-vscode/upl-lang-2.1.0.vsix`](extensions/upl-vscode/upl-lang-2.1.0.vsix) (*Menú Extensiones `...` -> Install from VSIX...*).
 2. **Soporte para Notepad++:**
    - Importa el archivo [`extensions/notepadpp/upl_notepadpp.xml`](extensions/notepadpp/upl_notepadpp.xml) desde *Idioma -> Definir idioma -> Importar*.
 3. **Compilador y Ejecución Instantánea:**
-   - Compilar y ejecutar en 1 paso: `bin/uplc.exe run examples/demo_futuro_upl.upl`
+   - Compilar y ejecutar en 1 paso: `bin/uplc.exe run examples/demo_pantalla_dvtrga.upl`
 4. **Documentación Canónica:**
    - 📖 [Manual Oficial Completo de UPL+](docs/MANUAL_OFICIAL_DEL_LENGUAJE_UPL.md) (Capítulos, Módulos, Errores y Soluciones).
    - 🌐 [Tabla Maestra de Palabras Clave en 9 Idiomas](docs/TABLA_MAESTRA_9_IDIOMAS_UPL.md).
@@ -79,6 +78,8 @@ El analizador léxico procesa de forma nativa e idéntica las palabras clave en 
 | Control condicional | `TOK_IF`, `TOK_ELSE` | `if`, `else` | `si`, `sino` |
 | Bucles de iteración | `TOK_WHILE`, `TOK_FOR` | `while`, `for` | `mientras`, `para` |
 | Retorno | `TOK_RETURN` | `return` | `retornar` |
+| Gestión determinista LIFO | `TOK_DEFER` | `defer` | `diferir` |
+| Coincidencia de patrones O(1) | `TOK_MATCH` | `match` | `segun` |
 | Cast explícito | `TOK_AS` | `as` | `como` |
 | Bloque C nativo | `TOK_EMBED` | `embed` | `incrustar` |
 | Ensamblador inline | `TOK_ASM` | `asm` | `ensamblador` |
@@ -125,7 +126,14 @@ upl.bat --version
 
 #### 2. Opciones de Compilación (`uplc`)
 ```
-Uso: uplc [opciones] <archivo.upl>
+Uso: uplc [subcomando|opciones] [archivo.upl]
+
+Subcomandos:
+  run <archivo.upl> Compilar y ejecutar inmediatamente
+  test, probar      Ejecutar la suite integral de verificacion formal
+  init <proyecto>   Inicializar nuevo proyecto UPL+ con estructura completa
+  migrate <orig.c>  Transpilar codigo C99 existente a UPL+ (c2upl)
+  pm, pkg           Gestor de paquetes UPL
 
 Opciones:
   -o <salida>       Especificar nombre del binario ejecutable de salida
@@ -183,6 +191,12 @@ test.bat
 * **[4/6] Preprocesador y Sanitizador de Código:** 3/3 tests PASS.
 * **[5/6] Compilación End-to-End con `uplc`:** PASS (Cálculo exacto: 1000 EUR + 21% = 1210 EUR).
 * **[6/6] Transpilador C99 a UPL+ (`c2upl`):** 5/5 tests PASS.
+* **[7/7] Suite Maestra de Módulos de Silicio:** 28/28 tests PASS (GXNOX, NeuroCOBOL, NEURO-GFX, Probe, NUASM, NeuroWill, IAGROK, DVTRGAS).
+
+<p align="center">
+  <img src="assets/upl_test_launcher_screen.png" alt="UPL+ Laboratory Test Center - Suite de Verificación Empírica" width="850"/><br/>
+  <i>Panel Oficial de Verificación Empírica Win32 Unicode (upl_test_launcher.exe) — Certificación con 100% PASS (0 fallos).</i>
+</p>
 
 ---
 

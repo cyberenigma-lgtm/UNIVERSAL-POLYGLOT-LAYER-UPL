@@ -84,5 +84,23 @@
             "upl_comp3_from_str(balance, 8, \"${1:1000.00}\", 10, 2);$0"
         ],
         "description": "Número decimal financiero exacto BCD COMP-3"
+    },
+    "Defer Statement": {
+        "prefix": "defer",
+        "body": [
+            "defer {",
+            "    $0",
+            "}"
+        ],
+        "description": "Ejecución diferida LIFO al salir del ámbito"
+    },
+    "Diferir Sentencia": {
+        "prefix": "diferir",
+        "body": [
+            "diferir {",
+            "    $0",
+            "}"
+        ],
+        "description": "Ejecución diferida LIFO al salir del ámbito en español"
     }
 }
