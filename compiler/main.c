@@ -19,14 +19,15 @@ unsigned long __stdcall GetModuleFileNameA(void *hModule, char *lpFilename, unsi
 #endif
 
 static void print_usage(const char *prog_name) {
-    fprintf(stderr, "UPL+ Compilador Oficial (v2.1 Dragon Book Architecture)\n");
+    fprintf(stderr, "UPL+ Compilador Oficial (v2.2.1 Game Dev Edition - Dragon Book Architecture)\n");
     fprintf(stderr, "Uso: %s [subcomando|opciones] [archivo.upl]\n\n", prog_name);
     fprintf(stderr, "Subcomandos:\n");
-    fprintf(stderr, "  run <archivo.upl> Compilar y ejecutar inmediatamente\n");
-    fprintf(stderr, "  test, probar      Ejecutar la suite integral de pruebas\n");
-    fprintf(stderr, "  init <proyecto>   Inicializar nuevo proyecto UPL+\n");
-    fprintf(stderr, "  migrate <orig.c>  Migrar codigo C99 existente a UPL+ (c2upl)\n");
-    fprintf(stderr, "  pm, pkg           Gestor de paquetes UPL\n\n");
+    fprintf(stderr, "  run <archivo.upl>     Compilar y ejecutar inmediatamente\n");
+    fprintf(stderr, "  test, probar          Ejecutar la suite integral de pruebas\n");
+    fprintf(stderr, "  init <proyecto>       Inicializar nuevo proyecto UPL+\n");
+    fprintf(stderr, "  init-game, juego <nom>Inicializar entorno de desarrollo de videojuego 2D/3D\n");
+    fprintf(stderr, "  migrate <orig.c>      Migrar codigo C99 existente a UPL+ (c2upl)\n");
+    fprintf(stderr, "  pm, pkg               Gestor de paquetes UPL\n\n");
     fprintf(stderr, "Opciones:\n");
     fprintf(stderr, "  -o <salida>       Especificar nombre del binario ejecutable de salida\n");
     fprintf(stderr, "  -c, --emit-c      Generar solo codigo fuente C99 sin invocar gcc\n");
@@ -113,6 +114,129 @@ int main(int argc, char **argv) {
         return 0;
     }
 
+    // Subcomando INIT-GAME: uplc init-game <nombre_juego> / uplc juego <nombre_juego>
+    if (argc >= 2 && (strcmp(argv[1], "init-game") == 0 || strcmp(argv[1], "juego") == 0 || strcmp(argv[1], "game") == 0)) {
+        const char *game_name = (argc >= 3) ? argv[2] : "mi_juego_upl";
+        printf("====================================================================\n");
+        printf("  UPLC GAME ENGINE: CREANDO ENTORNO DE VIDEOJUEGOS 2D/3D EN UPL+\n");
+        printf("====================================================================\n");
+        printf("[UPLC GAME] Inicializando proyecto de juego: '%s'...\n", game_name);
+
+#ifdef _WIN32
+        char cmd[1024];
+        snprintf(cmd, sizeof(cmd), "mkdir \"%s\" \"%s\\src\" \"%s\\include\" \"%s\\assets\" \"%s\\bin\" 2>nul",
+                 game_name, game_name, game_name, game_name, game_name);
+        system(cmd);
+
+        // Copiar o crear upl_game.h en el proyecto
+        char h_path[512];
+        snprintf(h_path, sizeof(h_path), "%s\\include\\upl_game.h", game_name);
+        FILE *fh = fopen(h_path, "wb");
+        if (fh) {
+            FILE *src_h = fopen("compiler\\runtime\\upl_game.h", "rb");
+            if (!src_h) src_h = fopen("..\\compiler\\runtime\\upl_game.h", "rb");
+            if (src_h) {
+                char buf[4096];
+                size_t n;
+                while ((n = fread(buf, 1, sizeof(buf), src_h)) > 0) {
+                    fwrite(buf, 1, n, fh);
+                }
+                fclose(src_h);
+            }
+            fclose(fh);
+        }
+
+        // Crear src/main.upl
+        char main_path[512];
+        snprintf(main_path, sizeof(main_path), "%s\\src\\main.upl", game_name);
+        FILE *fm = fopen(main_path, "wb");
+        if (fm) {
+            fprintf(fm,
+                "// ====================================================================\n"
+                "//  VIDEOJUEGO CREADO CON UPL+ GAME ENGINE (Zero-CRT Freestanding)\n"
+                "// ====================================================================\n"
+                "modulo %s;\n\n"
+                "incrustar \"c\" {\n"
+                "#include \"../include/upl_game.h\"\n"
+                "}\n\n"
+                "pub fn main() -> i32 {\n"
+                "    incrustar \"c\" {\n"
+                "        upl_game_init(\"%s :: UPL+ Game Engine 60 FPS\", 960, 540);\n"
+                "        upl_camera_t cam = { .pos = { 0.0f, 2.5f, -7.0f }, .yaw = 0.0f, .pitch = 0.30f, .fov = 720.0f };\n"
+                "        float px = 0.0f, pz = 0.0f;\n\n"
+                "        while (upl_game_poll_events()) {\n"
+                "            // 1. Controles del Jugador (WASD)\n"
+                "            if (g_upl_game.keys['W']) pz += 0.16f;\n"
+                "            if (g_upl_game.keys['S']) pz -= 0.16f;\n"
+                "            if (g_upl_game.keys['A']) px -= 0.16f;\n"
+                "            if (g_upl_game.keys['D']) px += 0.16f;\n\n"
+                "            // 2. Control Libre de Vision 360 con Raton\n"
+                "            if (g_upl_game.mouse_locked) {\n"
+                "                cam.yaw   += (float)g_upl_game.mouse_dx * 0.0055f;\n"
+                "                cam.pitch += (float)g_upl_game.mouse_dy * 0.0055f;\n"
+                "                if (cam.pitch < 0.05f) cam.pitch = 0.05f;\n"
+                "                if (cam.pitch > 1.40f) cam.pitch = 1.40f;\n"
+                "            }\n\n"
+                "            // 3. Renderizado y Limpieza de Pantalla\n"
+                "            upl_game_clear(0x281A45); // Cielo purpura cosmico\n\n"
+                "            // Dibujar Plataforma Flotante y Avatar\n"
+                "            upl_draw_cube(0.0f, 0.0f, 0.0f, 14.0f, 0.6f, 14.0f, 0x1BE7A5, 0x136B73, cam);\n"
+                "            upl_draw_cube(px, 1.0f, pz, 1.2f, 1.4f, 1.0f, 0x00E5FF, 0x0088AA, cam);\n\n"
+                "            // 4. Interfaz HUD\n"
+                "            char hud[96];\n"
+                "            sprintf(hud, \"💎 UPL+ GAME ENGINE | FPS: %%%%d | Raton: [ESC para liberar]\", g_upl_game.fps);\n"
+                "            upl_draw_text(20, 20, hud, 0x00FFFF);\n\n"
+                "            upl_game_present();\n"
+                "        }\n"
+                "    }\n"
+                "    retornar 0;\n"
+                "}\n",
+                game_name, game_name
+            );
+            fclose(fm);
+        }
+
+        // Crear jugar.bat
+        char bat_path[512];
+        snprintf(bat_path, sizeof(bat_path), "%s\\jugar.bat", game_name);
+        FILE *fb = fopen(bat_path, "wb");
+        if (fb) {
+            fprintf(fb,
+                "@echo off\n"
+                "echo [UPLC] Compilando juego en UPL+ nativo...\n"
+                "uplc src\\main.upl -o bin\\juego.exe\n"
+                "if %%ERRORLEVEL%% EQU 0 (\n"
+                "    echo [OK] Ejecutando juego a 60 FPS...\n"
+                "    bin\\juego.exe\n"
+                ") else (\n"
+                "    echo [ERROR] Error durante la compilacion.\n"
+                "    pause\n"
+                ")\n"
+            );
+            fclose(fb);
+        }
+
+        // Crear upl.json
+        char json_path[512];
+        snprintf(json_path, sizeof(json_path), "%s\\upl.json", game_name);
+        FILE *fj = fopen(json_path, "wb");
+        if (fj) {
+            fprintf(fj, "{\n  \"nombre\": \"%s\",\n  \"tipo\": \"videojuego_3d\",\n  \"version\": \"1.0.0\",\n  \"motor\": \"upl_game_runtime\",\n  \"punto_entrada\": \"src/main.upl\"\n}\n", game_name);
+            fclose(fj);
+        }
+#endif
+        printf("[OK] ¡Entorno de Videojuegos UPL+ creado con exito!\n");
+        printf("     - %s/src/main.upl        (Codigo fuente del juego con bucle a 60 FPS)\n", game_name);
+        printf("     - %s/include/upl_game.h  (Motor 2D/3D con Vóxeles, Matriz, Vision 360 y Audio)\n", game_name);
+        printf("     - %s/jugar.bat           (Lanzador de 1-Clic para compilar y jugar)\n", game_name);
+        printf("     - %s/assets/             (Directorio para modelos, texturas y sonidos)\n", game_name);
+        printf("     - %s/upl.json            (Configuracion del juego)\n", game_name);
+        printf("\n[TIP] Para jugar inmediatamente:\n");
+        printf("      cd %s && jugar.bat\n", game_name);
+        return 0;
+    }
+
+
     // Subcomando MIGRATE / C2UPL: uplc migrate <archivo.c> [-o salida.upl]
     if (argc >= 2 && (strcmp(argv[1], "migrate") == 0 || strcmp(argv[1], "migrar") == 0 || strcmp(argv[1], "c2upl") == 0)) {
         if (argc < 3) {
@@ -166,7 +290,7 @@ int main(int argc, char **argv) {
         } else if (strcmp(argv[i], "--dump-tokens") == 0) {
             dump_tokens = true;
         } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
-            printf("uplc version 2.1.0 (x86_64-w64-mingw32 standard C99 Dragon Book pipeline)\n");
+            printf("uplc version 2.2.1 (x86_64-w64-mingw32 Game Dev Edition - Dragon Book pipeline)\n");
             return 0;
         } else if (argv[i][0] == '-' && (argv[i][1] == 'l' || argv[i][1] == 'L' || argv[i][1] == 'I' || argv[i][1] == 'm' || argv[i][1] == 'W')) {
             strcat(extra_gcc_flags, " ");

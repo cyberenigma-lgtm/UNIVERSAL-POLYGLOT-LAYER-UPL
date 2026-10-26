@@ -215,6 +215,29 @@ Token read_raw_block_body(Lexer* lexer, size_t start_line, size_t start_col) {
 
     while (brace_count > 0 && peek(lexer) != '\0') {
         char c = peek(lexer);
+
+        // Omitir comentarios de una sola linea // para no confundir apostrofes
+        if (c == '/' && peek_next(lexer) == '/') {
+            advance(lexer); advance(lexer);
+            while (peek(lexer) != '\n' && peek(lexer) != '\0') {
+                advance(lexer);
+            }
+            continue;
+        }
+
+        // Omitir comentarios multilínea /* ... */
+        if (c == '/' && peek_next(lexer) == '*') {
+            advance(lexer); advance(lexer);
+            while (peek(lexer) != '\0') {
+                if (peek(lexer) == '*' && peek_next(lexer) == '/') {
+                    advance(lexer); advance(lexer);
+                    break;
+                }
+                advance(lexer);
+            }
+            continue;
+        }
+
         if (c == '"' || c == '\'') {
             char quote = advance(lexer);
             while (peek(lexer) != quote && peek(lexer) != '\0') {
