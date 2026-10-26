@@ -9,7 +9,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#ifndef _WIN32
+#ifdef _WIN32
+unsigned long __stdcall GetModuleFileNameA(void *hModule, char *lpFilename, unsigned long nSize);
+#ifndef MAX_PATH
+#define MAX_PATH 260
+#endif
+#else
 #  include <strings.h>
 #endif
 
@@ -295,26 +300,42 @@ int main(int argc, char **argv) {
     }
 #endif
 
+    char runtime_dir[512] = "compiler/runtime";
+    char runtime_c[512] = "compiler/runtime/upl_comp3.c";
+
+#ifdef _WIN32
+    char exe_bin_path[MAX_PATH];
+    if (GetModuleFileNameA(NULL, exe_bin_path, MAX_PATH) > 0) {
+        char *last_sep = strrchr(exe_bin_path, '\\');
+        if (!last_sep) last_sep = strrchr(exe_bin_path, '/');
+        if (last_sep) {
+            *last_sep = '\0';
+            snprintf(runtime_dir, sizeof(runtime_dir), "%s\\..\\compiler\\runtime", exe_bin_path);
+            snprintf(runtime_c, sizeof(runtime_c), "%s\\..\\compiler\\runtime\\upl_comp3.c", exe_bin_path);
+        }
+    }
+#endif
+
     if (is_shared) {
         snprintf(gcc_cmd, sizeof(gcc_cmd),
-                 "gcc -O2 -s -shared \"%s\" compiler/runtime/upl_comp3.c -I compiler/runtime "
+                 "gcc -O2 -s -shared \"%s\" \"%s\" -I \"%s\" "
 #ifdef _WIN32
                  "-Wl,--export-all-symbols -luser32 -lgdi32 -lwinmm "
 #else
                  "-fPIC -lm "
 #endif
                  "%s -o \"%s\"",
-                 c_filename, extra_gcc_flags, exe_filename);
+                 c_filename, runtime_c, runtime_dir, extra_gcc_flags, exe_filename);
     } else {
         snprintf(gcc_cmd, sizeof(gcc_cmd),
-                 "gcc -O2 \"%s\" compiler/runtime/upl_comp3.c -I compiler/runtime "
+                 "gcc -O2 \"%s\" \"%s\" -I \"%s\" "
 #ifdef _WIN32
                  "-luser32 -lgdi32 -lwinmm "
 #else
                  "-lm "
 #endif
                  "%s -o \"%s\"",
-                 c_filename, extra_gcc_flags, exe_filename);
+                 c_filename, runtime_c, runtime_dir, extra_gcc_flags, exe_filename);
     }
 
     int ret = system(gcc_cmd);
