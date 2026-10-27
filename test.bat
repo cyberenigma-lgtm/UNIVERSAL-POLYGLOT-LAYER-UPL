@@ -55,14 +55,25 @@ if %ERRORLEVEL% neq 0 (
     exit /b %ERRORLEVEL%
 )
 
-echo [6/6] Verificando Transpilador C99 a UPL+ (c2upl)...
+if not exist "%~dp0bin\upl_pm.exe" gcc -O2 "%~dp0tools\upl_pm.c" -o "%~dp0bin\upl_pm.exe"
+if not exist "%~dp0bin\test_all_modules.exe" gcc -O2 "%~dp0tests\test_all_modules.c" -o "%~dp0bin\test_all_modules.exe"
+
+echo [6/7] Verificando Transpilador C99 a UPL+ (c2upl)...
 "%~dp0bin\c2upl.exe" --test
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Fallo en la suite del transpilador c2upl.
     exit /b %ERRORLEVEL%
 )
 
+echo [7/7] Verificando Modulos Nativos UPL (28/28 Pruebas Unitarias)...
+"%~dp0bin\test_all_modules.exe"
+if %ERRORLEVEL% neq 0 (
+    echo [ERROR] Fallo en la suite de modulos nativos UPL+.
+    exit /b %ERRORLEVEL%
+)
+
 echo ====================================================================
-echo   TODAS LAS PRUEBAS (6/6) SE COMPLETARON CON EXITO (0 FALLOS)
+echo   TODAS LAS PRUEBAS (7/7) SE COMPLETARON CON EXITO (0 FALLOS)
 echo ====================================================================
 exit /b 0
+

@@ -251,6 +251,8 @@ static UplAstNode* parse_primary(UplParser *p) {
     return NULL;
 }
 
+static UplAstNode* parse_postfix(UplParser *p, UplAstNode *left);
+
 static UplAstNode* parse_unary(UplParser *p) {
     size_t line = p->current.line;
     size_t col = p->current.column;
@@ -262,7 +264,11 @@ static UplAstNode* parse_unary(UplParser *p) {
         return upl_ast_new_unary(p->arena, op, operand, line, col);
     }
 
-    return parse_primary(p);
+    UplAstNode *left = parse_primary(p);
+    while (check(p, TOKEN_DELIM_LPAREN) || check(p, TOKEN_DELIM_DOT) || check(p, TOKEN_DELIM_LBRACKET) || check(p, TOKEN_KEYWORD_AS)) {
+        left = parse_postfix(p, left);
+    }
+    return left;
 }
 
 static UplAstNode* parse_postfix(UplParser *p, UplAstNode *left) {

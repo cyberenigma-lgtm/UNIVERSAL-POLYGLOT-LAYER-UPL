@@ -108,6 +108,11 @@ static TokenType match_keyword(const char* lexeme) {
     // Tipos nativos de sistemas
     if (strcmp(lexeme, "comp3") == 0) return TOKEN_KEYWORD_COMP3;
     
+    // Operadores logicos textuales
+    if (strcmp(lexeme, "and") == 0) return TOKEN_OP_AND;
+    if (strcmp(lexeme, "or") == 0) return TOKEN_OP_OR;
+    if (strcmp(lexeme, "not") == 0) return TOKEN_OP_NOT;
+
     // Bloques nativos e inline
     if (strcmp(lexeme, "asm") == 0 || strcmp(lexeme, "ensamblador") == 0) return TOKEN_KEYWORD_ASM;
     if (strcmp(lexeme, "embed") == 0 || strcmp(lexeme, "incrustar") == 0) return TOKEN_KEYWORD_EMBED;
