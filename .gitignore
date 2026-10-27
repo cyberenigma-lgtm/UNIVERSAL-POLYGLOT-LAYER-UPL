@@ -82,6 +82,12 @@ upl_expansion/
 *Prototipo*
 *prototipo*
 *.spec
+*kernel*
+PROPRIETARY*/
+*dvtrgas2*
+*dvtrgas3*
+*.gx
+*bunker*
 
 # Package Generation Build Artifacts
 *_deb_pkg/
