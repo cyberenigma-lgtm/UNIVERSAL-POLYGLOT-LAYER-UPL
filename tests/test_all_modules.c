@@ -283,7 +283,8 @@ int main() {
     HMODULE h_iagrok = LoadLibraryA("bin\\iagrok_core.dll");
     test_iagrok(h_iagrok);
 
-    HMODULE h_dvtrgas = LoadLibraryA("dvtrgas.dll");
+    HMODULE h_dvtrgas = LoadLibraryA("bin\\dvtrgas.dll");
+    if (!h_dvtrgas) h_dvtrgas = LoadLibraryA("dvtrgas.dll");
     test_dvtrgas(h_dvtrgas);
 
     printf("\n====================================================================\n");

@@ -14,35 +14,35 @@ if not exist "%~dp0bin\upl_supervisor.exe" gcc -O2 "%~dp0tools\upl_supervisor.c"
 if not exist "%~dp0bin\uplc.exe" gcc -O2 "%~dp0compiler\upl_arena.c" "%~dp0compiler\lexer.c" "%~dp0compiler\upl_ast.c" "%~dp0compiler\upl_parser.c" "%~dp0compiler\upl_codegen.c" "%~dp0compiler\runtime\upl_comp3.c" "%~dp0compiler\main.c" -I "%~dp0compiler" -I "%~dp0compiler\runtime" -o "%~dp0bin\uplc.exe"
 if not exist "%~dp0bin\c2upl.exe" gcc -std=c99 -O2 "%~dp0tools\c2upl.c" -o "%~dp0bin\c2upl.exe"
 
-echo [1/6] Verificando Analizador Lexico Formal (Lexer)...
+echo [1/7] Verificando Analizador Lexico Formal (Lexer)...
 "%~dp0bin\test_lexer.exe"
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Fallo en la suite del Lexer.
     exit /b %ERRORLEVEL%
 )
 
-echo [2/6] Verificando Analizador Sintactico y AST (Parser)...
+echo [2/7] Verificando Analizador Sintactico y AST (Parser)...
 "%~dp0bin\test_parser.exe"
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Fallo en la suite del Parser.
     exit /b %ERRORLEVEL%
 )
 
-echo [3/6] Verificando Motor Matematico Decimal Exacto (COMP-3 BCD)...
+echo [3/7] Verificando Motor Matematico Decimal Exacto (COMP-3 BCD)...
 "%~dp0bin\test_comp3.exe"
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Fallo en la suite COMP-3.
     exit /b %ERRORLEVEL%
 )
 
-echo [4/6] Verificando Preprocesador y Sanitizador de Codigo Fuente...
+echo [4/7] Verificando Preprocesador y Sanitizador de Codigo Fuente...
 "%~dp0bin\upl_supervisor.exe" --test
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Fallo en la suite del Preprocesador.
     exit /b %ERRORLEVEL%
 )
 
-echo [5/6] Verificando Compilacion Binaria End-to-End con uplc...
+echo [5/7] Verificando Compilacion Binaria End-to-End con uplc...
 "%~dp0bin\uplc.exe" "%~dp0examples\test_compiler_real.upl" -o "%~dp0bin\test_compiler_real.exe"
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Fallo en la compilacion end-to-end.
@@ -64,6 +64,16 @@ if %ERRORLEVEL% neq 0 (
     echo [ERROR] Fallo en la suite del transpilador c2upl.
     exit /b %ERRORLEVEL%
 )
+
+echo Compilando modulos nativos UPL+ para pruebas de enlace dinamico...
+"%~dp0bin\uplc.exe" "%~dp0modules\gxnox\gxnox_dual_parity.upl" -o "%~dp0bin\gxnox_dual_parity.dll"
+"%~dp0bin\uplc.exe" "%~dp0modules\neurocobol\neurocobol_core.upl" -o "%~dp0bin\neurocobol_core.dll"
+"%~dp0bin\uplc.exe" "%~dp0modules\neuro_gfx\neuro_gfx_core.upl" -o "%~dp0bin\neuro_gfx_core.dll"
+"%~dp0bin\uplc.exe" "%~dp0modules\neuro_probe\probe_engine.upl" -o "%~dp0bin\probe_engine.dll"
+"%~dp0bin\uplc.exe" "%~dp0modules\nuasm\nuasm_core.upl" -o "%~dp0bin\nuasm_core.dll"
+"%~dp0bin\uplc.exe" "%~dp0modules\neurowill\neurowill_core.upl" -o "%~dp0bin\neurowill_core.dll"
+"%~dp0bin\uplc.exe" "%~dp0modules\iagrok_core\iagrok_core.upl" -o "%~dp0bin\iagrok_core.dll"
+"%~dp0bin\uplc.exe" "%~dp0dvtrgas.upl" -o "%~dp0bin\dvtrgas.dll"
 
 echo [7/7] Verificando Modulos Nativos UPL (28/28 Pruebas Unitarias)...
 "%~dp0bin\test_all_modules.exe"
