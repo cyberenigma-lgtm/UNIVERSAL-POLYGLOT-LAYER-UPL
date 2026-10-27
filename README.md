@@ -3,11 +3,11 @@
 ### High-Performance Deterministic Systems Language & Standalone C99 Native Compiler
 
 **Autor / Author:** José Manuel Moreno (Noxferion)  
-**Versión / Version:** 2.2.1-Release (Game Dev Edition & Silicon Graphics Pipeline)  
+**Versión / Version:** 2.1.1-Release (Game Dev Edition & Silicon Graphics Pipeline)  
 **Licencia / License:** GNU General Public License v3.0 (GPLv3) — Autoría y especificación técnica registradas en SafeCreative
 
 [![CI Native Tests](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/actions/workflows/ci.yml)
-[![Release: v2.2.1](https://img.shields.io/badge/Release-v2.2.1--Game%20Dev%20Edition-blue.svg)](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/releases/tag/v2.2.1)
+[![Release: v2.1.1](https://img.shields.io/badge/Release-v2.1.1--Game%20Dev%20Edition-blue.svg)](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/releases/tag/v2.1.1)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![SafeCreative Protected](https://img.shields.io/badge/SafeCreative-Obra%20Protegida-blue.svg)](https://www.safecreative.org)
 [![Language Specification](https://img.shields.io/badge/Spec-Formal%20EBNF%20v2.1-green.svg)](docs/SPEC_GRAMATICA_Y_SISTEMA_TIPOS.md)
@@ -37,7 +37,7 @@ Todo el ecosistema está completamente autocontenido en este repositorio:
    - Importa el archivo [`extensions/notepadpp/upl_notepadpp.xml`](extensions/notepadpp/upl_notepadpp.xml) desde *Idioma -> Definir idioma -> Importar*.
 3. **Compilador y Ejecución Instantánea:**
    - Compilar y ejecutar en 1 paso: `bin/uplc.exe run examples/demo_pantalla_dvtrga.upl`
-4. **Motor de Videojuegos 2D/3D (v2.2.1 Game Dev Edition):**
+4. **Motor de Videojuegos 2D/3D (v2.1.1 Game Dev Edition):**
    - Inicializar nuevo entorno de juego nativo: `bin/uplc.exe init-game MiJuego3D`
    - Compilación y ejecución a 60 FPS con 1 clic: `cd MiJuego3D && jugar.bat`
 5. **Documentación Canónica:**

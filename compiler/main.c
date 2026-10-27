@@ -19,7 +19,7 @@ unsigned long __stdcall GetModuleFileNameA(void *hModule, char *lpFilename, unsi
 #endif
 
 static void print_usage(const char *prog_name) {
-    fprintf(stderr, "UPL+ Compilador Oficial (v2.2.1 Game Dev Edition - Dragon Book Architecture)\n");
+    fprintf(stderr, "UPL+ Compilador Oficial (v2.1.1 Game Dev Edition - Dragon Book Architecture)\n");
     fprintf(stderr, "Uso: %s [subcomando|opciones] [archivo.upl]\n\n", prog_name);
     fprintf(stderr, "Subcomandos:\n");
     fprintf(stderr, "  run <archivo.upl>     Compilar y ejecutar inmediatamente\n");
@@ -290,7 +290,7 @@ int main(int argc, char **argv) {
         } else if (strcmp(argv[i], "--dump-tokens") == 0) {
             dump_tokens = true;
         } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
-            printf("uplc version 2.2.1 (x86_64-w64-mingw32 Game Dev Edition - Dragon Book pipeline)\n");
+            printf("uplc version 2.1.1 (x86_64-w64-mingw32 Game Dev Edition - Dragon Book pipeline)\n");
             return 0;
         } else if (argv[i][0] == '-' && (argv[i][1] == 'l' || argv[i][1] == 'L' || argv[i][1] == 'I' || argv[i][1] == 'm' || argv[i][1] == 'W')) {
             strcat(extra_gcc_flags, " ");

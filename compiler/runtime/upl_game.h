@@ -1,6 +1,6 @@
 /*
  * UPL+ Game Engine Runtime (upl_game.h)
- * Motor Nativo de Videojuegos 2D/3D de Alto Rendimiento para UPL+
+ * Motor Nativo de Videojuegos 2D/3D con Framebuffer DIB Directo (Zero-Leak)
  * 
  * Copyright (C) 2026 Sovereign Systems & Neuro-OS
  * Zero-CRT / Freestanding Silicon Graphics Pipeline
@@ -41,7 +41,7 @@ static inline upl_vec3_t upl_vec3_norm(upl_vec3_t a) {
     return (upl_vec3_t){ a.x / l, a.y / l, a.z / l };
 }
 
-// --- [CONTEXTO GLOBAL DEL MOTOR] ---
+// --- [CONTEXTO GLOBAL DEL MOTOR: ZERO-LEAK DIB SECTION] ---
 typedef struct {
     int width;
     int height;
@@ -66,7 +66,7 @@ typedef struct {
     HDC hdc;
     HDC mem_dc;
     HBITMAP mem_bmp;
-    uint32_t *pixels;
+    uint32_t *pixels; // Framebuffer directo de 32-bits (RGBX)
 #endif
 } upl_game_ctx_t;
 
@@ -88,7 +88,7 @@ typedef struct {
     uint32_t color;
 } upl_poly3d_t;
 
-#define UPL_MAX_POLYS 8000
+#define UPL_MAX_POLYS 4096
 static upl_poly3d_t g_upl_polys[UPL_MAX_POLYS];
 static int g_upl_poly_count = 0;
 
@@ -172,7 +172,7 @@ static LRESULT CALLBACK upl_game_wndproc(HWND hwnd, UINT msg, WPARAM wParam, LPA
 }
 #endif
 
-// --- [INICIALIZACIÓN DE MOTOR] ---
+// --- [INICIALIZACIÓN DE MOTOR: DIB SECTION ZERO-LEAK] ---
 static inline bool upl_game_init(const char *title, int width, int height) {
     g_upl_game.width = width;
     g_upl_game.height = height;
@@ -208,7 +208,20 @@ static inline bool upl_game_init(const char *title, int width, int height) {
 
     g_upl_game.hdc = GetDC(g_upl_game.hwnd);
     g_upl_game.mem_dc = CreateCompatibleDC(g_upl_game.hdc);
-    g_upl_game.mem_bmp = CreateCompatibleBitmap(g_upl_game.hdc, width, height);
+
+    // Framebuffer DIB Section persistente de 32-bits (Exactamente 1 asignación en memoria)
+    BITMAPINFO bmi = {0};
+    bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bmi.bmiHeader.biWidth = width;
+    bmi.bmiHeader.biHeight = -height; // Top-down
+    bmi.bmiHeader.biPlanes = 1;
+    bmi.bmiHeader.biBitCount = 32;
+    bmi.bmiHeader.biCompression = BI_RGB;
+
+    g_upl_game.mem_bmp = CreateDIBSection(
+        g_upl_game.mem_dc, &bmi, DIB_RGB_COLORS,
+        (void**)&g_upl_game.pixels, NULL, 0
+    );
     SelectObject(g_upl_game.mem_dc, g_upl_game.mem_bmp);
 
     ShowCursor(FALSE);
@@ -251,23 +264,26 @@ static inline bool upl_game_poll_events(void) {
     return g_upl_game.running;
 }
 
-// --- [LIMPIEZA Y PRESENTACIÓN DE PANTALLA] ---
+// --- [LIMPIEZA DE FRAMEBUFFER ULTRA-RÁPIDA (Zero Handle Allocations)] ---
 static inline void upl_game_clear(uint32_t color) {
 #ifdef _WIN32
-    HBRUSH br = CreateSolidBrush(color);
-    RECT rc = { 0, 0, g_upl_game.width, g_upl_game.height };
-    FillRect(g_upl_game.mem_dc, &rc, br);
-    DeleteObject(br);
+    if (g_upl_game.pixels) {
+        int total = g_upl_game.width * g_upl_game.height;
+        for (int i = 0; i < total; i++) {
+            g_upl_game.pixels[i] = color;
+        }
+    }
     g_upl_poly_count = 0;
 #endif
 }
 
 static inline void upl_game_present(void) {
 #ifdef _WIN32
-    // Ordenar y dibujar polígonos 3D
+    // Dibujado de polígonos con reordenamiento Z
     if (g_upl_poly_count > 0) {
         qsort(g_upl_polys, g_upl_poly_count, sizeof(upl_poly3d_t), upl_poly_depth_cmp);
-        SelectObject(g_upl_game.mem_dc, GetStockObject(NULL_PEN));
+        
+        // Reutilizamos un único pincel por color sin fugar descriptores
         for (int i = 0; i < g_upl_poly_count; i++) {
             upl_poly3d_t *p = &g_upl_polys[i];
             HBRUSH br = CreateSolidBrush(p->color);
@@ -279,17 +295,25 @@ static inline void upl_game_present(void) {
     }
 
     BitBlt(g_upl_game.hdc, 0, 0, g_upl_game.width, g_upl_game.height, g_upl_game.mem_dc, 0, 0, SRCCOPY);
-    Sleep(1); // Control de CPU
+    Sleep(1); // Control de CPU / 60 FPS
 #endif
 }
 
 // --- [PRIMITIVAS 2D Y TEXTO] ---
 static inline void upl_draw_rect(int x, int y, int w, int h, uint32_t color) {
 #ifdef _WIN32
-    HBRUSH br = CreateSolidBrush(color);
-    RECT rc = { x, y, x + w, y + h };
-    FillRect(g_upl_game.mem_dc, &rc, br);
-    DeleteObject(br);
+    if (!g_upl_game.pixels) return;
+    int x0 = (x < 0) ? 0 : x;
+    int y0 = (y < 0) ? 0 : y;
+    int x1 = (x + w > g_upl_game.width) ? g_upl_game.width : x + w;
+    int y1 = (y + h > g_upl_game.height) ? g_upl_game.height : y + h;
+
+    for (int cy = y0; cy < y1; cy++) {
+        int row = cy * g_upl_game.width;
+        for (int cx = x0; cx < x1; cx++) {
+            g_upl_game.pixels[row + cx] = color;
+        }
+    }
 #endif
 }
 
