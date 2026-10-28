@@ -3,16 +3,16 @@
 ### High-Performance Deterministic Systems Language & Standalone C99 Native Compiler
 
 **Autor / Author:** José Manuel Moreno (Noxferion)  
-**Versión / Version:** 2.1.1-Release (Game Dev Edition & Silicon Graphics Pipeline)  
+**Versión / Version:** 2.2.2-Release (Sovereign Integrity & Deterministic Defer Edition)  
 **Licencia / License:** GNU General Public License v3.0 (GPLv3) — Autoría y especificación técnica registradas en SafeCreative
 
 [![CI Native Tests](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/actions/workflows/ci.yml)
-[![Release: v2.1.1](https://img.shields.io/badge/Release-v2.1.1--Game%20Dev%20Edition-blue.svg)](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/releases/tag/v2.1.1)
+[![Release: v2.2.2](https://img.shields.io/badge/Release-v2.2.2--Sovereign%20Integrity-blue.svg)](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/releases/tag/v2.2.2)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![SafeCreative Protected](https://img.shields.io/badge/SafeCreative-Obra%20Protegida-blue.svg)](https://www.safecreative.org)
-[![Language Specification](https://img.shields.io/badge/Spec-Formal%20EBNF%20v2.1-green.svg)](docs/SPEC_GRAMATICA_Y_SISTEMA_TIPOS.md)
+[![Language Specification](https://img.shields.io/badge/Spec-Formal%20EBNF%20v2.2-green.svg)](docs/SPEC_GRAMATICA_Y_SISTEMA_TIPOS.md)
 [![Compiler Architecture](https://img.shields.io/badge/Compiler-ANSI%20C99%20Pipeline-blue.svg)](docs/ARQUITECTURA_COMPILADOR.md)
-[![Verification Suite](https://img.shields.io/badge/Tests-6%2F6%20Suites%20PASS-brightgreen.svg)](docs/SUITE_DE_PRUEBAS.md)
+[![Verification Suite](https://img.shields.io/badge/Tests-7%2F7%20Suites%20PASS-brightgreen.svg)](docs/SUITE_DE_PRUEBAS.md)
 [![C99 Transpiler](https://img.shields.io/badge/Transpiler-c2upl%20(C99%20to%20UPL%2B)-orange.svg)](tools/c2upl.c)
 [![Python Dependency](https://img.shields.io/badge/Python-0%25%20(Pure%20C99)-lightgrey.svg)](#-toolchain-aut%C3%B3noma-cero-dependencias)
 
@@ -32,7 +32,7 @@
 Todo el ecosistema está completamente autocontenido en este repositorio:
 
 1. **Extensión Oficial para Antigravity IDE y VS Code:**
-   - Instala el paquete oficial en 1 clic: [`extensions/upl-vscode/upl-lang-2.1.0.vsix`](extensions/upl-vscode/upl-lang-2.1.0.vsix) (*Menú Extensiones `...` -> Install from VSIX...*).
+   - Instala el paquete oficial en 1 clic: [`extensions/upl-vscode/upl-lang-2.2.2.vsix`](extensions/upl-vscode/upl-lang-2.2.2.vsix) (*Menú Extensiones `...` -> Install from VSIX...*).
 2. **Soporte para Notepad++:**
    - Importa el archivo [`extensions/notepadpp/upl_notepadpp.xml`](extensions/notepadpp/upl_notepadpp.xml) desde *Idioma -> Definir idioma -> Importar*.
 3. **Compilador y Ejecución Instantánea:**
@@ -81,7 +81,7 @@ El analizador léxico procesa de forma nativa e idéntica las palabras clave en 
 | Control condicional | `TOK_IF`, `TOK_ELSE` | `if`, `else` | `si`, `sino` |
 | Bucles de iteración | `TOK_WHILE`, `TOK_FOR` | `while`, `for` | `mientras`, `para` |
 | Retorno | `TOK_RETURN` | `return` | `retornar` |
-| Gestión determinista LIFO | `TOK_DEFER` | `defer` | `diferir` |
+| Gestión determinista LIFO | `TOK_DEFER` | `defer` | `diferir / posponer` |
 | Coincidencia de patrones O(1) | `TOK_MATCH` | `match` | `segun` |
 | Cast explícito | `TOK_AS` | `as` | `como` |
 | Bloque C nativo | `TOK_EMBED` | `embed` | `incrustar` |
