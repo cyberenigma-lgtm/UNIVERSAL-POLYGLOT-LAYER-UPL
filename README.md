@@ -3,16 +3,17 @@
 ### High-Performance Deterministic Systems Language & Standalone C99 Native Compiler
 
 **Autor / Author:** José Manuel Moreno (Noxferion)  
-**Versión / Version:** 2.2.2-Release (Sovereign Integrity & Deterministic Defer Edition)  
+**Versión / Version:** 2.2.3-Release (Sovereign Super-Systems & Silicon Crypto Edition)  
 **Licencia / License:** GNU General Public License v3.0 (GPLv3) — Autoría y especificación técnica registradas en SafeCreative
 
 [![CI Native Tests](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/actions/workflows/ci.yml)
-[![Release: v2.2.2](https://img.shields.io/badge/Release-v2.2.2--Sovereign%20Integrity-blue.svg)](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/releases/tag/v2.2.2)
+[![Release: v2.2.3](https://img.shields.io/badge/Release-v2.2.3--Sovereign%20Super--Systems-blue.svg)](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/releases/tag/v2.2.3)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![SafeCreative Protected](https://img.shields.io/badge/SafeCreative-Obra%20Protegida-blue.svg)](https://www.safecreative.org)
-[![Language Specification](https://img.shields.io/badge/Spec-Formal%20EBNF%20v2.2-green.svg)](docs/SPEC_GRAMATICA_Y_SISTEMA_TIPOS.md)
-[![Compiler Architecture](https://img.shields.io/badge/Compiler-ANSI%20C99%20Pipeline-blue.svg)](docs/ARQUITECTURA_COMPILADOR.md)
-[![Verification Suite](https://img.shields.io/badge/Tests-7%2F7%20Suites%20PASS-brightgreen.svg)](docs/SUITE_DE_PRUEBAS.md)
+[![Language Specification](https://img.shields.io/badge/Spec-Formal%20EBNF%20v2.2.3-green.svg)](docs/SPEC_GRAMATICA_Y_SISTEMA_TIPOS.md)
+[![Compiler Architecture](https://img.shields.io/badge/Compiler-Dragon%20Book%20Pipeline-blue.svg)](docs/ARQUITECTURA_COMPILADOR.md)
+[![Verification Suite](https://img.shields.io/badge/Tests-8%2F8%20Suites%20PASS-brightgreen.svg)](docs/SUITE_DE_PRUEBAS.md)
+[![Package Manager](https://img.shields.io/badge/Package%20Manager-upl__pm%20v1.3.0%20(29%20Modules)-purple.svg)](tools/upl_pm.c)
 [![C99 Transpiler](https://img.shields.io/badge/Transpiler-c2upl%20(C99%20to%20UPL%2B)-orange.svg)](tools/c2upl.c)
 [![Python Dependency](https://img.shields.io/badge/Python-0%25%20(Pure%20C99)-lightgrey.svg)](#-toolchain-aut%C3%B3noma-cero-dependencias)
 
@@ -32,7 +33,7 @@
 Todo el ecosistema está completamente autocontenido en este repositorio:
 
 1. **Extensión Oficial para Antigravity IDE y VS Code:**
-   - Instala el paquete oficial en 1 clic: [`extensions/upl-vscode/upl-lang-2.2.2.vsix`](extensions/upl-vscode/upl-lang-2.2.2.vsix) (*Menú Extensiones `...` -> Install from VSIX...*).
+   - Instala el paquete oficial en 1 clic: [`extensions/upl-vscode/upl-lang-2.2.3.vsix`](extensions/upl-vscode/upl-lang-2.2.3.vsix) (*Menú Extensiones `...` -> Install from VSIX...*).
 2. **Soporte para Notepad++:**
    - Importa el archivo [`extensions/notepadpp/upl_notepadpp.xml`](extensions/notepadpp/upl_notepadpp.xml) desde *Idioma -> Definir idioma -> Importar*.
 3. **Compilador y Ejecución Instantánea:**
@@ -56,6 +57,16 @@ Todo el ecosistema está completamente autocontenido en este repositorio:
 
 ## 🇪🇸 [Español] - Especificación Técnica de UPL+
 
+### 🌟 Novedades Destacadas en la Versión 2.2.3 (Sovereign Super-Systems & Silicon Crypto Edition)
+* 🔐 **Criptografía Determinista en Silicio:** Módulo SHA-256 nativo integrado sin dependencias externas (`modules/std/crypto`).
+* 🏷️ **Enumeraciones Bilingües (`enum` / `enumeracion`):** Soporte de variantes tipadas con coincidencia `segun` / `match` optimizada en $O(1)$.
+* ⚡ **Canales Lock-Free MPSC (Multi-Producer Single-Consumer):** Primitivas de sincronización atómica entre hilos con latencia sub-microsegundo (0 mutexes, 0 contención).
+* 🧮 **Tensores GEMM y Aceleración Matricial:** Operaciones de álgebra lineal determinista para inferencia y cálculo numérico directo sobre PML4/Heap.
+* 🛡️ **Verificación Criptográfica en `upl_pm` (`upl_pm verify`):** Auditoría automática de integridad SHA-256 sobre los 29 módulos del catálogo de paquetes.
+* 📦 **Herramientas de Desarrollo Actualizadas:** Extensión [`extensions/upl-vscode/upl-lang-2.2.3.vsix`](extensions/upl-vscode/upl-lang-2.2.3.vsix) para Antigravity IDE y VS Code.
+
+---
+
 ### 📌 Descripción General
 **UPL+ (Universal Polyglot Layer Plus)** es un lenguaje de programación de sistemas compilado, fuertemente tipado y de alto rendimiento. Ha sido diseñado para desarrollo de bajo nivel, firmware, utilidades de control de memoria del sistema operativo y cálculo financiero determinista.
 
@@ -73,6 +84,7 @@ El analizador léxico procesa de forma nativa e idéntica las palabras clave en 
 | Espacio de nombres | `TOK_MODULE` | `module` | `modulo` |
 | Importación | `TOK_IMPORT` | `import` | `importar` |
 | Estructuras | `TOK_STRUCT` | `struct` | `estructura` |
+| Enumeraciones | `TOK_ENUM` | `enum` | `enumeracion` |
 | Modificador público | `TOK_PUB` | `pub` | `publico` |
 | Función | `TOK_FN` | `fn` | `funcion` |
 | Variable inmutable | `TOK_LET` | `let` | `sea` |
@@ -188,13 +200,14 @@ test.bat
 # Linux / macOS
 ./test.sh
 ```
-* **[1/6] Lexer Bilingüe:** 6/6 tests PASS.
-* **[2/6] Parser Pratt & AST:** 6/6 tests PASS.
-* **[3/6] Motor COMP-3 BCD:** 4/4 tests PASS.
-* **[4/6] Preprocesador y Sanitizador de Código:** 3/3 tests PASS.
-* **[5/6] Compilación End-to-End con `uplc`:** PASS (Cálculo exacto: 1000 EUR + 21% = 1210 EUR).
-* **[6/6] Transpilador C99 a UPL+ (`c2upl`):** 5/5 tests PASS.
-* **[7/7] Suite Maestra de Módulos de Silicio:** 28/28 tests PASS (GXNOX, NeuroCOBOL, NEURO-GFX, Probe, NUASM, NeuroWill, IAGROK, DVTRGAS).
+* **[1/8] Lexer Bilingüe:** 6/6 tests PASS.
+* **[2/8] Parser Pratt & AST:** 6/6 tests PASS.
+* **[3/8] Motor COMP-3 BCD:** 4/4 tests PASS.
+* **[4/8] Preprocesador y Sanitizador de Código:** 3/3 tests PASS.
+* **[5/8] Compilación End-to-End con `uplc` y LIFO `defer`/`posponer`:** PASS (Cálculo exacto: 1000 EUR + 21% = 1210 EUR).
+* **[6/8] Transpilador C99 a UPL+ (`c2upl`):** 5/5 tests PASS.
+* **[7/8] Suite Maestra de Módulos de Silicio:** 28/28 tests PASS (GXNOX, NeuroCOBOL, NEURO-GFX, Probe, NUASM, NeuroWill, IAGROK, DVTRGAS).
+* **[8/8] Suite Soberana v2.2.3:** PASS (Enums bilingües, Criptografía SHA-256 en Silicio, Canales Lock-Free MPSC, Tensores GEMM, Calculadora Políglota y verificación SHA-256 `upl_pm verify`).
 
 <p align="center">
   <img src="assets/upl_test_launcher_screen.png" alt="UPL+ Laboratory Test Center - Suite de Verificación Empírica" width="850"/><br/>
@@ -235,6 +248,16 @@ Para validar la fiabilidad de UPL+ en entornos de producción con limitaciones d
 
 ## 🇬🇧 [English] - UPL+ Technical Specification
 
+### 🌟 What's New in Version 2.2.3 (Sovereign Super-Systems & Silicon Crypto Edition)
+* 🔐 **Deterministic Silicon Cryptography:** Native SHA-256 standard module with zero external dependencies (`modules/std/crypto`).
+* 🏷️ **Bilingual Enumerations (`enum` / `enumeracion`):** Typed enum variants with optimized $O(1)$ pattern matching (`match` / `segun`).
+* ⚡ **Lock-Free MPSC Channels:** Atomic inter-thread synchronization primitives with sub-microsecond latency (0 mutexes, 0 contention).
+* 🧮 **GEMM Tensor Acceleration:** Deterministic linear algebra and matrix operations for direct CPU inference over native PML4/Heap.
+* 🛡️ **Cryptographic Verification in `upl_pm` (`upl_pm verify`):** Automated SHA-256 integrity audits across all 29 system package modules.
+* 📦 **Updated Developer Tooling:** Official [`extensions/upl-vscode/upl-lang-2.2.3.vsix`](extensions/upl-vscode/upl-lang-2.2.3.vsix) extension for Google Antigravity IDE and VS Code.
+
+---
+
 ### 📌 Overview
 **UPL+ (Universal Polyglot Layer Plus)** is a compiled, strongly typed, deterministic systems programming language designed for bare-metal firmware, operating system watchdog utilities, and exact financial decimal computation.
 
@@ -252,6 +275,7 @@ The lexical analyzer treats English and Spanish keywords identically at the toke
 | Namespace | `TOK_MODULE` | `module` | `modulo` |
 | Import statement | `TOK_IMPORT` | `import` | `importar` |
 | Aggregated types | `TOK_STRUCT` | `struct` | `estructura` |
+| Enumerations | `TOK_ENUM` | `enum` | `enumeracion` |
 | Public visibility | `TOK_PUB` | `pub` | `publico` |
 | Function declaration | `TOK_FN` | `fn` | `funcion` |
 | Immutable variable | `TOK_LET` | `let` | `sea` |
@@ -358,12 +382,14 @@ test.bat
 # Linux / macOS
 ./test.sh
 ```
-* **[1/6] Bilingual Lexer:** 6/6 tests PASS.
-* **[2/6] Pratt Parser & AST:** 6/6 tests PASS.
-* **[3/6] COMP-3 BCD Engine:** 4/4 tests PASS.
-* **[4/6] Source Code Preprocessor & Sanitizer:** 3/3 tests PASS.
-* **[5/6] End-to-End Compilation:** PASS (Exact tax calculation: 1000 EUR + 21% = 1210 EUR).
-* **[6/6] C99 to UPL+ Transpiler (`c2upl`):** 5/5 tests PASS.
+* **[1/8] Bilingual Lexer:** 6/6 tests PASS.
+* **[2/8] Pratt Parser & AST:** 6/6 tests PASS.
+* **[3/8] COMP-3 BCD Engine:** 4/4 tests PASS.
+* **[4/8] Source Code Preprocessor & Sanitizer:** 3/3 tests PASS.
+* **[5/8] End-to-End Compilation & LIFO `defer`:** PASS (Exact tax calculation: 1000 EUR + 21% = 1210 EUR).
+* **[6/8] C99 to UPL+ Transpiler (`c2upl`):** 5/5 tests PASS.
+* **[7/8] Silicon Modules Master Suite:** 28/28 tests PASS.
+* **[8/8] Sovereign v2.2.3 Suite:** PASS (Bilingual Enums, Silicon SHA-256 Crypto, Lock-Free MPSC Channels, GEMM Tensors, Polyglot Calculator & `upl_pm verify`).
 
 ---
 
