@@ -1,0 +1,71 @@
+From 4a1234567890abcdef1234567890abcdef123456 Mon Sep 17 00:00:00 2001
+From: CyberEnigma <cyberenigma@users.noreply.github.com>
+Date: Thu, 26 Nov 2026 00:49:00 +0100
+Subject: [PATCH] [Cryptography] Coalesce in-flight CRL downloads with WeakReference caching in OpenSslCrlCache
+
+Fixes https://github.com/dotnet/runtime/issues/108557
+---
+ .../X509Certificates/OpenSslCrlCache.cs       | 68 ++++++++++++++++++-
+ 1 file changed, 66 insertions(+), 2 deletions(-)
+
+diff --git a/src/libraries/System.Security.Cryptography/src/System/Security/Cryptography/X509Certificates/OpenSslCrlCache.cs b/src/libraries/System.Security.Cryptography/src/System/Security/Cryptography/X509Certificates/OpenSslCrlCache.cs
+index a3912bc..d812ef4 100644
+--- a/src/libraries/System.Security.Cryptography/src/System/Security/Cryptography/X509Certificates/OpenSslCrlCache.cs
++++ b/src/libraries/System.Security.Cryptography/src/System/Security/Cryptography/X509Certificates/OpenSslCrlCache.cs
+@@ -7,6 +7,8 @@ using System.Collections.Concurrent;
+ using System.Diagnostics;
+ using System.IO;
+ using System.Threading;
+ using System.Threading.Tasks;
+ using Microsoft.Win32.SafeHandles;
+ 
+ namespace System.Security.Cryptography.X509Certificates
+ {
+     internal static partial class OpenSslCrlCache
+     {
++        private static readonly ConcurrentDictionary<string, Task<SafeX509CrlHandle>> s_inFlightTasks = new();
++        private static readonly ConcurrentDictionary<string, WeakReference<SafeX509CrlHandle>> s_weakCrlCache = new();
++
+         public static SafeX509CrlHandle GetOrDownloadCrl(string uri)
+         {
+-            byte[] crlBytes = DownloadCrl(uri);
+-            return ParseCrl(crlBytes);
++            // 1. Check if the parsed native CRL is already alive in memory without keeping strong roots
++            if (s_weakCrlCache.TryGetValue(uri, out WeakReference<SafeX509CrlHandle>? weakRef) &&
++                weakRef.TryGetTarget(out SafeX509CrlHandle? liveHandle) &&
++                !liveHandle.IsInvalid &&
++                !liveHandle.IsClosed)
++            {
++                bool addRefSuccess = false;
++                liveHandle.DangerousAddRef(ref addRefSuccess);
++                if (addRefSuccess)
++                {
++                    liveHandle.DangerousRelease();
++                    return liveHandle;
++                }
++            }
++
++            // 2. Coalesce concurrent in-flight download & OpenSSL parse operations
++            Task<SafeX509CrlHandle> task = s_inFlightTasks.GetOrAdd(uri, targetUri => Task.Run(() =>
++            {
++                try
++                {
++                    byte[] crlBytes = DownloadCrl(targetUri);
++                    SafeX509CrlHandle handle = ParseCrl(crlBytes);
++
++                    // Register weak reference to allow native memory reclamation when unreferenced
++                    s_weakCrlCache[targetUri] = new WeakReference<SafeX509CrlHandle>(handle);
++                    return handle;
++                }
++                finally
++                {
++                    s_inFlightTasks.TryRemove(targetUri, out _);
++                }
++            }));
++
++            return task.GetAwaiter().GetResult();
+         }
+     }
+ }
+-- 
+2.43.0

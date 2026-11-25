@@ -1,0 +1,9 @@
+*.exe
+*.obj
+*.o
+*.c
+*.bin
+*.log
+bin/
+obj/
+
