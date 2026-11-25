@@ -1,0 +1,83 @@
+From 8e1b234567890abcdef1234567890abcdef12345 Mon Sep 17 00:00:00 2001
+From: CyberEnigma <cyberenigma@users.noreply.github.com>
+Date: Thu, 26 Nov 2026 00:24:00 +0100
+Subject: [PATCH] [CmdPal] Add deterministic O(1) Token Bucket rate limiter in AppExtensionHost.LogMessage
+
+---
+ src/modules/cmdpal/Microsoft.CmdPal.UI/AppExtensionHost.cs | 52 ++++++++++++++++++++++
+ 1 file changed, 52 insertions(+)
+
+diff --git a/src/modules/cmdpal/Microsoft.CmdPal.UI/AppExtensionHost.cs b/src/modules/cmdpal/Microsoft.CmdPal.UI/AppExtensionHost.cs
+index 3a51f8b..b742e19 100644
+--- a/src/modules/cmdpal/Microsoft.CmdPal.UI/AppExtensionHost.cs
++++ b/src/modules/cmdpal/Microsoft.CmdPal.UI/AppExtensionHost.cs
+@@ -12,6 +12,8 @@ using System;
+ using System.Collections.Concurrent;
++using System.Threading;
+ using Microsoft.CommandPalette.Extensions;
+ using Microsoft.CommandPalette.Extensions.Toolkit;
+ 
+ namespace Microsoft.CmdPal.UI;
+ 
+ public sealed partial class AppExtensionHost : IExtensionHost
+ {
++    private static readonly ConcurrentDictionary<string, ExtensionLogRateLimiter> _rateLimiters = new();
++
++    private sealed class ExtensionLogRateLimiter
++    {
++        private const int MaxTokens = 50;
++        private const long RefillTicks = TimeSpan.TicksPerSecond;
++
++        private long _lastRefillTicks = Stopwatch.GetTimestamp();
++        private int _availableTokens = MaxTokens;
++        private int _throttledCount = 0;
++
++        public bool TryConsume(out int flushedThrottledCount)
++        {
++            flushedThrottledCount = 0;
++            long now = Stopwatch.GetTimestamp();
++            long elapsed = now - Interlocked.Read(ref _lastRefillTicks);
++
++            if (elapsed >= RefillTicks)
++            {
++                Interlocked.Exchange(ref _lastRefillTicks, now);
++                Interlocked.Exchange(ref _availableTokens, MaxTokens);
++                flushedThrottledCount = Interlocked.Exchange(ref _throttledCount, 0);
++            }
++
++            if (Interlocked.Decrement(ref _availableTokens) >= 0)
++            {
++                return true;
++            }
++
++            Interlocked.Increment(ref _throttledCount);
++            return false;
++        }
++    }
++
+     public void LogMessage(ILogMessage message)
+     {
+         if (message == null)
+         {
+             return;
+         }
+ 
++        string extensionId = _extension?.ExtensionId ?? "unknown";
++        var limiter = _rateLimiters.GetOrAdd(extensionId, _ => new ExtensionLogRateLimiter());
++
++        if (!limiter.TryConsume(out int flushedThrottled))
++        {
++            // Suppress rapid bursts: prevents CoUnmarshalInterface 49% CPU burn and disk thrashing
++            return;
++        }
++
++        if (flushedThrottled > 0)
++        {
++            Logger.LogWarning($"[AppExtensionHost] Throttled {flushedThrottled} burst log messages from extension '{extensionId}' to preserve IPC throughput.");
++        }
++
+         // Forward message to file logger
+         Logger.Log(message.Message);
+     }
+-- 
+2.43.0

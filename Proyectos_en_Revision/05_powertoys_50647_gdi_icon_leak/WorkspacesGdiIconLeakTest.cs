@@ -58,3 +58,4 @@ namespace Workspaces.UnitTests
         private static extern bool DestroyIcon(IntPtr hIcon);
     }
 }
+

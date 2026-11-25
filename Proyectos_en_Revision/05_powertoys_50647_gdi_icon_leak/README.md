@@ -39,3 +39,4 @@ uplc run gdi_icon_audit.upl
 ```bash
 git apply patch_powertoys_50647.diff
 ```
+

@@ -9,3 +9,4 @@ This PR:
 1. Sets `MS_BLOCK_ALLOC_NUM` to 32 on `TARGET_WASM`, amortizing the 16 KB alignment slack over 512 KB slabs (reducing overhead from 2.0x down to ~1.03x).
 2. Removes redundant 16 KB alignment on WASM for LOS objects.
 3. Adds regression unit test.
+

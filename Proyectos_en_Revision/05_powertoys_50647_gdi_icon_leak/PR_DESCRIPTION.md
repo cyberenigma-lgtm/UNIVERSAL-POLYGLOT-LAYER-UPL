@@ -12,3 +12,4 @@ This PR:
 2. Disposes source bitmaps and `EncoderParameters`.
 3. Calls `_icon?.Dispose()` in `BaseApplication.Dispose()`.
 4. Adds regression unit test verifying GDI object count stability.
+

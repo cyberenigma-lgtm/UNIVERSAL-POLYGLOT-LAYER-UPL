@@ -50,3 +50,4 @@ namespace Mono.Runtime.Wasm.Tests
         }
     }
 }
+

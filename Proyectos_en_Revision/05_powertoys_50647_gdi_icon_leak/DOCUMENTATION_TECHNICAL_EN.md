@@ -94,3 +94,4 @@
 +            using EncoderParameters encoderParameters = new EncoderParameters(1);
              encoderParameters.Param[0] = new EncoderParameter(Encoder.Quality, 100L);
 ```
+
