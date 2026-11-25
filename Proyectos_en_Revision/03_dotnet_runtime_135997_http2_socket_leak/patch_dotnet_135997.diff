@@ -1,11 +1,9 @@
 --- a/src/libraries/System.Net.Http/src/System/Net/Http/SocketsHttpHandler/ConnectionPool/HttpConnectionPool.Http2.cs
 +++ b/src/libraries/System.Net.Http/src/System/Net/Http/SocketsHttpHandler/ConnectionPool/HttpConnectionPool.Http2.cs
-@@ -367,6 +367,13 @@ internal sealed partial class HttpConnectionPool : IDisposable
+@@ -367,6 +367,11 @@ internal sealed partial class HttpConnectionPool : IDisposable
  
          private void AddHttp2Connection(Http2Connection connection)
          {
-+            // If connection pooling is disabled (PooledConnectionLifetime == TimeSpan.Zero / AvoidStoringConnections),
-+            // do not retain the connection in _availableHttp2Connections.
 +            if (_poolManager.AvoidStoringConnections)
 +            {
 +                return;
@@ -17,19 +15,8 @@
 --- a/src/libraries/System.Net.Http/src/System/Net/Http/SocketsHttpHandler/HttpConnectionPoolManager.cs
 +++ b/src/libraries/System.Net.Http/src/System/Net/Http/SocketsHttpHandler/HttpConnectionPoolManager.cs
 @@ -340,7 +340,7 @@ internal sealed class HttpConnectionPoolManager : IDisposable
-                 // Only add the pool to the dictionary if the cleaning timer is running.
-                 // If the cleaning timer is not running, we won't be storing any connections in
-                 // pools anyway, so there's no need to store pools in the dictionary.
 -                if (_cleaningTimer != null)
-+                if (_cleaningTimer != null || !_avoidStoringConnections)
-                 {
-                     _pools.TryAdd(key, pool);
-                 }
-+                else
-+                {
-+                    // Track pool for deterministic teardown on Dispose() even without cleaning timer
-+                    _pools.TryAdd(key, pool);
-+                }
++                _pools.TryAdd(key, pool);
              }
  
              return pool;
