@@ -1,0 +1,33 @@
+--- a/src/mono/mono/metadata/marshal.c
++++ b/src/mono/mono/metadata/marshal.c
+@@ -2188,8 +2188,11 @@ mono_marshal_get_delegate_invoke_internal (MonoMethod *method, int subtype, Mono
+ 	if (ctx) {
+ 		mono_marshal_lock ();
+ 		cache = get_cache_for_subtype (klass->image, subtype);
+ 		res = check_generic_delegate_wrapper_cache (cache, orig_method, method, ctx);
+ 		mono_marshal_unlock ();
+-		if (res)
++		if (res) {
++			g_free (target_method_sig);
+ 			return res;
++		}
+ 	} else if (callvirt) {
+ 		mono_marshal_lock ();
+ 		cache = get_cache_for_subtype (klass->image, subtype);
+ 		res = (MonoMethod *)g_hash_table_lookup (cache, invoke_sig);
+ 		mono_marshal_unlock ();
+-		if (res)
++		if (res) {
++			g_free (target_method_sig);
+ 			return res;
++		}
+ 	}
+@@ -2280,6 +2283,7 @@ mono_marshal_get_delegate_invoke_internal (MonoMethod *method, int subtype, Mono
+ 	}
+ 	mono_mb_free (mb);
+ 
+ 	/* mono_method_print_code (res); */
+ 
++	g_free (target_method_sig);
+ 	return res;
+ }

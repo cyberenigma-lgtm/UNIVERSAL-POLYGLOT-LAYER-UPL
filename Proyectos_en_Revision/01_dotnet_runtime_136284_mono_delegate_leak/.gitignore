@@ -1,0 +1,7 @@
+# UPL+ Compiled binaries & intermediate C sources
+*.exe
+*.upl.c
+*.o
+*.obj
+*.pdb
+
