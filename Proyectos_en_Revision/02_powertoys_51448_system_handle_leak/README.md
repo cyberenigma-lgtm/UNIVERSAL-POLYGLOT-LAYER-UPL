@@ -3,7 +3,7 @@
 **Target Repository:** [microsoft/PowerToys](https://github.com/microsoft/PowerToys)  
 **Target Issue:** [#51448](https://github.com/microsoft/PowerToys/issues/51448)  
 **Component:** Mouse Without Borders Service Mode (`src/modules/MouseWithoutBorders`)  
-**Formal Verification Engine:** [UPL+ (Universal Polyglot Layer)](https://github.com/Noxferion/UNIVERSAL-POLYGLOT-LAYER-UPL) v2.2.3  
+**Formal Verification Engine:** [UPL+ (Universal Polyglot Layer)](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL) v2.2.3  
 
 ---
 

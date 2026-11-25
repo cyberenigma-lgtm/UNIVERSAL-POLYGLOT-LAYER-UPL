@@ -7,7 +7,7 @@
 ## 1. Executive Summary
 
 * **Target Issue:** [`microsoft/PowerToys #51448`](https://github.com/microsoft/PowerToys/issues/51448)
-* **Affected Component:** `src/modules/MouseWithoutBorders/App/Service/NativeMethods.cs` & `Core/Common.cs`
+* **Affected Component:** `src/modules/MouseWithoutBorders/App/Service/NativeMethods.cs`, `Core/Helper.cs`, and `Core/Common.cs`
 * **Area Label:** `Product-Mouse Without Borders`
 * **OS Impact:** Windows 10, Windows 11 (x64 / ARM64)
 * **Symptom:** SYSTEM-level process leaks ~105 kernel handles per 15 minutes (~7/min, ~10,000/day) in a constant 3:2:1 ratio (Tokens : Events : Threads), peaking past 29,000 handles and starving the Windows kernel handle table (`ntoskrnl.exe`).
@@ -16,42 +16,30 @@
 
 ## 2. In-Depth Win32 Handle Lifecycle Breakdown
 
-### The Mathematical Ratio (3:2:1)
-Every ~26 seconds, the background service initiates desktop synchronization / impersonation:
+### The Mathematical Ratio (3:2:1) & Thread Forensics
+Every ~26 to 50 seconds, the background service coordinates desktop and user token state:
 
-1. **Tokens (~3 handles per cycle):**
-   * Primary token retrieved via `OpenProcessToken` (or `WTSQueryUserToken`).
-   * Primary duplicated token via `DuplicateTokenEx(..., TokenPrimary, ...)`.
-   * Impersonation duplicated token via `DuplicateTokenEx(..., TokenImpersonation, ...)`.
-2. **Events (~2 handles per cycle):**
-   * Synchronization events created during IPC and named pipe/socket coordination.
-3. **Threads / Processes (~1 handle per cycle):**
-   * Short-lived helper thread launched to dispatch user desktop commands, plus `pi.hThread` returned by `CreateProcessAsUser`.
-
-### The Code Defect in `NativeMethods.cs`
-```csharp
-// Line 349: Launch the process
-bool rv = CreateProcessAsUser(
-    hUserTokenDup,
-    null,
-    CommandLine,
-    ref sa,
-    ref sa,
-    false,
-    (int)dwCreationFlags,
-    pEnv,
-    null,
-    ref si,
-    out pi); // PROCESS_INFORMATION pi receives hProcess and hThread
-
-// Line 355: Only closed initial tokens, completely ignoring pi!
-CloseHandle(hProcess);
-CloseHandle(hUserTokenDup);
-CloseHandle(hPToken);
-// LEAK: pi.hProcess and pi.hThread are NEVER closed!
-// LEAK: pEnv created with CreateEnvironmentBlock is NEVER destroyed!
-// LEAK: If an exception triggers, NONE of the handles are closed!
-```
+1. **Continuous Periodic Identity Leak:**
+   As highlighted by forensic thread analysis (@TrefoilHat, @peterzejda), periodic security checks execute `WindowsIdentity.GetCurrent()` without deterministic disposal. In .NET, `WindowsIdentity.GetCurrent()` requests a primary token from LSASS / `OpenProcessToken`. When the finalizer thread is delayed by STA message and socket loops, these unmanaged token handles accumulate continuously.
+2. **Helper Process Launch & Worker Spawn Leak:**
+   In `src/modules/MouseWithoutBorders/App/Service/NativeMethods.cs`:
+   ```csharp
+   bool rv = CreateProcessAsUser(
+       hUserTokenDup,
+       null,
+       CommandLine,
+       ref sa,
+       ref sa,
+       false,
+       (int)dwCreationFlags,
+       pEnv,
+       null,
+       ref si,
+       out pi); // PROCESS_INFORMATION pi receives hProcess and hThread
+   ```
+   * **Unclosed Process & Thread Handles:** Win32 creates and returns `pi.hProcess` and `pi.hThread`. Neither handle was ever closed via `CloseHandle()`.
+   * **Leaked Environment Block:** `CreateEnvironmentBlock(ref pEnv, ...)` was called, but `DestroyEnvironmentBlock(pEnv)` was omitted upon launch completion.
+   * **Missing `finally` Block:** In case of exceptions, `hProcess`, `hUserTokenDup`, and `hPToken` were skipped.
 
 ---
 
@@ -88,8 +76,6 @@ We implemented `mwb_handle_audit.upl` using UPL+ v2.2.3, interacting directly wi
 ---
 
 ## 4. Upstream Patch for `microsoft/PowerToys`
-
-The patch wraps all Win32 handle lifetimes in a deterministic `finally` block and imports `DestroyEnvironmentBlock`:
 
 ```diff
 --- a/src/modules/MouseWithoutBorders/App/Service/NativeMethods.cs
