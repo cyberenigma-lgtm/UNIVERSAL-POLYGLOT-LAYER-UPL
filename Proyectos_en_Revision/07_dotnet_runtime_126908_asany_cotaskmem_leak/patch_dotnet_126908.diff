@@ -1,0 +1,36 @@
+From 7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a Mon Sep 17 00:00:00 2001
+From: CyberEnigma <cyberenigma@users.noreply.github.com>
+Date: Thu, 26 Nov 2026 00:37:00 +0100
+Subject: [PATCH] [CoreCLR][Interop] Free CoTaskMem in AsAnyMarshaler.LayoutImplementation if conversion throws
+
+Fixes https://github.com/dotnet/runtime/issues/126908
+---
+ src/coreclr/System.Private.CoreLib/src/System/StubHelpers.cs | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/src/coreclr/System.Private.CoreLib/src/System/StubHelpers.cs b/src/coreclr/System.Private.CoreLib/src/System/StubHelpers.cs
+index a12bc34..d56ef78 100644
+--- a/src/coreclr/System.Private.CoreLib/src/System/StubHelpers.cs
++++ b/src/coreclr/System.Private.CoreLib/src/System/StubHelpers.cs
+@@ -354,8 +354,17 @@ internal struct LayoutImplementation
+             int cb = Marshal.SizeOfHelper(pManagedHome.GetType(), true);
+             IntPtr pNative = Marshal.AllocCoTaskMem(cb);
+             m_pNative = pNative;
+-            LayoutTypeConvertToUnmanaged(pManagedHome, (byte*)pNative, ref _cleanupWorkList);
+-            return pNative;
++            try
++            {
++                LayoutTypeConvertToUnmanaged(pManagedHome, (byte*)pNative, ref _cleanupWorkList);
++                return pNative;
++            }
++            catch
++            {
++                Marshal.FreeCoTaskMem(pNative);
++                m_pNative = IntPtr.Zero;
++                throw;
++            }
+         }
+ 
+         internal void ClearNative(IntPtr pNative)
+-- 
+2.43.0
