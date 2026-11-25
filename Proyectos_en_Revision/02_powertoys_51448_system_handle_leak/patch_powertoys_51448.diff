@@ -1,0 +1,84 @@
+--- a/src/modules/MouseWithoutBorders/App/Service/NativeMethods.cs
++++ b/src/modules/MouseWithoutBorders/App/Service/NativeMethods.cs
+@@ -250,6 +250,9 @@ internal static class NativeMethods
+         [DllImport("userenv.dll", SetLastError = true)]
+         [return: MarshalAs(UnmanagedType.Bool)]
+         private static extern bool CreateEnvironmentBlock(ref IntPtr lpEnvironment, IntPtr hToken, [MarshalAs(UnmanagedType.Bool)] bool bInherit);
++
++        [DllImport("userenv.dll", SetLastError = true)]
++        [return: MarshalAs(UnmanagedType.Bool)]
++        private static extern bool DestroyEnvironmentBlock(IntPtr lpEnvironment);
+ 
+         [DllImport("sas.dll", SetLastError = true)]
+         internal static extern IntPtr SendSAS([MarshalAs(UnmanagedType.Bool)] bool AsUser);
+@@ -262,7 +265,9 @@ internal static bool CreateProcessAsSystemAccountOnSpecificDesktop(string Comman
+             int dwSessionId = sessionId < 0 ? (int)WTSGetActiveConsoleSessionId() : sessionId;
+             int winlogonPid = 0;
+             IntPtr hUserTokenDup = IntPtr.Zero, hPToken = IntPtr.Zero, hProcess = IntPtr.Zero;
++            IntPtr pEnv = IntPtr.Zero;
++            PROCESS_INFORMATION pi = default(PROCESS_INFORMATION);
++            bool rv = false;
+ 
+             try
+             {
+@@ -321,7 +326,6 @@ internal static bool CreateProcessAsSystemAccountOnSpecificDesktop(string Comman
+                 }
+ 
+                 uint dwCreationFlags = NORMAL_PRIORITY_CLASS | CREATE_NEW_CONSOLE;
+-                IntPtr pEnv = IntPtr.Zero;
+ 
+                 if (CreateEnvironmentBlock(ref pEnv, hUserTokenDup, true))
+                 {
+@@ -335,7 +339,6 @@ internal static bool CreateProcessAsSystemAccountOnSpecificDesktop(string Comman
+                 }
+ 
+                 // Launch the process
+-                PROCESS_INFORMATION pi = default(PROCESS_INFORMATION);
+-                bool rv = CreateProcessAsUser(
++                rv = CreateProcessAsUser(
+                     hUserTokenDup,            // client's access token
+                     null,                   // file to execute
+                     CommandLine,            // command line
+@@ -350,19 +353,27 @@ internal static bool CreateProcessAsSystemAccountOnSpecificDesktop(string Comman
+ 
+                 // GetLastError should be nonezero
+                 int createProcessAsUserRv = Marshal.GetLastWin32Error();
++                return rv;
++            }
++            catch (Exception)
++            {
++                return false;
++            }
++            finally
++            {
++                // Deterministic LIFO handle reclamation
++                if (pi.hThread != IntPtr.Zero)
++                {
++                    CloseHandle(pi.hThread);
++                }
++                if (pi.hProcess != IntPtr.Zero)
++                {
++                    CloseHandle(pi.hProcess);
++                }
++                if (pEnv != IntPtr.Zero)
++                {
++                    DestroyEnvironmentBlock(pEnv);
++                }
+                 if (hProcess != IntPtr.Zero)
+                 {
+                     CloseHandle(hProcess);
+                 }
+                 if (hUserTokenDup != IntPtr.Zero)
+                 {
+                     CloseHandle(hUserTokenDup);
+                 }
+                 if (hPToken != IntPtr.Zero)
+                 {
+                     CloseHandle(hPToken);
+                 }
+             }
+-            catch (Exception)
+-            {
+-                return false;
+-            }
+         }
