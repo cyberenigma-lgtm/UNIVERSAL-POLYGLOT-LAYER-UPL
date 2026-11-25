@@ -5,8 +5,8 @@ Subject: [PATCH] [Cryptography] Coalesce in-flight CRL downloads with WeakRefere
 
 Fixes https://github.com/dotnet/runtime/issues/108557
 ---
- .../X509Certificates/OpenSslCrlCache.cs       | 68 ++++++++++++++++++-
- 1 file changed, 66 insertions(+), 2 deletions(-)
+ .../X509Certificates/OpenSslCrlCache.cs       | 66 ++++++++++++++++++-
+ 1 file changed, 64 insertions(+), 2 deletions(-)
 
 diff --git a/src/libraries/System.Security.Cryptography/src/System/Security/Cryptography/X509Certificates/OpenSslCrlCache.cs b/src/libraries/System.Security.Cryptography/src/System/Security/Cryptography/X509Certificates/OpenSslCrlCache.cs
 index a3912bc..d812ef4 100644
@@ -40,7 +40,7 @@ index a3912bc..d812ef4 100644
 +                liveHandle.DangerousAddRef(ref addRefSuccess);
 +                if (addRefSuccess)
 +                {
-+                    liveHandle.DangerousRelease();
++                    // Hand off with active ref count (+1); caller releases via Dispose / DangerousRelease
 +                    return liveHandle;
 +                }
 +            }
@@ -63,7 +63,10 @@ index a3912bc..d812ef4 100644
 +                }
 +            }));
 +
-+            return task.GetAwaiter().GetResult();
++            SafeX509CrlHandle result = task.GetAwaiter().GetResult();
++            bool resultAddRef = false;
++            result.DangerousAddRef(ref resultAddRef);
++            return result;
          }
      }
  }
