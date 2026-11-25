@@ -1,0 +1,31 @@
+--- a/src/modules/Workspaces/WorkspacesCsharpLibrary/Models/BaseApplication.cs
++++ b/src/modules/Workspaces/WorkspacesCsharpLibrary/Models/BaseApplication.cs
+@@ -102,9 +102,17 @@ namespace WorkspacesCsharpLibrary.Models
+-                        var bitmap = new Bitmap(uri.LocalPath);
+-                        var iconHandle = bitmap.GetHicon();
+-                        _icon = Icon.FromHandle(iconHandle);
++                        using (var bitmap = new Bitmap(uri.LocalPath))
++                        {
++                            var iconHandle = bitmap.GetHicon();
++                            try
++                            {
++                                using var tempIcon = Icon.FromHandle(iconHandle);
++                                _icon = (Icon)tempIcon.Clone();
++                            }
++                            finally
++                            {
++                                NativeMethods.DestroyIcon(iconHandle);
++                            }
++                        }
+@@ -145,6 +153,7 @@ namespace WorkspacesCsharpLibrary.Models
+         public void Dispose()
+         {
++            _icon?.Dispose();
+             GC.SuppressFinalize(this);
+         }
+--- a/src/modules/Workspaces/WorkspacesCsharpLibrary/Utils/DrawHelper.cs
++++ b/src/modules/Workspaces/WorkspacesCsharpLibrary/Utils/DrawHelper.cs
+@@ -45,7 +45,7 @@ namespace WorkspacesCsharpLibrary.Utils
+-            EncoderParameters encoderParameters = new EncoderParameters(1);
++            using EncoderParameters encoderParameters = new EncoderParameters(1);
+             encoderParameters.Param[0] = new EncoderParameter(Encoder.Quality, 100L);
