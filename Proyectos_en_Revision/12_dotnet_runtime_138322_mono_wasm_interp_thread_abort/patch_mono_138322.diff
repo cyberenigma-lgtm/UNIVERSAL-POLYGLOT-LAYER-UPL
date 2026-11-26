@@ -1,0 +1,48 @@
+From 9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b Mon Sep 17 00:00:00 2001
+From: Sovereign Systems Engineering <systems@upl-core.org>
+Date: Thu, 26 Nov 2026 01:48:00 +0100
+Subject: [PATCH] [mono][interp] Lazily initialize InterpContext in interp_set_resume_state to prevent WASM AOT exception unwinding abort (#138322)
+
+Fixes #138322.
+
+In multithreaded browser WebAssembly ([browser][mt]), threads executing purely
+AOT-compiled code do not initialize a thread-local interpreter context (`InterpContext`).
+When an AOT method throws an exception that must be resumed in an interpreted catch
+clause, the native unwinder transfers execution to the interpreter via
+`interp_set_resume_state`.
+
+Previously, `interp_set_resume_state` assumed that `context` was already initialized,
+asserting `g_assert (context)` at interp.c:8299. For threads that have not previously
+entered the interpreter, `context` is NULL, triggering an immediate assertion abort
+and taking down the WebAssembly module.
+
+This patch lazily initializes the thread's `InterpContext` via `get_context()`
+in `interp_set_resume_state` when `context == NULL` prior to assigning the resume
+frame and clause.
+---
+ src/mono/mono/mini/interp/interp.c | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/src/mono/mono/mini/interp/interp.c b/src/mono/mono/mini/interp/interp.c
+index e5a4b3c2..8f7e6d5c 100644
+--- a/src/mono/mono/mini/interp/interp.c
++++ b/src/mono/mono/mini/interp/interp.c
+@@ -8295,8 +8295,15 @@ interp_set_resume_state (MonoInterpThreadState *state, InterpFrame *frame, Mono
+ {
+-	InterpContext *context = mono_tls_get_interp_context ();
+-	g_assert (context);
++	InterpContext *context = mono_tls_get_interp_context ();
++
++	// ISSUE #138322: When resuming from WASM AOT-compiled code into an interpreted catch
++	// on a thread that has not yet entered the interpreter, context is NULL.
++	// Lazily initialize InterpContext via get_context() instead of asserting.
++	if (!context) {
++		context = get_context ();
++	}
++	g_assert (context);
+ 
+ 	context->resume_frame = frame;
+ 	context->resume_clause = clause;
+ }
+-- 
+2.45.2.windows.1
