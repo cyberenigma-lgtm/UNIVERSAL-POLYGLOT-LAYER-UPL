@@ -22,15 +22,15 @@ In containerized Kubernetes deployments on Linux cgroups v2 with strict memory l
 flowchart TD
     A["Transient Allocation Burst (Application Traffic)"] --> B["Server GC Expands Segments (4 Heaps x 52 MB = 208 MB)"]
     B --> C["Linux Kernel Flags Pages as Dirty Anonymous"]
-    C --> D["Gen 2 / Full GC Reclaims Dead Objects -> Live Heap Drops to 48 MB"]
+    C --> D["Gen 2 / Full GC Reclaims Dead Objects: Live Heap Drops to 48 MB"]
     
-    subgraph Baseline: Retained Segment Model
+    subgraph Baseline["Baseline: Retained Segment Model"]
         D --> E["Committed Free Pages Retained in Heap Segments"]
         E --> F["cgroups memory.current Remains at 304 MB"]
-        F --> G["256 MB Container Limit Exceeded -> Kubernetes OOMKilled!"]
+        F --> G["256 MB Container Limit Exceeded: Kubernetes OOMKilled!"]
     end
 
-    subgraph Patched: Eager Boundary-Safe Decommit
+    subgraph Patched["Patched: Eager Boundary-Safe Decommit"]
         D --> H["madvise(aligned_start, size, MADV_DONTNEED)"]
         H --> I["Linux Kernel Discards Backing Physical Frames"]
         I --> J["cgroups memory.current Drops to 96 MB (+160 MB Safety Margin)"]
