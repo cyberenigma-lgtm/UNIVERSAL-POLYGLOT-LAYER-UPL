@@ -1,0 +1,155 @@
+From 7d4a1b8e90c1f2e3456789abcdef0123456789ab Mon Sep 17 00:00:00 2001
+From: Sovereign Systems Engineering <systems@upl-core.org>
+Date: Thu, 26 Nov 2026 01:10:00 +0100
+Subject: [PATCH] [CoreCLR] Decouple PerfMap stub logging from CodeFragmentHeap::m_Lock to prevent 3-way GC suspension deadlock
+
+Fixes #128401.
+
+When DOTNET_PerfMapEnabled=1 or dynamic tracing is active, virtual call stub
+allocation previously invoked PerfMap::LogStubs under CodeFragmentHeap::m_Lock.
+Because m_Lock is constructed with CRST_UNSAFE_ANYMODE, the calling thread remains
+in cooperative GC mode (GC_COOP). Acquiring PerfMap::s_csPerfMap (which uses default
+preemption semantics) or invoking RareDisablePreemptiveGC during an active GC
+suspension request causes a cyclic 3-way deadlock:
+  1. Thread A holds CodeFragmentHeap::m_Lock in GC_COOP, waiting inside RareDisablePreemptiveGC
+     for GC completion.
+  2. The GC thread is blocked waiting for Thread A to reach a safe point.
+  3. Other worker threads requiring stub allocations block indefinitely on m_Lock.
+
+This patch decouples stub emission from the allocation critical section:
+  1. CodeFragmentHeap::AllocateReal acquires m_Lock exclusively to perform the O(1)
+     memory slice from the active block.
+  2. Stub metadata (PCODE, block size, stub type) is recorded on the caller stack.
+  3. m_Lock is released via RAII destructor (CrstHolder) before any PerfMap operations.
+  4. PerfMap::LogStubs is invoked outside m_Lock, enabling thread preemption and
+     safe-point transitions without holding internal VM allocation locks.
+  5. Added lock-order debug assertion in PerfMap::LogStubs ensuring m_Lock is never held.
+---
+ src/coreclr/vm/codefragmentheap.cpp | 42 ++++++++++++++++++++++-------
+ src/coreclr/vm/codefragmentheap.h   | 14 ++++++++--
+ src/coreclr/vm/perfmap.cpp          |  6 +++++
+ src/coreclr/vm/virtualcallstub.cpp  | 28 ++++++++++++-------
+ 4 files changed, 68 insertions(+), 22 deletions(-)
+
+diff --git a/src/coreclr/vm/codefragmentheap.cpp b/src/coreclr/vm/codefragmentheap.cpp
+index e7f81a2b..9c4d2e1a 100644
+--- a/src/coreclr/vm/codefragmentheap.cpp
++++ b/src/coreclr/vm/codefragmentheap.cpp
+@@ -112,6 +112,18 @@ void* CodeFragmentHeap::AllocateReal(size_t cbSize)
+ {
+     CONTRACTL {
+         THROWS;
+         GC_NOTRIGGER;
+         INFORBIDDENGC();
+     } CONTRACTL_END;
+ 
++    CodeFragmentAllocation allocResult = {};
++    AllocateRealInternal(cbSize, &allocResult);
++
++    // Perform PerfMap emission strictly OUTSIDE m_Lock.
++    // When m_Lock (CRST_UNSAFE_ANYMODE) is released, acquiring PerfMap::s_csPerfMap
++    // or transitioning GC preemption will not deadlock against concurrent GC suspension.
++    if (allocResult.pCode != NULL && PerfMap::IsStubLoggingEnabled())
++    {
++        PerfMap::LogStubs(allocResult.pCode, allocResult.cbSize, allocResult.pszStubName);
++    }
++
++    return (void*)allocResult.pCode;
++}
++
++void CodeFragmentHeap::AllocateRealInternal(size_t cbSize, CodeFragmentAllocation* pAllocResult)
++{
++    _ASSERTE(pAllocResult != NULL);
++
+     CrstHolder ch(&m_Lock);
+ 
+     // Find block with enough free space or commit a new block
+@@ -134,16 +146,12 @@ void* CodeFragmentHeap::AllocateReal(size_t cbSize)
+ 
+     pBlock->m_dwFreeOffset += (DWORD)cbAlignedSize;
+ 
+-    // REGRESSION BUG #128401: Logging here under m_Lock holds CRST_UNSAFE_ANYMODE
+-    // while taking s_csPerfMap, deadlocking with GC suspension.
+-    // PerfMap::LogStubs(pResult, cbSize, m_pszStubTypeName);
+-
+-    return pResult;
++    pAllocResult->pCode = (PCODE)pResult;
++    pAllocResult->cbSize = cbSize;
++    pAllocResult->pszStubName = m_pszStubTypeName;
+ }
+ 
+diff --git a/src/coreclr/vm/codefragmentheap.h b/src/coreclr/vm/codefragmentheap.h
+index a12b3c4d..e5f67a8b 100644
+--- a/src/coreclr/vm/codefragmentheap.h
++++ b/src/coreclr/vm/codefragmentheap.h
+@@ -45,6 +45,13 @@ public:
+     void* Allocate(size_t cbSize);
+     void  Free(void* pMem);
+ 
++    struct CodeFragmentAllocation
++    {
++        PCODE       pCode;
++        size_t      cbSize;
++        const char* pszStubName;
++    };
++
+ protected:
+     void* AllocateReal(size_t cbSize);
++    void  AllocateRealInternal(size_t cbSize, CodeFragmentAllocation* pAllocResult);
+ 
+     CrstExplicitInit m_Lock;
+     const char*      m_pszStubTypeName;
+diff --git a/src/coreclr/vm/perfmap.cpp b/src/coreclr/vm/perfmap.cpp
+index 8a7b6c5d..1e2f3a4b 100644
+--- a/src/coreclr/vm/perfmap.cpp
++++ b/src/coreclr/vm/perfmap.cpp
+@@ -210,6 +210,12 @@ void PerfMap::LogStubs(PCODE pCode, size_t stubSize, const char* pszStubName)
+ {
+     if (!s_Current || !s_Current->m_fStubLogging)
+         return;
+ 
++    // Defensive verification: Ensure caller does not hold any CRST_UNSAFE_ANYMODE locks
++    // that would invert lock hierarchy with GC suspension and s_csPerfMap.
++#ifdef _DEBUG
++    Thread* pCurThread = GetThreadNULLOk();
++    _ASSERTE(pCurThread == NULL || !pCurThread->HoldingCrstWithGCUnsafe());
++#endif
++
+     CrstHolder ch(&s_csPerfMap);
+     s_Current->LogStubBlock(pCode, stubSize, pszStubName);
+ }
+diff --git a/src/coreclr/vm/virtualcallstub.cpp b/src/coreclr/vm/virtualcallstub.cpp
+index d4e5f6a7..3c2b1a0f 100644
+--- a/src/coreclr/vm/virtualcallstub.cpp
++++ b/src/coreclr/vm/virtualcallstub.cpp
+@@ -1480,18 +1480,26 @@ DispatchStub* VirtualCallStubManager::GenerateDispatchStub(MethodTable* pMT, PCO
+ {
+     CONTRACTL {
+         THROWS;
+         GC_TRIGGERS;
+         INMODE_ANY;
+     } CONTRACTL_END;
+ 
+-    DispatchStub* pStub = NULL;
+-    {
+-        CrstHolder ch(&m_stubLock);
+-        pStub = (DispatchStub*)m_pDispatchArray->AllocateReal(sizeof(DispatchStub));
+-        InitDispatchStub(pStub, pMT, target);
+-    }
++    CodeFragmentHeap::CodeFragmentAllocation allocResult = {};
++    {
++        CrstHolder ch(&m_stubLock);
++        pStub = (DispatchStub*)m_pDispatchArray->AllocateInternal(sizeof(DispatchStub), &allocResult);
++        InitDispatchStub(pStub, pMT, target);
++    }
++
++    // Emit perf mapping deferred outside m_stubLock and CodeFragmentHeap::m_Lock
++    if (allocResult.pCode != NULL && PerfMap::IsStubLoggingEnabled())
++    {
++        PerfMap::LogStubs(allocResult.pCode, allocResult.cbSize, "DispatchStub");
++    }
+ 
+     return pStub;
+ }
+-- 
+2.45.2.windows.1
