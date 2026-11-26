@@ -1,0 +1,15 @@
+diff --git a/src/libraries/System.Net.Http/src/System/Net/Http/Headers/HttpRequestHeaders.cs b/src/libraries/System.Net.Http/src/System/Net/Http/Headers/HttpRequestHeaders.cs
+index a8e217d..3b4c19f 100644
+--- a/src/libraries/System.Net.Http/src/System/Net/Http/Headers/HttpRequestHeaders.cs
++++ b/src/libraries/System.Net.Http/src/System/Net/Http/Headers/HttpRequestHeaders.cs
+@@ -74,7 +74,9 @@ public bool? TransferEncodingChunked
+                 {
+                     if (value == true)
+                     {
+-                        TransferEncoding.Add(s_chunkedHeaderValue);
++                        // Allocate an isolated instance per request to prevent cross-request
++                        // state contamination when callers mutate TransferCodingHeaderValue.Parameters.
++                        TransferEncoding.Add(new TransferCodingHeaderValue(HeaderUtilities.Chunked));
+                     }
+                 }
+                 else

@@ -1,0 +1,5 @@
+*.exe
+*.o
+*.obj
+*.upl.c
+*.bin
