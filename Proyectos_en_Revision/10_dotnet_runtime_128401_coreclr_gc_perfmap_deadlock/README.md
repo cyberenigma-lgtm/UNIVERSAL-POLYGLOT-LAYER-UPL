@@ -33,7 +33,7 @@ sequenceDiagram
     GC->>Worker: Signals GC Suspension via SuspendEE
     Worker->>PerfLock: Releases s_csPerfMap
     Worker->>Worker: RareDisablePreemptiveGC()
-    Note over Worker,GC: DEADLOCK: Worker waits for GC; GC waits for Worker; Worker holds m_Lock!
+    Note over Worker,GC: DEADLOCK - Worker waits for GC, GC waits for Worker, Worker holds m_Lock
 ```
 
 ---
