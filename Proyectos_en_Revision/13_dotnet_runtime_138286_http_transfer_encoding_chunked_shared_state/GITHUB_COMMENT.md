@@ -11,16 +11,16 @@ if (value == true)
     TransferEncoding.Add(HeaderUtilities.TransferEncodingChunked);
 }
 ```
-The static instance `HeaderUtilities.TransferEncodingChunked` is added by reference directly to the request's `TransferEncoding` collection. 
+The static instance `HeaderUtilities.TransferEncodingChunked` is added by reference directly to the request's `TransferEncoding` collection (`HttpHeaderValueCollection<TransferCodingHeaderValue>`). 
 
-Because `TransferCodingHeaderValue.Parameters` is a mutable `ObjectCollection<NameValueHeaderValue>` without a read-only lock or copy-on-write semantics:
-1. If client code or middleware adds chunk extensions (`request1.Headers.TransferEncoding.First().Parameters.Add(...)`), it directly mutates `HeaderUtilities.TransferEncodingChunked.Parameters`.
+Because `TransferCodingHeaderValue.Parameters` is a mutable `ObjectCollection<NameValueHeaderValue>` without a read-only lock:
+1. If client code or middleware adds chunk extensions (`request1.Headers.TransferEncoding.First().Parameters.Add(...)`), it directly mutates `HeaderUtilities.TransferEncodingChunked.Parameters` in place.
 2. Any subsequent request across any thread that sets `TransferEncodingChunked = true` inherits those foreign parameters.
 3. Concurrent additions or iterations over `Parameters` during serialization can throw `InvalidOperationException: Collection was modified`.
 
 ### Minimal Surgical Fix
 
-Allocating a fresh, request-scoped instance when `TransferEncodingChunked` is set in `HttpGeneralHeaders.cs` ensures strict isolation between independent requests:
+Allocating a fresh, request-scoped instance when `TransferEncodingChunked = true` in `HttpGeneralHeaders.cs` ensures strict isolation between independent requests:
 
 ```diff
 diff --git a/src/libraries/System.Net.Http/src/System/Net/Http/Headers/HttpGeneralHeaders.cs b/src/libraries/System.Net.Http/src/System/Net/Http/Headers/HttpGeneralHeaders.cs
@@ -37,6 +37,12 @@ index 9e4f1a2..d8c32b5 100644
                  }
                  else
 ```
+
+### Value Equality & Removal Semantics (`value == false`)
+
+Notice that setting `TransferEncodingChunked = false` or querying `get` remains completely compatible:
+- `HttpHeaderValueCollection<T>` queries `Contains` and `Remove` via `TransferCodingHeaderValue.Equals`.
+- Because `TransferCodingHeaderValue.Equals` performs structural value comparison (`string.Equals(_value, other._value, StringComparison.OrdinalIgnoreCase)` and parameter comparison) rather than reference equality (`object.ReferenceEquals`), removing chunked encoding continues to function seamlessly with isolated instances.
 
 ### Verification Test
 
@@ -58,5 +64,3 @@ public void TransferEncodingChunked_MutatingParameters_DoesNotPolluteSubsequentR
     Assert.NotSame(header1, header2);
 }
 ```
-
-This eliminates cross-request parameter leakage and multithreaded collection corruption while preserving standard chunked semantics across both requests and responses.
