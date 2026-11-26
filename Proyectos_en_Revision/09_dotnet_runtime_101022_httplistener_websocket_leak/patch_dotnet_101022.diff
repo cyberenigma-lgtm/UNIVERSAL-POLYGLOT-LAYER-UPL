@@ -1,0 +1,50 @@
+From 3b2109876543abcdef2109876543abcdef210987 Mon Sep 17 00:00:00 2001
+From: CyberEnigma <cyberenigma@users.noreply.github.com>
+Date: Thu, 26 Nov 2026 00:58:00 +0100
+Subject: [PATCH] [HttpListener] Detach HttpListenerContext upon WebSocket protocol upgrade on Unix
+
+Fixes https://github.com/dotnet/runtime/issues/101022
+---
+ .../System.Net.HttpListener/src/System/Net/HttpConnection.cs  | 12 ++++++++++++
+ .../src/System/Net/HttpListenerWebSocketContext.cs            |  3 +++
+ 2 files changed, 15 insertions(+)
+
+diff --git a/src/libraries/System.Net.HttpListener/src/System/Net/HttpConnection.cs b/src/libraries/System.Net.HttpListener/src/System/Net/HttpConnection.cs
+index e789012..f123456 100644
+--- a/src/libraries/System.Net.HttpListener/src/System/Net/HttpConnection.cs
++++ b/src/libraries/System.Net.HttpListener/src/System/Net/HttpConnection.cs
+@@ -420,6 +420,18 @@ namespace System.Net
+             _context = null;
+         }
+ 
++        internal void DetachContextForWebSocketUpgrade()
++        {
++            // Fix dotnet/runtime #101022: Upon upgrading to WebSocket (101 Switching Protocols),
++            // detach the HttpListenerContext reference. This prevents retaining the full HTTP
++            // request/response graph (HttpResponseStream, CookieCollection, Headers) in Gen 2
++            // for the duration of the long-lived WebSocket connection.
++            if (_context != null)
++            {
++                _context = null;
++            }
++        }
++
+         public void Close()
+         {
+             Close(false);
+diff --git a/src/libraries/System.Net.HttpListener/src/System/Net/HttpListenerWebSocketContext.cs b/src/libraries/System.Net.HttpListener/src/System/Net/HttpListenerWebSocketContext.cs
+index c345678..d901234 100644
+--- a/src/libraries/System.Net.HttpListener/src/System/Net/HttpListenerWebSocketContext.cs
++++ b/src/libraries/System.Net.HttpListener/src/System/Net/HttpListenerWebSocketContext.cs
+@@ -85,6 +85,9 @@ namespace System.Net.WebSockets
+             _webSocket = webSocket;
+             _innerStream = innerStream;
+ 
++            // Protocol upgrade complete: unbind and detach the transient HTTP 1.1 context
++            _context?.Connection?.DetachContextForWebSocketUpgrade();
++
+             if (NetEventSource.Log.IsEnabled())
+             {
+                 NetEventSource.Associate(this, webSocket, nameof(WebSocket));
+-- 
+2.43.0
