@@ -33,23 +33,23 @@ sequenceDiagram
     participant Thread as WASM Background Thread
     participant AOT as Native WASM AOT Execution
     participant Unwinder as Mono Native Unwinder
-    participant Interp as interp_set_resume_state (interp.c:8299)
+    participant Interp as "interp_set_resume_state (interp.c:8299)"
 
-    Thread->>AOT: Executes purely AOT-compiled methods (InterpContext remains NULL)
+    Thread->>AOT: Executes purely AOT methods (InterpContext is NULL)
     AOT->>Unwinder: Throws exception targeting interpreted catch clause
     Unwinder->>Interp: Invokes interp_set_resume_state(state, frame, clause)
     
     rect rgb(255, 230, 230)
     Note over Interp: Baseline Behavior
-    Interp->>Interp: InterpContext *context = mono_tls_get_interp_context();
-    Interp->>Interp: g_assert (context); -> FAILS (context is NULL)
-    Interp-->>Thread: FATAL ABORT (SIGABRT takes down WebAssembly module)
+    Interp->>Interp: InterpContext *context = mono_tls_get_interp_context()
+    Interp->>Interp: g_assert(context) FAILS: context is NULL
+    Interp-->>Thread: FATAL ABORT: SIGABRT terminates WebAssembly module
     end
 
     rect rgb(230, 255, 230)
     Note over Interp: Patched Behavior
-    Interp->>Interp: if (!context) context = get_context();
-    Interp->>Interp: g_assert (context); -> PASSES
+    Interp->>Interp: if (!context) context = get_context()
+    Interp->>Interp: g_assert(context) PASSES
     Interp->>Thread: Successfully resumes execution in target catch handler
     end
 ```
