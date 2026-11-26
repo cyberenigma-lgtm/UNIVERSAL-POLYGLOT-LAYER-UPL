@@ -11,4 +11,5 @@ The discrepancy between low managed heap usage (~50 MiB) and container memory sp
 
 In synthetic burst tests with a 256 MiB limit and 4 Server GC heaps, this drops container `memory.current` from 304 MiB down to 96 MiB (a 68.4% reduction in resident memory), preventing OOMKilled termination without regressing throughput.
 
-I have a patch and regression test ready. Let me know if you would like me to open a PR for this.
+Stand-alone patch, benchmark audit, and xUnit regression test available here:
+https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/tree/main/Proyectos_en_Revision/11_dotnet_runtime_131659_coreclr_gc_cgroups_oom
