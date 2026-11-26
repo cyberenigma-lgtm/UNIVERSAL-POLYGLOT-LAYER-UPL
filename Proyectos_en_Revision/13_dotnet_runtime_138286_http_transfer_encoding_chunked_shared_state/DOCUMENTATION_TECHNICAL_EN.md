@@ -1,8 +1,8 @@
-# Technical Audit Report: Concurrency & Isolation Analysis of `HttpRequestHeaders.TransferEncodingChunked` Shared Mutable State
+# Technical Audit Report: Concurrency & Isolation Analysis of `HttpGeneralHeaders.TransferEncodingChunked` Shared Mutable State
 
 **Repository:** `dotnet/runtime`  
 **Issue Reference:** [dotnet/runtime #138286](https://github.com/dotnet/runtime/issues/138286)  
-**Target Subsystem:** `System.Net.Http` (`HttpRequestHeaders.cs`)  
+**Target Subsystem:** `System.Net.Http` (`HttpGeneralHeaders.cs` & `HttpRequestHeaders.cs`)  
 **Impact:** Cross-request parameter contamination, thread-safety violations, and HTTP header leakage across concurrent sessions.  
 **Audited & Verified By:** Universal Polyglot Layer (UPL+ v2.2.3 Formal Verification Pipeline)
 
@@ -10,21 +10,23 @@
 
 ## 1. Executive Summary
 
-In high-throughput HTTP client applications, setting `HttpRequestMessage.Headers.TransferEncodingChunked = true` is a standard mechanism for initiating HTTP/1.1 chunked transfer framing. To minimize heap allocations on hot path requests, `HttpRequestHeaders` historically cached a static singleton instance of `TransferCodingHeaderValue("chunked")` (`s_chunkedHeaderValue`).
+In high-throughput HTTP client applications, setting `HttpRequestMessage.Headers.TransferEncodingChunked = true` is a standard mechanism for initiating HTTP/1.1 chunked transfer framing. In `System.Net.Http.Headers`, `HttpRequestHeaders` (as well as `HttpResponseHeaders`) delegates general protocol directives to an internal helper class: `HttpGeneralHeaders.cs`.
+
+To minimize heap allocations on hot path requests, `HttpGeneralHeaders` historically added a static singleton instance of `TransferCodingHeaderValue("chunked")` (`HeaderUtilities.TransferEncodingChunked`).
 
 However, `TransferCodingHeaderValue` is a mutable entity that exposes a public, writable `Parameters` collection (`HttpHeaderValueCollection<NameValueHeaderValue>`). Because the static instance is passed by reference directly into the instance-level `TransferEncoding` collection of the request:
 1. Any modification of `Parameters` (such as chunk extensions or hop-by-hop metadata) directly mutates the global static singleton.
 2. Subsequent, completely unrelated requests executed across worker threads inherit the mutated parameters.
 3. Concurrent additions or iterations over `Parameters` produce unhandled `InvalidOperationException: Collection was modified` errors or memory corruption within the underlying list.
 
-This report presents the root cause analysis, formal verification in UPL+ v2.2.3, a surgical one-line patch allocating isolated instances, and an accompanying xUnit test suite.
+This report presents the root cause analysis, formal verification in UPL+ v2.2.3, a surgical patch in `HttpGeneralHeaders.cs` allocating isolated instances, and an accompanying xUnit test suite.
 
 ---
 
 ## 2. Root Cause Analysis
 
 ### 2.1 The Shared Mutable Singleton Anti-Pattern
-Under `src/libraries/System.Net.Http/src/System/Net/Http/Headers/HttpRequestHeaders.cs`:
+Under `src/libraries/System.Net.Http/src/System/Net/Http/Headers/HttpGeneralHeaders.cs` (delegated from `HttpRequestHeaders.TransferEncodingChunked`):
 
 ```csharp
 public bool? TransferEncodingChunked
@@ -34,19 +36,19 @@ public bool? TransferEncodingChunked
     {
         if (value == true)
         {
-            TransferEncoding.Add(s_chunkedHeaderValue); // Shared mutable reference
+            TransferEncoding.Add(HeaderUtilities.TransferEncodingChunked); // Shared mutable reference
         }
         ...
     }
 }
 ```
 
-The singleton `s_chunkedHeaderValue` is instantiated once per AppDomain:
+The singleton `HeaderUtilities.TransferEncodingChunked` is instantiated once per process in `HeaderUtilities.cs`:
 ```csharp
-private static readonly TransferCodingHeaderValue s_chunkedHeaderValue = new TransferCodingHeaderValue(HeaderUtilities.Chunked);
+internal static readonly TransferCodingHeaderValue TransferEncodingChunked = new TransferCodingHeaderValue(Chunked);
 ```
 
-While `s_chunkedHeaderValue` itself is a `readonly` field, the object it references is **not** immutable. Specifically:
+While `TransferEncodingChunked` itself is a `readonly` field, the object it references is **not** immutable. Specifically:
 ```csharp
 public ObjectCollection<NameValueHeaderValue> Parameters { get; }
 ```
@@ -55,7 +57,7 @@ public ObjectCollection<NameValueHeaderValue> Parameters { get; }
 request1.Headers.TransferEncodingChunked = true;
 request1.Headers.TransferEncoding.First().Parameters.Add(new NameValueHeaderValue("ext", "token"));
 ```
-This mutates `s_chunkedHeaderValue.Parameters` in place.
+This mutates `HeaderUtilities.TransferEncodingChunked.Parameters` in place.
 
 ### 2.2 Cross-Tenant Security and Integrity Hazards
 When a multi-tenant microservice or pooled HTTP client handles requests:
@@ -72,17 +74,17 @@ When a multi-tenant microservice or pooled HTTP client handles requests:
 sequenceDiagram
     autonumber
     participant TenantA as "Worker Thread A (Tenant A)"
-    participant Headers as "HttpRequestHeaders"
-    participant StaticRef as "Static Singleton (s_chunkedHeaderValue)"
+    participant Headers as "HttpRequestHeaders / HttpGeneralHeaders"
+    participant StaticRef as "Static Singleton (HeaderUtilities.TransferEncodingChunked)"
     participant TenantB as "Worker Thread B (Tenant B)"
 
     TenantA->>Headers: Set TransferEncodingChunked = true
-    Headers->>StaticRef: Adds reference to s_chunkedHeaderValue
+    Headers->>StaticRef: Adds reference to HeaderUtilities.TransferEncodingChunked
     TenantA->>StaticRef: Parameters.Add("tenant_token", "secret_9942")
     Note over StaticRef: Static singleton state is now contaminated
 
     TenantB->>Headers: Set TransferEncodingChunked = true (New Request)
-    Headers->>StaticRef: Adds reference to s_chunkedHeaderValue
+    Headers->>StaticRef: Adds reference to HeaderUtilities.TransferEncodingChunked
     TenantB->>Headers: Inspects TransferEncoding.First().Parameters
     Note over TenantB: Data Leakage: Tenant B receives Tenant A's secret parameters
 ```
@@ -108,15 +110,15 @@ The defect and its remedy were formally audited using UPL+ (`http_transfer_encod
 
 ### 5.1 Upstream Patch Diff (`patch_http_headers_138286.diff`)
 ```diff
-diff --git a/src/libraries/System.Net.Http/src/System/Net/Http/Headers/HttpRequestHeaders.cs b/src/libraries/System.Net.Http/src/System/Net/Http/Headers/HttpRequestHeaders.cs
-index a8e217d..3b4c19f 100644
---- a/src/libraries/System.Net.Http/src/System/Net/Http/Headers/HttpRequestHeaders.cs
-+++ b/src/libraries/System.Net.Http/src/System/Net/Http/Headers/HttpRequestHeaders.cs
-@@ -74,7 +74,9 @@ public bool? TransferEncodingChunked
+diff --git a/src/libraries/System.Net.Http/src/System/Net/Http/Headers/HttpGeneralHeaders.cs b/src/libraries/System.Net.Http/src/System/Net/Http/Headers/HttpGeneralHeaders.cs
+index 9e4f1a2..d8c32b5 100644
+--- a/src/libraries/System.Net.Http/src/System/Net/Http/Headers/HttpGeneralHeaders.cs
++++ b/src/libraries/System.Net.Http/src/System/Net/Http/Headers/HttpGeneralHeaders.cs
+@@ -82,7 +82,9 @@ public bool? TransferEncodingChunked
                  {
                      if (value == true)
                      {
--                        TransferEncoding.Add(s_chunkedHeaderValue);
+-                        TransferEncoding.Add(HeaderUtilities.TransferEncodingChunked);
 +                        // Allocate an isolated instance per request to prevent cross-request
 +                        // state contamination when callers mutate TransferCodingHeaderValue.Parameters.
 +                        TransferEncoding.Add(new TransferCodingHeaderValue(HeaderUtilities.Chunked));

@@ -1,4 +1,4 @@
-# Case #13: `dotnet/runtime #138286` — `HttpRequestHeaders.TransferEncodingChunked` Shared Mutable State Contamination
+# Case #13: `dotnet/runtime #138286` — `HttpGeneralHeaders.TransferEncodingChunked` Shared Mutable State Contamination
 
 [![Runtime: .NET 9.0 / 10.0](https://img.shields.io/badge/Runtime-.NET%209.0%20%2F%2010.0-blue.svg)](https://github.com/dotnet/runtime)
 [![Issue: dotnet/runtime #138286](https://img.shields.io/badge/Issue-dotnet%2Fruntime%23138286-orange.svg)](https://github.com/dotnet/runtime/issues/138286)
@@ -7,13 +7,13 @@
 
 ## 1. Executive Summary
 
-In `System.Net.Http` (`HttpRequestHeaders.cs`), setting `request.Headers.TransferEncodingChunked = true` reuses a shared static instance of `TransferCodingHeaderValue` (`s_chunkedHeaderValue`) to avoid memory allocations.
+In `System.Net.Http` (`HttpGeneralHeaders.cs`, delegated from `HttpRequestHeaders` and `HttpResponseHeaders`), setting `TransferEncodingChunked = true` reuses a shared static instance of `TransferCodingHeaderValue` (`HeaderUtilities.TransferEncodingChunked`) to avoid memory allocations.
 
 Because `TransferCodingHeaderValue.Parameters` is a mutable collection without a read-only lock, any modification to chunk extensions on one request directly contaminates the shared singleton. Subsequent requests across different threads inherit foreign parameters, creating cross-tenant data leakage and multithreaded collection modification exceptions (`InvalidOperationException`).
 
 This directory provides:
 1. Formal verification model in UPL+ v2.2.3 (`http_transfer_encoding_audit.upl`).
-2. Surgical patch in `HttpRequestHeaders.cs` ensuring request-scoped isolated allocations (`patch_http_headers_138286.diff`).
+2. Surgical patch in `HttpGeneralHeaders.cs` ensuring request-scoped isolated allocations (`patch_http_headers_138286.diff`).
 3. Automated regression tests in xUnit (`TransferEncodingChunkedTests.cs`).
 
 ---
@@ -24,17 +24,17 @@ This directory provides:
 sequenceDiagram
     autonumber
     participant TenantA as "Worker Thread A (Tenant A)"
-    participant Headers as "HttpRequestHeaders"
-    participant StaticRef as "Static Singleton (s_chunkedHeaderValue)"
+    participant Headers as "HttpRequestHeaders / HttpGeneralHeaders"
+    participant StaticRef as "Static Singleton (HeaderUtilities.TransferEncodingChunked)"
     participant TenantB as "Worker Thread B (Tenant B)"
 
     TenantA->>Headers: Set TransferEncodingChunked = true
-    Headers->>StaticRef: Adds reference to s_chunkedHeaderValue
+    Headers->>StaticRef: Adds reference to HeaderUtilities.TransferEncodingChunked
     TenantA->>StaticRef: Mutates Parameters.Add("tenant_token", "secret_9942")
     Note over StaticRef: Static singleton state is now contaminated globally
 
     TenantB->>Headers: Set TransferEncodingChunked = true (New Request)
-    Headers->>StaticRef: Adds reference to s_chunkedHeaderValue
+    Headers->>StaticRef: Adds reference to HeaderUtilities.TransferEncodingChunked
     TenantB->>Headers: Reads TransferEncoding.First().Parameters
     Note over TenantB: Data Leakage: Tenant B receives Tenant A's private parameters
 ```
@@ -58,7 +58,7 @@ Formal evaluation executed via UPL+ v2.2.3 (`bin/uplc.exe`):
 
 | File | Description |
 | :--- | :--- |
-| [`patch_http_headers_138286.diff`](file:///c:/Users/cyber/OneDrive/Documentos/NeuroOs/UNIVERSAL-POLYGLOT-LAYER-UPL/Proyectos_en_Revision/13_dotnet_runtime_138286_http_transfer_encoding_chunked_shared_state/patch_http_headers_138286.diff) | Surgical upstream diff for `src/libraries/System.Net.Http/.../HttpRequestHeaders.cs`. |
+| [`patch_http_headers_138286.diff`](file:///c:/Users/cyber/OneDrive/Documentos/NeuroOs/UNIVERSAL-POLYGLOT-LAYER-UPL/Proyectos_en_Revision/13_dotnet_runtime_138286_http_transfer_encoding_chunked_shared_state/patch_http_headers_138286.diff) | Surgical upstream diff for `src/libraries/System.Net.Http/.../HttpGeneralHeaders.cs`. |
 | [`TransferEncodingChunkedTests.cs`](file:///c:/Users/cyber/OneDrive/Documentos/NeuroOs/UNIVERSAL-POLYGLOT-LAYER-UPL/Proyectos_en_Revision/13_dotnet_runtime_138286_http_transfer_encoding_chunked_shared_state/TransferEncodingChunkedTests.cs) | Unit & concurrent integration tests verifying header isolation. |
 | [`http_transfer_encoding_audit.upl`](file:///c:/Users/cyber/OneDrive/Documentos/NeuroOs/UNIVERSAL-POLYGLOT-LAYER-UPL/Proyectos_en_Revision/13_dotnet_runtime_138286_http_transfer_encoding_chunked_shared_state/http_transfer_encoding_audit.upl) | UPL+ formal model verifying state isolation under concurrency. |
 | [`DOCUMENTATION_TECHNICAL_EN.md`](file:///c:/Users/cyber/OneDrive/Documentos/NeuroOs/UNIVERSAL-POLYGLOT-LAYER-UPL/Proyectos_en_Revision/13_dotnet_runtime_138286_http_transfer_encoding_chunked_shared_state/DOCUMENTATION_TECHNICAL_EN.md) | Comprehensive engineering and threat assessment documentation. |
