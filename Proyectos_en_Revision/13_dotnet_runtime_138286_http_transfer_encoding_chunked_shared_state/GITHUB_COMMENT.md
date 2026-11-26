@@ -11,7 +11,7 @@ if (value == true)
     TransferEncoding.Add(HeaderUtilities.TransferEncodingChunked);
 }
 ```
-The static instance `HeaderUtilities.TransferEncodingChunked` is added by reference directly to the request's `TransferEncoding` collection (`HttpHeaderValueCollection<TransferCodingHeaderValue>`). 
+The static instance `HeaderUtilities.TransferEncodingChunked` is added by reference directly to the request's `TransferEncoding` collection (`HttpHeaderValueCollection<TransferCodingHeaderValue>`).
 
 Because `TransferCodingHeaderValue.Parameters` is a mutable `ObjectCollection<NameValueHeaderValue>` without a read-only lock:
 1. If client code or middleware adds chunk extensions (`request1.Headers.TransferEncoding.First().Parameters.Add(...)`), it directly mutates `HeaderUtilities.TransferEncodingChunked.Parameters` in place.
@@ -40,11 +40,11 @@ index 9e4f1a2..d8c32b5 100644
 
 ### Value Equality & Removal Semantics (`value == false`)
 
-Notice that setting `TransferEncodingChunked = false` or querying `get` remains completely compatible:
+Setting `TransferEncodingChunked = false` or querying `get` remains completely compatible:
 - `HttpHeaderValueCollection<T>` queries `Contains` and `Remove` via `TransferCodingHeaderValue.Equals`.
 - Because `TransferCodingHeaderValue.Equals` performs structural value comparison (`string.Equals(_value, other._value, StringComparison.OrdinalIgnoreCase)` and parameter comparison) rather than reference equality (`object.ReferenceEquals`), removing chunked encoding continues to function seamlessly with isolated instances.
 
-### Verification Test
+### Regression Test (xUnit)
 
 ```csharp
 [Fact]
@@ -64,3 +64,6 @@ public void TransferEncodingChunked_MutatingParameters_DoesNotPolluteSubsequentR
     Assert.NotSame(header1, header2);
 }
 ```
+
+Stand-alone patch diff, formal concurrency audit, and test suite available here:  
+https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/tree/main/Proyectos_en_Revision/13_dotnet_runtime_138286_http_transfer_encoding_chunked_shared_state
