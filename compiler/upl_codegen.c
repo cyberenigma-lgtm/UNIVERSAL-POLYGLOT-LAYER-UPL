@@ -145,7 +145,21 @@ static void emit_expression(UplCodeGen *gen, const UplAstNode *node) {
             else if (node->as.unary_expr.op == TOKEN_OP_NOT) fprintf(gen->out, "!");
             else if (node->as.unary_expr.op == TOKEN_OP_MUL) fprintf(gen->out, "*");
             else if (node->as.unary_expr.op == TOKEN_OP_BIT_NOT) fprintf(gen->out, "~");
-            else if (node->as.unary_expr.op == TOKEN_OP_BIT_AND) fprintf(gen->out, "&");
+            else if (node->as.unary_expr.op == TOKEN_OP_BIT_AND) {
+                /* Fix lvalue: &(expr as *T) must become (T*)(&expr), not &((T*)expr) */
+                const UplAstNode *operand = node->as.unary_expr.operand;
+                if (operand && operand->kind == AST_EXPR_CAST) {
+                    fprintf(gen->out, "((");
+                    emit_type(gen, operand->as.cast_expr.target_type);
+                    fprintf(gen->out, ")(&(");
+                    emit_expression(gen, operand->as.cast_expr.expr);
+                    fprintf(gen->out, ")))");
+                } else {
+                    fprintf(gen->out, "&");
+                    emit_expression(gen, operand);
+                }
+                break;
+            }
             emit_expression(gen, node->as.unary_expr.operand);
             break;
         case AST_EXPR_CALL:
@@ -247,7 +261,7 @@ static void emit_statement(UplCodeGen *gen, const UplAstNode *node) {
             if (node->as.stmt_let.type) {
                 if (node->as.stmt_let.type->kind == AST_TYPE_ARRAY) {
                     emit_type(gen, node->as.stmt_let.type->as.type_spec.base_or_elem_type);
-                    fprintf(gen->out, " %s[%zu];\n", node->as.stmt_let.name, node->as.stmt_let.type->as.type_spec.array_len);
+                    if (node->as.stmt_let.init_expr) fprintf(gen->out, " %s[%zu] = {0};\n", node->as.stmt_let.name, node->as.stmt_let.type->as.type_spec.array_len); else fprintf(gen->out, " %s[%zu];\n", node->as.stmt_let.name, node->as.stmt_let.type->as.type_spec.array_len);
                     return;
                 } else if (node->as.stmt_let.type->kind == AST_TYPE_COMP3) {
                     int prec = node->as.stmt_let.type->as.type_spec.comp3_precision;
@@ -388,6 +402,30 @@ static void emit_statement(UplCodeGen *gen, const UplAstNode *node) {
             emit_block(gen, node->as.stmt_while.body);
             break;
 
+        case AST_STMT_FOR:
+            fprintf(gen->out, "{\n");
+            gen->indent_level++;
+            if (node->as.stmt_for.init) {
+                emit_statement(gen, node->as.stmt_for.init);
+            }
+            emit_indent(gen);
+            fprintf(gen->out, "for (; ");
+            if (node->as.stmt_for.cond) {
+                emit_expression(gen, node->as.stmt_for.cond);
+            } else {
+                fprintf(gen->out, "1");
+            }
+            fprintf(gen->out, "; ");
+            if (node->as.stmt_for.step) {
+                emit_expression(gen, node->as.stmt_for.step);
+            }
+            fprintf(gen->out, ") ");
+            emit_block(gen, node->as.stmt_for.body);
+            gen->indent_level--;
+            emit_indent(gen);
+            fprintf(gen->out, "}\n");
+            break;
+
         case AST_STMT_BLOCK:
             emit_block(gen, node);
             break;
@@ -482,7 +520,24 @@ bool upl_codegen_generate(UplCodeGen *gen, const UplAstNode *program) {
         }
     }
 
-    // 3. Declaración de estructuras (typedefs)
+    // 3. Declaración de enumeraciones (typedefs)
+    for (UplAstList *l = program->as.program.items; l != NULL; l = l->next) {
+        if (l->node->kind == AST_DECL_ENUM) {
+            fprintf(gen->out, "typedef enum %s {\n", l->node->as.decl_enum.name);
+            for (UplAstList *v = l->node->as.decl_enum.variants; v != NULL; v = v->next) {
+                fprintf(gen->out, "    %s", v->node->as.decl_enum_variant.name);
+                if (v->node->as.decl_enum_variant.value_expr) {
+                    fprintf(gen->out, " = ");
+                    emit_expression(gen, v->node->as.decl_enum_variant.value_expr);
+                }
+                if (v->next) fprintf(gen->out, ",");
+                fprintf(gen->out, "\n");
+            }
+            fprintf(gen->out, "} %s;\n\n", l->node->as.decl_enum.name);
+        }
+    }
+
+    // 4. Declaración de estructuras (typedefs)
     for (UplAstList *l = program->as.program.items; l != NULL; l = l->next) {
         if (l->node->kind == AST_DECL_STRUCT) {
             fprintf(gen->out, "typedef struct %s {\n", l->node->as.decl_struct.name);
@@ -516,7 +571,7 @@ bool upl_codegen_generate(UplCodeGen *gen, const UplAstNode *program) {
     for (UplAstList *l = program->as.program.items; l != NULL; l = l->next) {
         if (l->node->kind == AST_DECL_FN) {
             const char *fname = l->node->as.decl_fn.name;
-            if (strcmp(fname, "main") == 0 || strcmp(fname, "kmain") == 0) continue;
+            if (strcmp(fname, "main") == 0 || strcmp(fname, "kmain") == 0 || strcmp(fname, "principal") == 0) continue;
             if (l->node->as.decl_fn.is_pub) {
                 fprintf(gen->out, "UPL_EXPORT ");
             }
@@ -536,7 +591,7 @@ bool upl_codegen_generate(UplCodeGen *gen, const UplAstNode *program) {
     for (UplAstList *l = program->as.program.items; l != NULL; l = l->next) {
         if (l->node->kind == AST_DECL_FN) {
             const char *fname = l->node->as.decl_fn.name;
-            bool is_entrypoint = (strcmp(fname, "main") == 0 || strcmp(fname, "kmain") == 0);
+            bool is_entrypoint = (strcmp(fname, "main") == 0 || strcmp(fname, "kmain") == 0 || strcmp(fname, "principal") == 0);
 
             upl_codegen_clear_pointer_vars(gen);
             for (UplAstList *p = l->node->as.decl_fn.params; p != NULL; p = p->next) {
@@ -546,6 +601,19 @@ bool upl_codegen_generate(UplCodeGen *gen, const UplAstNode *program) {
             }
 
             if (is_entrypoint) {
+                fprintf(gen->out, "#ifdef _WIN32\n");
+                fprintf(gen->out, "#if !defined(_WINDOWS_) && !defined(_WINCON_)\n");
+                fprintf(gen->out, "__declspec(dllimport) unsigned long __stdcall GetConsoleProcessList(unsigned long*, unsigned long);\n");
+                fprintf(gen->out, "#endif\n");
+                fprintf(gen->out, "static void __attribute__((destructor)) __upl_hold_console(void) {\n");
+                fprintf(gen->out, "    unsigned long __upl_pids[2];\n");
+                fprintf(gen->out, "    if (GetConsoleProcessList(__upl_pids, 2) == 1) {\n");
+                fprintf(gen->out, "        printf(\"\\n[UPL+ Ejecucion finalizada] Presiona ENTER para cerrar la ventana...\");\n");
+                fprintf(gen->out, "        fflush(stdout);\n");
+                fprintf(gen->out, "        getchar();\n");
+                fprintf(gen->out, "    }\n");
+                fprintf(gen->out, "}\n");
+                fprintf(gen->out, "#endif\n");
                 fprintf(gen->out, "int main(int argc, char **argv) ");
             } else {
                 if (l->node->as.decl_fn.is_pub) {

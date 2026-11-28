@@ -31,6 +31,7 @@ This document tracks the capabilities currently being integrated and validated l
 - [x] `uplc test <file.upl>` single-file runner
 - [x] `uplc cobol tests/test_legacy.cob` execution verified
 - [x] `upl_mcp` JSON-RPC `tools/list` with `upl_audit` verified
-- [ ] Resolve `examples/test_urep_polyglot.upl` C99 lvalue codegen for `uplc urep`
+- [x] Resolve `examples/test_urep_polyglot.upl` C99 lvalue codegen for `uplc urep` — fixed: `&(expr as *T)` → `(T*)(&expr)` in `compiler/upl_codegen.c`
 - [ ] Cross-test `install.sh` and `uplc-linux-x64.tar.gz` on Linux CI runner
 - [ ] End-to-end `clang --target=wasm32` verification on `examples/wasm_hello/hello.upl`
+
