@@ -3,6 +3,9 @@
 # Local agent config (private, never publish)
 .agents/
 
+# Private modules (never publish)
+WOWEMUNEURO/
+
 # Python
 __pycache__/
 *.py[cod]
