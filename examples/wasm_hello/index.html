@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>UPL+ v2.4.0 WebAssembly Demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0d1117; color: #e6edf3; padding: 2rem; }
+    code { background: #161b22; padding: 0.2rem 0.4rem; border-radius: 4px; }
+    .ok { color: #3fb950; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>UPL+ v2.4.0 — Zero-Dependency WebAssembly (<code>--target wasm32</code>)</h1>
+  <p>Build with: <code>uplc build --target wasm32 examples/wasm_hello/hello.upl -o examples/wasm_hello/hello.wasm</code></p>
+  <pre id="out">Loading hello.wasm...</pre>
+  <script>
+    WebAssembly.instantiateStreaming(fetch('hello.wasm'))
+      .then(({ instance }) => {
+        const sum = instance.exports.upl_add(40, 2);
+        const chk = instance.exports.upl_checksum(7);
+        document.getElementById('out').innerHTML =
+          `<span class="ok">[OK] hello.wasm loaded!</span>\nupl_add(40, 2) = ${sum}\nupl_checksum(7) = 0x${chk.toString(16).toUpperCase()}`;
+      })
+      .catch(err => {
+        document.getElementById('out').textContent = 'Build hello.wasm first (or serve via HTTP): ' + err;
+      });
+  </script>
+</body>
+</html>
+

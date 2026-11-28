@@ -118,7 +118,7 @@ int main(int argc, char **argv) {
         json_extract_id(line, id_str, sizeof(id_str));
 
         if (strcmp(method, "initialize") == 0) {
-            printf("{\"jsonrpc\":\"2.0\",\"id\":%s,\"result\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"tools\":{}},\"serverInfo\":{\"name\":\"upl-native-mcp\",\"version\":\"1.5.0\"}}}\n", id_str);
+            printf("{\"jsonrpc\":\"2.0\",\"id\":%s,\"result\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"tools\":{}},\"serverInfo\":{\"name\":\"upl-native-mcp\",\"version\":\"2.4.0\"}}}\n", id_str);
             fflush(stdout);
             continue;
         }
@@ -126,7 +126,8 @@ int main(int argc, char **argv) {
         if (strcmp(method, "tools/list") == 0) {
             printf("{\"jsonrpc\":\"2.0\",\"id\":%s,\"result\":{\"tools\":[", id_str);
             printf("{\"name\":\"upl_run\",\"description\":\"Compila en memoria y ejecuta un archivo .upl inmediatamente de forma nativa.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"file_path\":{\"type\":\"string\",\"description\":\"Ruta al archivo .upl\"}},\"required\":[\"file_path\"]}},");
-            printf("{\"name\":\"upl_build\",\"description\":\"Compila un archivo .upl a ejecutable nativo, C99 o ensamblador NASM.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"file_path\":{\"type\":\"string\",\"description\":\"Ruta al archivo .upl\"},\"target\":{\"type\":\"string\",\"description\":\"Target: bin, c, asm, deb, rpm, app, apk\",\"default\":\"bin\"},\"output_file\":{\"type\":\"string\",\"description\":\"Ruta del binario de salida\"}},\"required\":[\"file_path\"]}},");
+            printf("{\"name\":\"upl_build\",\"description\":\"Compila un archivo .upl a ejecutable nativo, C99, wasm32 o asm-multilang.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"file_path\":{\"type\":\"string\",\"description\":\"Ruta al archivo .upl\"},\"target\":{\"type\":\"string\",\"description\":\"Target: bin, c, wasm32, asm-multilang\",\"default\":\"bin\"},\"output_file\":{\"type\":\"string\",\"description\":\"Ruta del binario de salida\"}},\"required\":[\"file_path\"]}},");
+            printf("{\"name\":\"upl_audit\",\"description\":\"Ejecuta auditoria formal estatica (LIFO defer, lock_rank, shared readonly) con salida text o SARIF v2.1.0.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"file_path\":{\"type\":\"string\",\"description\":\"Ruta al archivo .upl\"},\"format\":{\"type\":\"string\",\"description\":\"Formato: text o sarif\",\"default\":\"text\"}},\"required\":[\"file_path\"]}},");
             printf("{\"name\":\"upl_list_modules\",\"description\":\"Lista todos los modulos de sistemas registrados en el ecosistema UPL.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{}}}");
             printf("]}}\n");
             fflush(stdout);
@@ -138,16 +139,30 @@ int main(int argc, char **argv) {
             char file_path[512] = "";
             char target[64] = "bin";
             char output_file[512] = "";
+            char format[32] = "text";
 
             json_extract_string(line, "name", tool_name, sizeof(tool_name));
             json_extract_string(line, "file_path", file_path, sizeof(file_path));
             json_extract_string(line, "target", target, sizeof(target));
             json_extract_string(line, "output_file", output_file, sizeof(output_file));
+            json_extract_string(line, "format", format, sizeof(format));
 
             char cmd[2048] = "";
 
             if (strcmp(tool_name, "upl_run") == 0) {
                 snprintf(cmd, sizeof(cmd), "\"%s\" run \"%s\" 2>&1", uplc_path, file_path);
+                int code = execute_uplc(cmd, exec_buf, sizeof(exec_buf));
+
+                printf("{\"jsonrpc\":\"2.0\",\"id\":%s,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"", id_str);
+                json_escape_print(stdout, exec_buf);
+                printf("\"}],\"exitCode\":%d}}\n", code);
+                fflush(stdout);
+            } else if (strcmp(tool_name, "upl_audit") == 0) {
+                if (strcmp(format, "sarif") == 0) {
+                    snprintf(cmd, sizeof(cmd), "\"%s\" audit \"%s\" --format sarif 2>&1", uplc_path, file_path);
+                } else {
+                    snprintf(cmd, sizeof(cmd), "\"%s\" audit \"%s\" 2>&1", uplc_path, file_path);
+                }
                 int code = execute_uplc(cmd, exec_buf, sizeof(exec_buf));
 
                 printf("{\"jsonrpc\":\"2.0\",\"id\":%s,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"", id_str);

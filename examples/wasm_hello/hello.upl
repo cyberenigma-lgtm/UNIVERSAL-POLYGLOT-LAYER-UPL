@@ -1,0 +1,16 @@
+// ============================================================================
+// UPL+ v2.4.0 WebAssembly Zero-Dependency Example (examples/wasm_hello/hello.upl)
+// Compile: uplc build --target wasm32 examples/wasm_hello/hello.upl -o examples/wasm_hello/hello.wasm
+// ============================================================================
+module wasm_hello;
+
+pub fn upl_add(a: i32, b: i32) -> i32 {
+    return a + b;
+}
+
+pub fn upl_checksum(x: i32) -> i32 {
+    let mut acc: i32 = x * 31;
+    acc = acc + 0xAA30;
+    return acc;
+}
+
