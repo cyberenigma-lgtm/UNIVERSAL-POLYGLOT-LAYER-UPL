@@ -94,6 +94,16 @@ bool upl_comp3_from_str(uint8_t *dest, size_t dest_size, const char *str, int pr
 
     if ((int)full_len > precision) return false; // Desbordamiento
 
+    // Normalizar -0.00 a signo positivo canónico (+0x0C)
+    bool all_zero_str = true;
+    for (size_t z = 0; z < full_len; ++z) {
+        if (full_digits[z] != '0') {
+            all_zero_str = false;
+            break;
+        }
+    }
+    if (all_zero_str) sign = UPL_COMP3_SIGN_POS;
+
     // Rellenar con ceros a la izquierda
     size_t total_nibbles = byte_len * 2;
     set_nibble(dest, total_nibbles - 1, sign);
@@ -168,6 +178,17 @@ static void pack_digits(uint8_t *dest, int precision, const uint8_t *digits, siz
     size_t byte_len = upl_comp3_byte_length(precision);
     size_t total_nibbles = byte_len * 2;
     memset(dest, 0, byte_len);
+
+    // Normalizar resultado cero a signo positivo canónico (+0x0C)
+    bool all_zero = true;
+    for (size_t z = 0; z < count; ++z) {
+        if (digits[z] != 0) {
+            all_zero = false;
+            break;
+        }
+    }
+    if (all_zero) sign = UPL_COMP3_SIGN_POS;
+
     set_nibble(dest, total_nibbles - 1, sign);
 
     int d_ptr = (int)count - 1;

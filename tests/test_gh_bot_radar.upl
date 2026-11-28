@@ -1,0 +1,119 @@
+// ============================================================================
+// UPL+ SPEC SUITE v2.3.0: PRECISION CERO FALSOS POSITIVOS + VIGILANCIA 5 DIAS
+// Modulo: modules/net/gh_bot_radar.upl
+// Verifica:
+//   - Bloque A (5 Humanos Reales): 0% Falsos Positivos
+//   - Bloque B (5 Granjas/Bots Reales): Deteccion >= 75%
+//   - Bloque C (Mini Base Conductual de 5 Dias = 432,000 s):
+//       * C1: Ingreso Dia 0 y revision Dia 2 -> Sigue en QUARANTINE_5D (1)
+//       * C2: Bot vigilado dispara +140 follows sin codigo -> CONFIRMED_BOT (2)
+//       * C3: Humano cumple los 5 dias con comportamiento normal -> CLEARED_HUMAN (0)
+// ============================================================================
+
+modulo test_gh_bot_radar;
+
+importar modules/net/gh_bot_radar.upl;
+
+pub fn main() -> i32 {
+    embed {
+        printf("====================================================================\n");
+        printf(" UPL+ v2.3.0 GH-BOT-RADAR: SUITE ANTI-FP + VIGILANCIA 5 DIAS\n");
+        printf("====================================================================\n");
+    }
+
+    // --- BLOQUE A: 6 PERFILES HUMANOS REALES (0 FALSOS POSITIVOS) ---
+    let h_nuevo_dev: i32    = bot_radar_calcular_porcentaje(1, 14, 4, 9, 1, 0, false);
+    let h_privado_corp: i32 = bot_radar_calcular_porcentaje(261, 1, 0, 0, 0, 0, false);
+    let h_autor_oss: i32    = bot_radar_calcular_porcentaje(1752, 196, 547, 15, 2, 0, false);
+    let h_social_dev: i32   = bot_radar_calcular_porcentaje(99, 234, 214, 4, 1, 0, false);
+    // Caso A6 (Caso real Xabier): 466 fol, 4443 seg historicos, 67 repos y 25 eventos Push/PR activos!
+    let h_dev_veterano_activo: i32 = bot_radar_calcular_porcentaje(466, 4443, 67, 25, 1, 0, false);
+
+    let json_ing_user: str   = "{\"login\":\"core_auditor\",\"bio\":\"Systems Engineer\",\"public_repos\":12,\"public_gists\":1,\"followers\":18,\"following\":25}";
+    let json_ing_events: str = "[{\"type\":\"IssueCommentEvent\",\"repo\":{\"name\":\"dotnet/runtime\"}},{\"type\":\"IssueCommentEvent\",\"repo\":{\"name\":\"dotnet/runtime\"}},{\"type\":\"IssueCommentEvent\",\"repo\":{\"name\":\"microsoft/PowerToys\"}}]";
+    let h_auditor_issues: i32 = bot_radar_evaluar_json(json_ing_user, json_ing_events);
+
+    // --- BLOQUE B: 5 PERFILES BOT / GRANJAS REALES Y CANDIDATOS A CUARENTENA ---
+    let b_extremo: i32      = bot_radar_calcular_porcentaje(7719, 68908, 0, 0, 0, 15, false);
+    // Dudoso sin commits recientes (2467 seg / 1010 fol / 0 Push) -> Pasa a Vigilancia 5 Dias (35-69%), NO condena ciega!
+    let b_cuarentena_2k: i32 = bot_radar_calcular_porcentaje(1010, 2467, 76, 0, 0, 0, false);
+    let b_granja_media: i32 = bot_radar_calcular_porcentaje(4, 850, 0, 0, 0, 8, false);
+    let b_issue_spam: i32   = bot_radar_calcular_porcentaje(0, 160, 0, 0, 24, 0, false);
+
+    let json_bot_user: str   = "{\"login\":\"auto_farm_99\",\"bio\":\"Follow4Follow fast f4f!\",\"public_repos\":0,\"public_gists\":0,\"followers\":2,\"following\":620}";
+    let json_bot_events: str = "[{\"type\":\"FollowEvent\"},{\"type\":\"FollowEvent\"}]";
+    let b_json_f4f: i32      = bot_radar_evaluar_json(json_bot_user, json_bot_events);
+
+    // --- BLOQUE C: MINI BASE DE COMPROBACION DE 5 DIAS (432,000 SEGUNDOS) ---
+    let db_test: str = "test_temp.watchlist.db";
+    embed { remove("test_temp.watchlist.db"); }
+
+    let t0: i64 = 1795680000;
+    let t_dia_2: i64 = 1795852800; // t0 + 172,800s (2.0 dias)
+    let t_dia_5: i64 = 1796115600; // t0 + 435,600s (> 5.0 dias)
+
+    // C1: Registrar dos posibles bots en Dia 0 -> ambos entran en QUARANTINE_5D (1)
+    let st_init_h: i32 = bot_radar_watchlist_registrar(db_test, "dudoso_humano", 6, 150, 0, 0, 45, t0);
+    let st_init_b: i32 = bot_radar_watchlist_registrar(db_test, "dudoso_granja", 5, 160, 0, 0, 45, t0);
+
+    // En Dia 2 (antes de cumplirse los 5 dias), dudoso_humano apenas sumo +3 follows -> sigue en vigilancia (1)
+    let st_dia2_h: i32 = bot_radar_watchlist_evaluar_delta(db_test, "dudoso_humano", 7, 153, 0, 0, t_dia_2);
+
+    // C2: dudoso_granja dispara +140 follows (de 160 a 300) con 0 commits -> CONFIRMED_BOT (2)!
+    let st_bot_cazado: i32 = bot_radar_watchlist_evaluar_delta(db_test, "dudoso_granja", 6, 300, 0, 0, t_dia_2);
+
+    // C3: dudoso_humano llega al Dia 5 (>432,000s) con comportamiento normal (+4 follows y 2 commits) -> CLEARED_HUMAN (0)!
+    let st_humano_absuelto: i32 = bot_radar_watchlist_evaluar_delta(db_test, "dudoso_humano", 9, 154, 1, 2, t_dia_5);
+
+    embed { remove("test_temp.watchlist.db"); }
+
+    let mut fallos: i32 = 0;
+    embed {
+        printf("  --- Bloque A: Escudos Anti-Falsos-Positivos (Humanos Reales) ---\n");
+        if (h_nuevo_dev < 20)           printf("  [PASS] A1. Dev nuevo legitimo (1 fol/14 seg)      : %d%% Bot\n", h_nuevo_dev);           else { printf("  [FAIL] A1: %d%%\n", h_nuevo_dev); fallos++; }
+        if (h_privado_corp < 20)        printf("  [PASS] A2. Dev privado 0-repos (261 fol/1 seg)    : %d%% Bot\n", h_privado_corp);        else { printf("  [FAIL] A2: %d%%\n", h_privado_corp); fallos++; }
+        if (h_autor_oss < 20)           printf("  [PASS] A3. Autor OSS 547-repos (1752 fol/196 seg) : %d%% Bot\n", h_autor_oss);           else { printf("  [FAIL] A3: %d%%\n", h_autor_oss); fallos++; }
+        if (h_social_dev < 20)          printf("  [PASS] A4. Dev social (99 fol/234 seg/214 repos)  : %d%% Bot\n", h_social_dev);          else { printf("  [FAIL] A4: %d%%\n", h_social_dev); fallos++; }
+        if (h_auditor_issues < 20)      printf("  [PASS] A5. Ingeniero debatiendo en 2 repos        : %d%% Bot\n", h_auditor_issues);      else { printf("  [FAIL] A5: %d%%\n", h_auditor_issues); fallos++; }
+        if (h_dev_veterano_activo < 20) printf("  [PASS] A6. Dev activo con 4443 follows + 25 Push  : %d%% Bot (Caso Xabier)\n", h_dev_veterano_activo); else { printf("  [FAIL] A6: %d%%\n", h_dev_veterano_activo); fallos++; }
+
+        printf("\n  --- Bloque B: Deteccion de Granjas y Envio a Vigilancia 5d ---\n");
+        if (b_extremo >= 85)      printf("  [PASS] B1. Follow-Farming extremo (68,908 seg)    : %d%% Bot\n", b_extremo);      else { printf("  [FAIL] B1: %d%%\n", b_extremo); fallos++; }
+        if (b_cuarentena_2k >= 35 && b_cuarentena_2k < 70) printf("  [PASS] B2. Dudoso sin Push (2467/1010) -> Vig 5d  : %d%% (Cuarentena)\n", b_cuarentena_2k); else { printf("  [FAIL] B2: %d%%\n", b_cuarentena_2k); fallos++; }
+        if (b_granja_media >= 80) printf("  [PASS] B3. Granja fantasma (850 seg/4 fol/0 rep)  : %d%% Bot\n", b_granja_media); else { printf("  [FAIL] B3: %d%%\n", b_granja_media); fallos++; }
+        if (b_issue_spam >= 80)   printf("  [PASS] B4. Bot spam IssueComment sin codigo       : %d%% Bot\n", b_issue_spam);   else { printf("  [FAIL] B4: %d%%\n", b_issue_spam); fallos++; }
+        if (b_json_f4f >= 85)     printf("  [PASS] B5. Bot JSON Follow4Follow End-to-End      : %d%% Bot\n", b_json_f4f);     else { printf("  [FAIL] B5: %d%%\n", b_json_f4f); fallos++; }
+
+        printf("\n  --- Bloque C: Mini Base de Vigilancia Conductual (5 Dias) ---\n");
+        if (st_init_h == 1 && st_init_b == 1 && st_dia2_h == 1) {
+            printf("  [PASS] C1. Cuarentena activa Dia 0 -> Dia 2       : QUARANTINE_5D (sin condena prematura)\n");
+        } else {
+            printf("  [FAIL] C1. Estado inesperado en cuarentena: %d/%d/%d\n", st_init_h, st_init_b, st_dia2_h);
+            fallos++;
+        }
+
+        if (st_bot_cazado == 2) {
+            printf("  [PASS] C2. Bot cazado por rafaga (+140 follows)   : CONFIRMED_BOT (certeza conductual)\n");
+        } else {
+            printf("  [FAIL] C2. No cazo rafaga conductual: %d\n", st_bot_cazado);
+            fallos++;
+        }
+
+        if (st_humano_absuelto == 0) {
+            printf("  [PASS] C3. Humano absuelto tras cumplir 5.0 dias  : CLEARED_HUMAN (0%% falso positivo)\n");
+        } else {
+            printf("  [FAIL] C3. No absolvio humano tras 5 dias: %d\n", st_humano_absuelto);
+            fallos++;
+        }
+
+        if (fallos > 0) {
+            fprintf(stderr, "[ERROR] Suite gh_bot_radar fallo con %d errores.\n", fallos);
+            return 1;
+        }
+        printf("====================================================================\n");
+        printf("  SUITE COMPLETA SUPERADA: 13/13 CASOS PASS (0%% FALSOS POSITIVOS)\n");
+        printf("====================================================================\n");
+    }
+
+    return 0;
+}

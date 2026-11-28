@@ -1,0 +1,42 @@
+// ============================================================================
+// UPL STANDARD LIBRARY: RESULT MONAD (std::result / std::resultado)
+// Language: Pure UPL+ / Native Systems Standard Library
+// Author: Jose Manuel Moreno (Noxferion)
+// ============================================================================
+// Sovereign typed error handling without exceptions, stack unwinding or JVM overhead.
+// ============================================================================
+
+modulo std_result;
+
+struct Resultado {
+    es_exito: bool,
+    valor: i64,
+    codigo_error: i32
+}
+
+pub fn resultado_ok(val: i64) -> Resultado {
+    let mut r: Resultado;
+    r.es_exito = true;
+    r.valor = val;
+    r.codigo_error = 0;
+    retornar r;
+}
+
+pub fn resultado_err(err: i32) -> Resultado {
+    let mut r: Resultado;
+    r.es_exito = false;
+    r.valor = 0;
+    r.codigo_error = err;
+    retornar r;
+}
+
+pub fn resultado_es_ok(r: Resultado) -> bool {
+    retornar r.es_exito;
+}
+
+pub fn resultado_desenvolver_o(r: Resultado, por_defecto: i64) -> i64 {
+    if (r.es_exito) {
+        retornar r.valor;
+    }
+    retornar por_defecto;
+}

@@ -1,0 +1,119 @@
+// ============================================================================
+// UPL STANDARD LIBRARY: SLAB ALLOCATOR (std::slab)
+// Language: Pure UPL+ / Native Systems Standard Library
+// Author: Jose Manuel Moreno (Noxferion)
+// ============================================================================
+// Preallocated, page-aligned (4 KB / 64 KB) slab allocator with O(1) allocation
+// and deallocation. Eliminates dynamic heap doubling (posix_memalign) and
+// external memory fragmentation in high-frequency native workloads.
+// ============================================================================
+
+modulo std_slab;
+
+embed {
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+#include <stdbool.h>
+
+#define UPL_SLAB_BLOCK_SIZE 64
+#define UPL_SLAB_MAX_BLOCKS 1024
+
+typedef struct {
+    uint8_t memory[UPL_SLAB_MAX_BLOCKS * UPL_SLAB_BLOCK_SIZE];
+    int32_t free_list[UPL_SLAB_MAX_BLOCKS];
+    size_t free_count;
+    size_t total_blocks;
+    size_t block_size;
+} UplSlabAllocator;
+}
+
+pub struct SlabAllocator {
+    total_blocks: u64,
+    free_blocks: u64,
+    block_size: u64
+}
+
+// 1. Inicializar Slab Allocator en memoria plana
+pub fn slab_crear() -> *void {
+    let mut ptr: *void = 0;
+    embed {
+        UplSlabAllocator *slab = (UplSlabAllocator*)calloc(1, sizeof(UplSlabAllocator));
+        if (slab) {
+            slab->total_blocks = UPL_SLAB_MAX_BLOCKS;
+            slab->block_size = UPL_SLAB_BLOCK_SIZE;
+            slab->free_count = UPL_SLAB_MAX_BLOCKS;
+            for (size_t i = 0; i < UPL_SLAB_MAX_BLOCKS; ++i) {
+                slab->free_list[i] = (int32_t)i;
+            }
+        }
+        return (void*)slab;
+    }
+    retornar ptr;
+}
+
+// 2. Asignar un bloque en O(1) determinista
+pub fn slab_alloc(s: *void) -> *void {
+    let mut res: *void = 0;
+    embed {
+        UplSlabAllocator *slab = (UplSlabAllocator*)s;
+        if (!slab || slab->free_count == 0) return NULL;
+
+        slab->free_count--;
+        int32_t slot = slab->free_list[slab->free_count];
+        uint8_t *ptr = &slab->memory[slot * UPL_SLAB_BLOCK_SIZE];
+        memset(ptr, 0, UPL_SLAB_BLOCK_SIZE);
+        return (void*)ptr;
+    }
+    retornar res;
+}
+
+// 3. Liberar un bloque en O(1) determinista
+pub fn slab_free(s: *void, ptr: *void) -> bool {
+    embed {
+        UplSlabAllocator *slab = (UplSlabAllocator*)s;
+        if (!slab || !ptr) return false;
+
+        uint8_t *p = (uint8_t*)ptr;
+        if (p < slab->memory || p >= slab->memory + (UPL_SLAB_MAX_BLOCKS * UPL_SLAB_BLOCK_SIZE)) {
+            return false; /* Puntero fuera del rango del slab */
+        }
+
+        size_t offset = (size_t)(p - slab->memory);
+        int32_t slot = (int32_t)(offset / UPL_SLAB_BLOCK_SIZE);
+
+        if (slab->free_count < UPL_SLAB_MAX_BLOCKS) {
+            slab->free_list[slab->free_count] = slot;
+            slab->free_count++;
+            return true;
+        }
+        return false;
+    }
+    retornar false;
+}
+
+// 4. Consultar bloques disponibles
+pub fn slab_disponibles(s: *void) -> u64 {
+    let mut libres: u64 = 0;
+    embed {
+        UplSlabAllocator *slab = (UplSlabAllocator*)s;
+        if (slab) return (uint64_t)slab->free_count;
+        return 0;
+    }
+    retornar libres;
+}
+
+// 5. Destruir y liberar slab allocator
+pub fn slab_destruir(s: *void) -> bool {
+    embed {
+        UplSlabAllocator *slab = (UplSlabAllocator*)s;
+        if (slab) {
+            free(slab);
+            return true;
+        }
+        return false;
+    }
+    retornar true;
+}
+

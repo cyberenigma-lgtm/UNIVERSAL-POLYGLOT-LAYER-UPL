@@ -390,9 +390,10 @@ UplAstNode* upl_parser_parse_statement(UplParser *p) {
     size_t line = p->current.line;
     size_t col = p->current.column;
 
-    // 1. Sentencia Let / Const (sea / let / const / constante)
+    // 1. Sentencia Let / Const (sea / let / const / constante / own)
     if (match(p, TOKEN_KEYWORD_LET) || match(p, TOKEN_KEYWORD_CONST)) {
         bool is_mut = match(p, TOKEN_KEYWORD_MUT);
+        bool is_own = match(p, TOKEN_KEYWORD_OWN);
         consume(p, TOKEN_IDENTIFIER, "Esperaba identificador para declaracion de variable");
         const char *name = upl_arena_strdup(p->arena, p->previous.lexeme);
         UplAstNode *type = NULL;
@@ -431,6 +432,31 @@ UplAstNode* upl_parser_parse_statement(UplParser *p) {
         UplAstNode *cond = upl_parser_parse_expression(p);
         UplAstNode *body = parse_block(p);
         return upl_ast_new_stmt_while(p->arena, cond, body, line, col);
+    }
+
+    // 3b. Sentencia For (para / for)
+    if (match(p, TOKEN_KEYWORD_FOR)) {
+        bool has_paren = match(p, TOKEN_DELIM_LPAREN);
+        UplAstNode *init = NULL;
+        if (!check(p, TOKEN_DELIM_SEMICOLON)) {
+            init = upl_parser_parse_statement(p);
+        } else {
+            advance(p);
+        }
+        UplAstNode *cond = NULL;
+        if (!check(p, TOKEN_DELIM_SEMICOLON)) {
+            cond = upl_parser_parse_expression(p);
+        }
+        consume(p, TOKEN_DELIM_SEMICOLON, "Esperaba ';' tras condicion de bucle for/para");
+        UplAstNode *step = NULL;
+        if (!check(p, TOKEN_DELIM_RPAREN) && !check(p, TOKEN_DELIM_LBRACE)) {
+            step = upl_parser_parse_expression(p);
+        }
+        if (has_paren) {
+            consume(p, TOKEN_DELIM_RPAREN, "Esperaba ')' al cerrar cabecera de for/para");
+        }
+        UplAstNode *body = parse_block(p);
+        return upl_ast_new_stmt_for(p->arena, init, cond, step, body, line, col);
     }
 
     // 4. Sentencia Return (retornar / return)
@@ -518,6 +544,12 @@ UplAstNode* upl_parser_parse_statement(UplParser *p) {
     if (match(p, TOKEN_KEYWORD_CONTINUE)) {
         consume(p, TOKEN_DELIM_SEMICOLON, "Esperaba ';' tras continue/continuar");
         return upl_ast_new_stmt_continue(p->arena, line, col);
+    }
+
+    // (defer/diferir/posponer ya procesado en linea 472)
+    if (match(p, TOKEN_KEYWORD_DEFER)) {
+        UplAstNode *sub_stmt = upl_parser_parse_statement(p);
+        return upl_ast_new_stmt_defer(p->arena, sub_stmt, line, col);
     }
 
     // 6. Bloque ASM inline (ensamblador / asm)
@@ -618,6 +650,44 @@ static UplAstNode* parse_struct_declaration(UplParser *p) {
     return upl_ast_new_decl_struct(p->arena, name, fields, line, col);
 }
 
+static UplAstNode* parse_enum_declaration(UplParser *p) {
+    size_t line = p->previous.line;
+    size_t col = p->previous.column;
+
+    consume(p, TOKEN_IDENTIFIER, "Esperaba nombre de enumeracion");
+    const char *name = upl_arena_strdup(p->arena, p->previous.lexeme);
+
+    consume(p, TOKEN_DELIM_LBRACE, "Esperaba '{' para definir variantes de enumeracion");
+    UplAstList *variants = NULL;
+
+    while (!check(p, TOKEN_DELIM_RBRACE) && !check(p, TOKEN_EOF)) {
+        consume(p, TOKEN_IDENTIFIER, "Esperaba identificador de variante de enum");
+        const char *vname = upl_arena_strdup(p->arena, p->previous.lexeme);
+        UplAstNode *val_expr = NULL;
+
+        if (match(p, TOKEN_OP_ASSIGN)) {
+            val_expr = upl_parser_parse_expression(p);
+        }
+
+        if (!match(p, TOKEN_DELIM_COMMA)) {
+            match(p, TOKEN_DELIM_SEMICOLON);
+        }
+
+        UplAstNode *variant = upl_ast_new_decl_enum_variant(p->arena, vname, val_expr, line, col);
+        upl_ast_list_append(p->arena, &variants, variant);
+
+        if (p->had_error) {
+            while (!check(p, TOKEN_DELIM_RBRACE) && !check(p, TOKEN_EOF)) {
+                advance(p);
+            }
+            break;
+        }
+    }
+
+    consume(p, TOKEN_DELIM_RBRACE, "Esperaba '}' al cerrar enumeracion");
+    return upl_ast_new_decl_enum(p->arena, name, variants, line, col);
+}
+
 static UplAstNode* parse_declaration(UplParser *p) {
     size_t line = p->current.line;
     size_t col = p->current.column;
@@ -672,43 +742,47 @@ static UplAstNode* parse_declaration(UplParser *p) {
         return upl_ast_new_decl_import(p->arena, path, line, col);
     }
 
-    // Función o estructura pública
-    if (match(p, TOKEN_KEYWORD_PUB)) {
-        if (match(p, TOKEN_KEYWORD_FN)) {
-            return parse_fn_declaration(p, true);
-        }
-        if (match(p, TOKEN_KEYWORD_STRUCT)) {
-            return parse_struct_declaration(p);
-        }
-        if (match(p, TOKEN_KEYWORD_CONST)) {
-            consume(p, TOKEN_IDENTIFIER, "Esperaba identificador para declaracion const");
-            const char *name = upl_arena_strdup(p->arena, p->previous.lexeme);
-            UplAstNode *type = NULL;
-            UplAstNode *init_expr = NULL;
+    // Declaraciones con modificadores (pub, shared, readonly)
+    bool is_pub = false;
+    bool is_shared = false;
+    bool is_readonly = false;
 
-            if (match(p, TOKEN_DELIM_COLON)) {
-                type = upl_parser_parse_type(p);
-            }
-
-            if (match(p, TOKEN_OP_ASSIGN)) {
-                init_expr = upl_parser_parse_expression(p);
-            }
-
-            consume(p, TOKEN_DELIM_SEMICOLON, "Esperaba ';' al finalizar declaracion const");
-            return upl_ast_new_stmt_let(p->arena, name, type, init_expr, false, line, col);
-        }
-        error_at(p, &p->current, "Esperaba 'fn'/'funcion', 'struct'/'estructura' o 'const' tras modificador pub/publico");
-        return NULL;
+    while (match(p, TOKEN_KEYWORD_PUB) || match(p, TOKEN_KEYWORD_SHARED) || match(p, TOKEN_KEYWORD_READONLY)) {
+        if (p->previous.type == TOKEN_KEYWORD_PUB) is_pub = true;
+        if (p->previous.type == TOKEN_KEYWORD_SHARED) is_shared = true;
+        if (p->previous.type == TOKEN_KEYWORD_READONLY) is_readonly = true;
     }
 
-    // Función estándar
     if (match(p, TOKEN_KEYWORD_FN)) {
-        return parse_fn_declaration(p, false);
+        return parse_fn_declaration(p, is_pub);
     }
-
-    // Estructura
     if (match(p, TOKEN_KEYWORD_STRUCT)) {
         return parse_struct_declaration(p);
+    }
+    if (match(p, TOKEN_KEYWORD_ENUM)) {
+        return parse_enum_declaration(p);
+    }
+    if (match(p, TOKEN_KEYWORD_CONST)) {
+        consume(p, TOKEN_IDENTIFIER, "Esperaba identificador para declaracion const");
+        const char *name = upl_arena_strdup(p->arena, p->previous.lexeme);
+        UplAstNode *type = NULL;
+        UplAstNode *init_expr = NULL;
+
+        if (match(p, TOKEN_DELIM_COLON)) {
+            type = upl_parser_parse_type(p);
+        }
+
+        if (match(p, TOKEN_OP_ASSIGN)) {
+            init_expr = upl_parser_parse_expression(p);
+        }
+
+        consume(p, TOKEN_DELIM_SEMICOLON, "Esperaba ';' al finalizar declaracion const");
+        return upl_ast_new_stmt_let(p->arena, name, type, init_expr, false, line, col);
+    }
+
+    if (is_pub || is_shared || is_readonly) {
+        error_at(p, &p->current, "Esperaba 'fn'/'funcion', 'struct'/'estructura', 'enum'/'enumeracion' o 'const' tras modificadores");
+        return NULL;
     }
 
     // Sentencias en el nivel superior (scripting o bloques crudos)

@@ -1,0 +1,990 @@
+// ============================================================================
+// UPL+ SOVEREIGN MODULE: GITHUB ANTI-BOT & 5-DAY WATCHLIST RADAR (net/gh_bot_radar)
+// Language: Pure UPL+ v2.3.0 / Native C99 + WinHTTP TLS + 5-Day Quarantine DB
+// Author: Jose Manuel Moreno (Noxferion)
+// ============================================================================
+// Zero-False-Positive Multi-Factor & 5-Day Behavioral Surveillance Engine:
+//   1. Instant O(1) multi-factor analysis WITHOUT penalizing account age,
+//      0-repo private developers, prolific OSS authors, or focused Issue threads.
+//   2. Persistent Mini-Database (gh_bot_watchlist.db) for 5-day surveillance
+//      (432,000 seconds): tracks temporal deltas (Delta-following/day,
+//      Delta-followers, Delta-commits) so borderline accounts are NEVER falsely
+//      condemned—only confirmed as BOT or cleared as HUMAN with behavioral proof.
+// ============================================================================
+
+modulo gh_bot_radar;
+
+importar modules/std/ring.upl;
+
+// Estados formales de la Mini Base de Comprobacion de 5 Dias:
+//   0 = CLEARED_HUMAN  (Absuelto tras vigilancia: humano verificado)
+//   1 = QUARANTINE_5D  (En observacion activa durante ventana de 5 dias)
+//   2 = CONFIRMED_BOT  (Bot confirmado con evidencia conductual/temporal)
+pub shared readonly struct BotRadarThresholds {
+    quarantine_seconds_5d: i64,
+    follow_farm_extreme: i64,
+    follow_farm_high: i64
+}
+
+embed {
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <ctype.h>
+#include <time.h>
+
+#ifdef _WIN32
+#  ifndef WIN32_LEAN_AND_MEAN
+#    define WIN32_LEAN_AND_MEAN
+#  endif
+#  include <windows.h>
+#  include <winhttp.h>
+#endif
+
+#define UPL_WATCHLIST_5_DAYS_SEC 432000LL
+#define UPL_WATCHLIST_MAX_ENTRIES 512
+
+#define UPL_STATUS_CLEARED_HUMAN 0
+#define UPL_STATUS_QUARANTINE_5D 1
+#define UPL_STATUS_CONFIRMED_BOT 2
+
+typedef struct {
+    char    login[128];
+    int64_t followers;
+    int64_t following;
+    int64_t public_repos;
+    int64_t public_gists;
+    int64_t push_events;
+    int64_t pr_events;
+    int64_t create_events;
+    int64_t comment_events;
+    int64_t follow_events;
+    int64_t distinct_event_repos;
+    bool    bio_spam;
+    bool    is_vip;
+    int32_t bot_probability;
+    int32_t authenticity_score;
+    char    verdict[96];
+    char    reasons[512];
+} UplBotAuditReport;
+
+typedef struct {
+    char    login[128];
+    int64_t first_seen_epoch;
+    int64_t last_check_epoch;
+    int32_t checks_count;
+    int64_t t0_followers;
+    int64_t t0_following;
+    int64_t t0_repos;
+    int64_t t0_code_events;
+    int64_t cur_followers;
+    int64_t cur_following;
+    int64_t cur_repos;
+    int64_t cur_code_events;
+    int32_t initial_score;
+    int32_t current_score;
+    int32_t status; /* 0=CLEARED_HUMAN, 1=QUARANTINE_5D, 2=CONFIRMED_BOT */
+} UplWatchlistRecord;
+
+static const char* upl_watchlist_status_label(int32_t st) {
+    if (st == UPL_STATUS_CONFIRMED_BOT) return "CONFIRMED_BOT";
+    if (st == UPL_STATUS_CLEARED_HUMAN) return "CLEARED_HUMAN";
+    return "QUARANTINE_5D";
+}
+
+static int upl_watchlist_load_all(const char *db_path, UplWatchlistRecord *arr, int max_cap) {
+    if (!db_path || !arr || max_cap <= 0) return 0;
+    FILE *f = fopen(db_path, "r");
+    if (!f) return 0;
+
+    char line[1024];
+    int count = 0;
+    while (count < max_cap && fgets(line, sizeof(line), f)) {
+        if (line[0] == '#' || line[0] == '\n' || line[0] == '\r') continue;
+        UplWatchlistRecord rec;
+        memset(&rec, 0, sizeof(rec));
+        long long fs = 0, lc = 0, t0fol = 0, t0fng = 0, t0rep = 0, t0cod = 0;
+        long long cfol = 0, cfng = 0, crep = 0, ccod = 0;
+        int chk = 0, isc = 0, csc = 0, st = 1;
+        int parsed = sscanf(line, "%127s\t%lld\t%lld\t%d\t%lld\t%lld\t%lld\t%lld\t%lld\t%lld\t%lld\t%lld\t%d\t%d\t%d",
+                            rec.login, &fs, &lc, &chk,
+                            &t0fol, &t0fng, &t0rep, &t0cod,
+                            &cfol, &cfng, &crep, &ccod,
+                            &isc, &csc, &st);
+        if (parsed == 15) {
+            rec.first_seen_epoch = (int64_t)fs;
+            rec.last_check_epoch = (int64_t)lc;
+            rec.checks_count     = chk;
+            rec.t0_followers     = (int64_t)t0fol;
+            rec.t0_following     = (int64_t)t0fng;
+            rec.t0_repos         = (int64_t)t0rep;
+            rec.t0_code_events   = (int64_t)t0cod;
+            rec.cur_followers    = (int64_t)cfol;
+            rec.cur_following    = (int64_t)cfng;
+            rec.cur_repos        = (int64_t)crep;
+            rec.cur_code_events  = (int64_t)ccod;
+            rec.initial_score    = isc;
+            rec.current_score    = csc;
+            rec.status           = st;
+            arr[count++] = rec;
+        }
+    }
+    fclose(f);
+    return count;
+}
+
+static bool upl_watchlist_save_all(const char *db_path, const UplWatchlistRecord *arr, int count) {
+    if (!db_path) return false;
+    FILE *f = fopen(db_path, "w");
+    if (!f) return false;
+
+    fprintf(f, "# UPL+ GH-BOT-RADAR 5-DAY SURVEILLANCE MINI-DB (v2.3.0)\n");
+    fprintf(f, "# login\tfirst_seen\tlast_check\tchecks\tt0_fol\tt0_fng\tt0_rep\tt0_cod\tcur_fol\tcur_fng\tcur_rep\tcur_cod\tinit_sc\tcur_sc\tstatus\n");
+    for (int i = 0; i < count; ++i) {
+        fprintf(f, "%s\t%lld\t%lld\t%d\t%lld\t%lld\t%lld\t%lld\t%lld\t%lld\t%lld\t%lld\t%d\t%d\t%d\n",
+                arr[i].login,
+                (long long)arr[i].first_seen_epoch,
+                (long long)arr[i].last_check_epoch,
+                arr[i].checks_count,
+                (long long)arr[i].t0_followers,
+                (long long)arr[i].t0_following,
+                (long long)arr[i].t0_repos,
+                (long long)arr[i].t0_code_events,
+                (long long)arr[i].cur_followers,
+                (long long)arr[i].cur_following,
+                (long long)arr[i].cur_repos,
+                (long long)arr[i].cur_code_events,
+                arr[i].initial_score,
+                arr[i].current_score,
+                arr[i].status);
+    }
+    fclose(f);
+    return true;
+}
+
+static bool upl_str_ieq(const char *a, const char *b) {
+    if (!a || !b) return false;
+    while (*a && *b) {
+        if (tolower((unsigned char)*a) != tolower((unsigned char)*b)) return false;
+        a++; b++;
+    }
+    return (*a == '\0' && *b == '\0');
+}
+
+static bool upl_radar_extract_json_int64(const char *json, const char *key, int64_t *out_val) {
+    if (!json || !key || !out_val) return false;
+    char pattern[128];
+    snprintf(pattern, sizeof(pattern), "\"%s\"", key);
+    const char *p = strstr(json, pattern);
+    while (p) {
+        const char *colon = p + strlen(pattern);
+        while (*colon == ' ' || *colon == '\t' || *colon == '\r' || *colon == '\n') colon++;
+        if (*colon == ':') {
+            colon++;
+            while (*colon == ' ' || *colon == '\t' || *colon == '\r' || *colon == '\n') colon++;
+            if (*colon == '-' || (*colon >= '0' && *colon <= '9')) {
+                *out_val = strtoll(colon, NULL, 10);
+                return true;
+            }
+        }
+        p = strstr(p + 1, pattern);
+    }
+    return false;
+}
+
+static void upl_radar_extract_json_str(const char *json, const char *key, char *out_buf, size_t out_cap) {
+    if (!out_buf || out_cap == 0) return;
+    out_buf[0] = '\0';
+    if (!json || !key) return;
+    char pattern[128];
+    snprintf(pattern, sizeof(pattern), "\"%s\"", key);
+    const char *p = strstr(json, pattern);
+    if (!p) return;
+    const char *colon = p + strlen(pattern);
+    while (*colon == ' ' || *colon == '\t' || *colon == '\r' || *colon == '\n') colon++;
+    if (*colon != ':') return;
+    colon++;
+    while (*colon == ' ' || *colon == '\t' || *colon == '\r' || *colon == '\n') colon++;
+    if (*colon != '"') return;
+    colon++;
+    size_t i = 0;
+    while (*colon && *colon != '"' && i + 1 < out_cap) {
+        if (*colon == '\\' && *(colon + 1) != '\0') colon++;
+        out_buf[i++] = (char)tolower((unsigned char)*colon);
+        colon++;
+    }
+    out_buf[i] = '\0';
+}
+
+static bool upl_radar_bio_has_spam(const char *bio_lower) {
+    if (!bio_lower || bio_lower[0] == '\0') return false;
+    static const char *spam_terms[] = {
+        "follow back", "followback", "f4f", "follow4follow",
+        "follow for follow", "siga de volta", "free followers",
+        "spam follow", "spamfollow", "gain followers", "auto follow", NULL
+    };
+    for (int i = 0; spam_terms[i] != NULL; ++i) {
+        if (strstr(bio_lower, spam_terms[i]) != NULL) return true;
+    }
+    return false;
+}
+
+static bool upl_radar_is_vip(const char *username) {
+    if (!username) return false;
+    static const char *vips[] = {
+        "torvalds", "bjarnestroustrup", "antirez", "fabpot",
+        "sindresorhus", "kikobeats", "cyberenigma-lgtm", NULL
+    };
+    for (int i = 0; vips[i] != NULL; ++i) {
+        if (upl_str_ieq(username, vips[i])) return true;
+    }
+    return false;
+}
+
+static size_t upl_radar_count_substr(const char *haystack, const char *needle) {
+    if (!haystack || !needle || needle[0] == '\0') return 0;
+    size_t count = 0;
+    size_t nlen = strlen(needle);
+    const char *p = strstr(haystack, needle);
+    while (p) {
+        count++;
+        p = strstr(p + nlen, needle);
+    }
+    return count;
+}
+
+static int64_t upl_radar_count_distinct_repos(const char *events_json) {
+    if (!events_json || events_json[0] == '\0') return 0;
+    char seen[32][128];
+    int seen_count = 0;
+    const char *p = events_json;
+    while (seen_count < 32 && (p = strstr(p, "\"repo\"")) != NULL) {
+        const char *name_key = strstr(p, "\"name\"");
+        if (!name_key || (name_key - p) > 256) {
+            p += 6;
+            continue;
+        }
+        const char *c = name_key + 6;
+        while (*c == ' ' || *c == '\t' || *c == ':') c++;
+        if (*c == '"') {
+            c++;
+            char rname[128];
+            size_t ri = 0;
+            while (*c && *c != '"' && ri + 1 < sizeof(rname)) {
+                rname[ri++] = *c++;
+            }
+            rname[ri] = '\0';
+            if (ri > 0) {
+                bool exists = false;
+                for (int k = 0; k < seen_count; ++k) {
+                    if (strcmp(seen[k], rname) == 0) { exists = true; break; }
+                }
+                if (!exists) strcpy(seen[seen_count++], rname);
+            }
+        }
+        p = name_key + 6;
+    }
+    return (int64_t)seen_count;
+}
+
+static void upl_radar_append_reason(char *buf, size_t cap, const char *msg) {
+    if (!buf || !msg) return;
+    size_t cur = strlen(buf);
+    if (cur > 0 && cur + 3 < cap) {
+        strcat(buf, " | ");
+        cur += 3;
+    }
+    if (cur + strlen(msg) + 1 < cap) {
+        strcat(buf, msg);
+    }
+}
+
+static void upl_radar_score_report(UplBotAuditReport *rep) {
+    rep->reasons[0] = '\0';
+
+    if (rep->is_vip) {
+        rep->bot_probability = 0;
+        rep->authenticity_score = 100;
+        snprintf(rep->verdict, sizeof(rep->verdict), "HUMANO VERIFICADO (WHITELIST AUTORIDAD)");
+        upl_radar_append_reason(rep->reasons, sizeof(rep->reasons), "Arquitecto / Cuenta verificada");
+        return;
+    }
+
+    /* ESCUDO ANTI-FALSO-POSITIVO #1: Autoridad organica (followers >= following y >= 50) */
+    if (!rep->bio_spam && rep->followers >= 50 && rep->followers >= rep->following && rep->following < 2000) {
+        rep->bot_probability = 0;
+        rep->authenticity_score = 100;
+        snprintf(rep->verdict, sizeof(rep->verdict), "DESARROLLADOR HUMANO LEGITIMO (0%% Bot)");
+        upl_radar_append_reason(rep->reasons, sizeof(rep->reasons), "Traccion organica saludable (followers >= following)");
+        return;
+    }
+
+    int32_t score = 0;
+    bool has_primary_automation_signal = false;
+    char tmp[160];
+    int64_t real_code_events = rep->push_events + rep->pr_events + rep->create_events;
+
+    /* SENAL PRIMARIA 1: Spam explicito Follow-for-Follow en biografia */
+    if (rep->bio_spam) {
+        score += 75;
+        has_primary_automation_signal = true;
+        upl_radar_append_reason(rep->reasons, sizeof(rep->reasons), "Spam explicito Follow-for-Follow en bio");
+    }
+
+    /* SENAL PRIMARIA 2: Volumen de Following cruzado SIEMPRE con actividad real de codigo
+       Regla de Oro Anti-Falso-Positivo (Caso Xabier):
+       Un desarrollador real puede haber acumulado 2,000-10,000 'following' a lo largo de los anos.
+       Si tiene actividad real de codigo (PushEvent/PR) y 0 rafagas de FollowEvent, NO es un bot.
+       Solo escala inhumana (>=15,000 follows) o 0 repos + 0 codigo se confirma directo en Dia 0;
+       los casos ambiguos sin commits recientes pasan a VIGILANCIA 5 DIAS (45-60%). */
+    if (rep->following >= 15000) {
+        /* Escala fisicamente imposible a mano (>15k follows: 43k, 68k, 606k, 1.5M) */
+        has_primary_automation_signal = true;
+        score += (rep->following > (rep->followers * 2) || rep->public_repos == 0) ? 95 : 82;
+        snprintf(tmp, sizeof(tmp), "Escala inhumana de Follow-Farming (%lld seguidos vs %lld seguidores)",
+                 (long long)rep->following, (long long)rep->followers);
+        upl_radar_append_reason(rep->reasons, sizeof(rep->reasons), tmp);
+    } else if (rep->following >= 1000) {
+        if (rep->public_repos == 0 && real_code_events == 0 && rep->following > (rep->followers * 2)) {
+            /* Granja fantasma pura: miles de follows, 0 repositorios y 0 commits */
+            score += 80;
+            has_primary_automation_signal = true;
+            snprintf(tmp, sizeof(tmp), "Granja fantasma sin codigo (%lld seguidos / 0 repos / 0 Push)",
+                     (long long)rep->following);
+            upl_radar_append_reason(rep->reasons, sizeof(rep->reasons), tmp);
+        } else if (real_code_events >= 5 && rep->follow_events == 0) {
+            /* Desarrollador activo real con historico alto de cuentas seguidas (Caso Xabier: 4443 seg pero 25 Push/PR) */
+            score += 15;
+            snprintf(tmp, sizeof(tmp), "Historico alto de seguidos (%lld), pero programador activo (%lld Push/PR)",
+                     (long long)rep->following, (long long)real_code_events);
+            upl_radar_append_reason(rep->reasons, sizeof(rep->reasons), tmp);
+        } else if (rep->following > (rep->followers * 2) && real_code_events == 0) {
+            /* Sin actividad de codigo reciente: NO condenar en Dia 0 -> enviar a Vigilancia 5 Dias (55%) */
+            score += 55;
+            snprintf(tmp, sizeof(tmp), "Ratio inverso alto sin Push reciente (%lld seg / %lld fol) -> Vigilar 5 dias",
+                     (long long)rep->following, (long long)rep->followers);
+            upl_radar_append_reason(rep->reasons, sizeof(rep->reasons), tmp);
+        }
+    } else if (rep->following >= 500) {
+        if (rep->followers < 20 && rep->public_repos == 0 && real_code_events == 0) {
+            score += 78;
+            has_primary_automation_signal = true;
+            snprintf(tmp, sizeof(tmp), "Granja asimetrica sin codigo (%lld seguidos / %lld seg / 0 repos)",
+                     (long long)rep->following, (long long)rep->followers);
+            upl_radar_append_reason(rep->reasons, sizeof(rep->reasons), tmp);
+        } else if (real_code_events == 0 && (rep->followers < 25 || rep->following > (rep->followers * 5))) {
+            score += 50;
+            snprintf(tmp, sizeof(tmp), "Asimetria de follows sin commits recientes (%lld/%lld) -> Vigilar 5 dias",
+                     (long long)rep->following, (long long)rep->followers);
+            upl_radar_append_reason(rep->reasons, sizeof(rep->reasons), tmp);
+        }
+    } else if (rep->following >= 120) {
+        if (rep->followers <= 3 && real_code_events == 0 && rep->public_repos == 0) {
+            score += 52;
+            snprintf(tmp, sizeof(tmp), "Posible bot inicial (%lld seguidos / %lld seg / 0 repos) -> Vigilar 5 dias",
+                     (long long)rep->following, (long long)rep->followers);
+            upl_radar_append_reason(rep->reasons, sizeof(rep->reasons), tmp);
+        }
+    }
+
+    /* SENAL PRIMARIA 3: Rafaga de Spam en Eventos Publicos (Escudo multirrepo >=8) */
+    if (rep->comment_events >= 15 && real_code_events == 0) {
+        if (rep->distinct_event_repos >= 8 || (rep->public_repos == 0 && rep->followers <= 3)) {
+            score += 65;
+            has_primary_automation_signal = true;
+            snprintf(tmp, sizeof(tmp), "Rafaga spam IssueComment (%lld comentarios, 0 Push)",
+                     (long long)rep->comment_events);
+            upl_radar_append_reason(rep->reasons, sizeof(rep->reasons), tmp);
+        }
+    }
+    if (rep->follow_events >= 12 && real_code_events == 0 && rep->followers < 15) {
+        score += 55;
+        has_primary_automation_signal = true;
+        snprintf(tmp, sizeof(tmp), "Rafaga activa de FollowEvent (%lld follows en ventana / 0 Push)",
+                 (long long)rep->follow_events);
+        upl_radar_append_reason(rep->reasons, sizeof(rep->reasons), tmp);
+    }
+
+    /* MULTIPLICADORES SECUNDARIOS (solo cuando ya hay senal primaria) */
+    if (has_primary_automation_signal) {
+        if (rep->public_repos == 0) {
+            score += 20;
+            upl_radar_append_reason(rep->reasons, sizeof(rep->reasons), "0 repositorios publicos (agrava senal primaria)");
+        } else if (rep->public_repos >= 500 && real_code_events == 0 && rep->following > (rep->followers * 2)) {
+            score += 20;
+            snprintf(tmp, sizeof(tmp), "Clonacion masiva de forks (%lld repos)", (long long)rep->public_repos);
+            upl_radar_append_reason(rep->reasons, sizeof(rep->reasons), tmp);
+        }
+    } else if (rep->public_repos >= 2000 && rep->followers < 20 && real_code_events == 0) {
+        score += 75;
+        snprintf(tmp, sizeof(tmp), "Bot clonador masivo (%lld repositorios / %lld seguidores)",
+                 (long long)rep->public_repos, (long long)rep->followers);
+        upl_radar_append_reason(rep->reasons, sizeof(rep->reasons), tmp);
+    }
+
+    /* ESCUDO ANTI-FALSO-POSITIVO #3: Codigo real activo (protege incluso si acumulo miles de follows historicos) */
+    if (real_code_events >= 3 && !rep->bio_spam && rep->following < 15000 && rep->follow_events == 0) {
+        score -= 20;
+        if (score < 0) score = 0;
+        if (score < 35 && rep->reasons[0] == '\0') {
+            snprintf(tmp, sizeof(tmp), "Codigo propio activo verificado (%lld eventos Push/PR)",
+                     (long long)real_code_events);
+            upl_radar_append_reason(rep->reasons, sizeof(rep->reasons), tmp);
+        }
+    }
+
+    if (score < 0) score = 0;
+    if (score > 99) score = 99;
+
+    rep->bot_probability = score;
+    rep->authenticity_score = 100 - score;
+
+    if (score >= 70) {
+        snprintf(rep->verdict, sizeof(rep->verdict), "BOT / GRANJA CONFIRMADA (%d%%)", score);
+    } else if (score >= 35) {
+        snprintf(rep->verdict, sizeof(rep->verdict), "POSIBLE BOT -> VIGILANCIA 5 DIAS (%d%%)", score);
+    } else {
+        if (rep->reasons[0] == '\0') {
+            upl_radar_append_reason(rep->reasons, sizeof(rep->reasons), "Comportamiento humano natural (sin senales de granja)");
+        }
+        snprintf(rep->verdict, sizeof(rep->verdict), "DESARROLLADOR HUMANO LEGITIMO (%d%% Bot)", score);
+    }
+}
+
+/* Evaluacion conductual temporal de 5 dias sobre un registro de vigilancia */
+static int32_t upl_watchlist_evaluate_behavior(UplWatchlistRecord *rec,
+                                               int64_t new_fol, int64_t new_fng,
+                                               int64_t new_rep, int64_t new_cod,
+                                               int64_t epoch_now) {
+    rec->last_check_epoch = epoch_now;
+    rec->checks_count++;
+    rec->cur_followers   = new_fol;
+    rec->cur_following   = new_fng;
+    rec->cur_repos       = new_rep;
+    rec->cur_code_events = new_cod;
+
+    int64_t elapsed_sec = epoch_now - rec->first_seen_epoch;
+    if (elapsed_sec < 0) elapsed_sec = 0;
+    double elapsed_days = (double)elapsed_sec / 86400.0;
+
+    int64_t delta_following = new_fng - rec->t0_following;
+    int64_t abs_churn = (delta_following >= 0) ? delta_following : -delta_following;
+    int64_t delta_repos = new_rep - rec->t0_repos;
+
+    /* 1. Deteccion conductual flagrante durante o al final de los 5 dias:
+          - Disparo de >= 50 nuevos follows sin crear codigo propio
+          - O churn agresivo de unfollow-farming (>= 80 bajas de following sin commits) */
+    if ((delta_following >= 50 || abs_churn >= 80) && new_cod == 0 && delta_repos <= 0) {
+        rec->status = UPL_STATUS_CONFIRMED_BOT;
+        rec->current_score = 96;
+        return rec->status;
+    }
+
+    /* Velocidad sostenida > 20 follows/dia (tras al menos 1 dia de observacion) con 0 commits */
+    if (elapsed_days >= 1.0) {
+        double follows_per_day = (double)delta_following / elapsed_days;
+        if (follows_per_day >= 20.0 && new_cod == 0) {
+            rec->status = UPL_STATUS_CONFIRMED_BOT;
+            rec->current_score = 92;
+            return rec->status;
+        }
+    }
+
+    /* 2. Si todavia NO se han cumplido los 5 dias completos (432,000 s):
+          Absolver temprano si demuestra programacion activa real (>=5 Push/PR) sin disparar follows */
+    if (elapsed_sec < UPL_WATCHLIST_5_DAYS_SEC) {
+        if (new_cod >= 5 && delta_following <= 10 && new_fng < 15000) {
+            rec->status = UPL_STATUS_CLEARED_HUMAN;
+            rec->current_score = 0;
+            return rec->status;
+        }
+        rec->status = UPL_STATUS_QUARANTINE_5D;
+        return rec->status;
+    }
+
+    /* 3. Ventana completa de 5 DIAS cumplida (>= 432,000 s): Dictamen definitivo con certeza */
+    if (delta_following <= 15 && (new_cod > 0 || new_rep > 0) && new_fng < 15000) {
+        rec->status = UPL_STATUS_CLEARED_HUMAN;
+        rec->current_score = 0;
+    } else if (delta_following <= 10 && new_fng < 500 && !(new_fng >= 200 && new_fol <= 3)) {
+        rec->status = UPL_STATUS_CLEARED_HUMAN;
+        rec->current_score = 5;
+    } else {
+        rec->status = UPL_STATUS_CONFIRMED_BOT;
+        rec->current_score = 90;
+    }
+    return rec->status;
+}
+
+static bool upl_radar_https_get_github(const char *api_path, char *out_buf, size_t out_cap, int *out_status) {
+    if (!api_path || !out_buf || out_cap < 16) return false;
+    out_buf[0] = '\0';
+    if (out_status) *out_status = 0;
+
+#ifdef _WIN32
+    wchar_t wpath[512];
+    MultiByteToWideChar(CP_UTF8, 0, api_path, -1, wpath, 512);
+
+    HINTERNET hSession = WinHttpOpen(L"UPL-Sovereign-BotRadar/2.3.0",
+                                     WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+                                     WINHTTP_NO_PROXY_NAME,
+                                     WINHTTP_NO_PROXY_BYPASS, 0);
+    if (!hSession) return false;
+
+    HINTERNET hConnect = WinHttpConnect(hSession, L"api.github.com", INTERNET_DEFAULT_HTTPS_PORT, 0);
+    if (!hConnect) {
+        WinHttpCloseHandle(hSession);
+        return false;
+    }
+
+    HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"GET", wpath,
+                                            NULL, WINHTTP_NO_REFERER,
+                                            WINHTTP_DEFAULT_ACCEPT_TYPES,
+                                            WINHTTP_FLAG_SECURE);
+    if (!hRequest) {
+        WinHttpCloseHandle(hConnect);
+        WinHttpCloseHandle(hSession);
+        return false;
+    }
+
+    wchar_t headers[768];
+    const char *gh_tok = getenv("GITHUB_TOKEN");
+    if (gh_tok && gh_tok[0] != '\0') {
+        wchar_t wtok[384];
+        MultiByteToWideChar(CP_UTF8, 0, gh_tok, -1, wtok, 384);
+        _snwprintf(headers, 767, L"Accept: application/vnd.github.v3+json\r\nAuthorization: Bearer %ls\r\n", wtok);
+        headers[767] = L'\0';
+    } else {
+        wcscpy(headers, L"Accept: application/vnd.github.v3+json\r\n");
+    }
+
+    BOOL ok = WinHttpSendRequest(hRequest, headers, (DWORD)-1L,
+                                 WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
+    if (ok) ok = WinHttpReceiveResponse(hRequest, NULL);
+
+    if (ok) {
+        DWORD status_code = 0;
+        DWORD status_size = sizeof(status_code);
+        WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                            WINHTTP_HEADER_NAME_BY_INDEX, &status_code, &status_size, WINHTTP_NO_HEADER_INDEX);
+        if (out_status) *out_status = (int)status_code;
+
+        size_t total = 0;
+        DWORD avail = 0;
+        while (WinHttpQueryDataAvailable(hRequest, &avail) && avail > 0 && total + 1 < out_cap) {
+            DWORD to_read = avail;
+            if (total + to_read >= out_cap) to_read = (DWORD)(out_cap - total - 1);
+            DWORD read_bytes = 0;
+            if (!WinHttpReadData(hRequest, out_buf + total, to_read, &read_bytes) || read_bytes == 0) break;
+            total += read_bytes;
+        }
+        out_buf[total] = '\0';
+    }
+
+    WinHttpCloseHandle(hRequest);
+    WinHttpCloseHandle(hConnect);
+    WinHttpCloseHandle(hSession);
+    return (ok == TRUE);
+#else
+    char cmd[1024];
+    const char *gh_tok = getenv("GITHUB_TOKEN");
+    if (gh_tok && gh_tok[0] != '\0') {
+        snprintf(cmd, sizeof(cmd),
+                 "curl -sS -w \"\\n__HTTP_STATUS__:%%{http_code}\" -H \"Accept: application/vnd.github.v3+json\" -H \"User-Agent: UPL-Sovereign-BotRadar/2.3.0\" -H \"Authorization: Bearer %s\" \"https://api.github.com%s\"",
+                 gh_tok, api_path);
+    } else {
+        snprintf(cmd, sizeof(cmd),
+                 "curl -sS -w \"\\n__HTTP_STATUS__:%%{http_code}\" -H \"Accept: application/vnd.github.v3+json\" -H \"User-Agent: UPL-Sovereign-BotRadar/2.3.0\" \"https://api.github.com%s\"",
+                 api_path);
+    }
+    FILE *fp = popen(cmd, "r");
+    if (!fp) return false;
+    size_t total = fread(out_buf, 1, out_cap - 1, fp);
+    out_buf[total] = '\0';
+    pclose(fp);
+    char *marker = strstr(out_buf, "\n__HTTP_STATUS__:");
+    if (marker) {
+        if (out_status) *out_status = atoi(marker + 17);
+        *marker = '\0';
+    }
+    return total > 0;
+#endif
+}
+}
+
+// 1. Calculo matematico directo O(1) con calibracion Cero Falsos Positivos
+pub fn bot_radar_calcular_porcentaje(followers: i64, following: i64, public_repos: i64, push_events: i64, comment_events: i64, follow_events: i64, bio_spam: bool) -> i32 {
+    let own ring_eventos: *void = ring_crear(32);
+    defer ring_destruir(ring_eventos);
+
+    ring_push(ring_eventos, push_events);
+    ring_push(ring_eventos, comment_events);
+    ring_push(ring_eventos, follow_events);
+
+    let mut prob: i32 = 0;
+    embed {
+        UplBotAuditReport rep;
+        memset(&rep, 0, sizeof(rep));
+        snprintf(rep.login, sizeof(rep.login), "synthetic_check");
+        rep.followers = followers;
+        rep.following = following;
+        rep.public_repos = public_repos;
+        rep.push_events = push_events;
+        rep.comment_events = comment_events;
+        rep.follow_events = follow_events;
+        rep.distinct_event_repos = (comment_events >= 15 && public_repos == 0) ? 12 : 2;
+        rep.bio_spam = bio_spam;
+        rep.is_vip = false;
+        upl_radar_score_report(&rep);
+        prob = rep.bot_probability;
+    }
+    retornar prob;
+}
+
+// 2. Evaluar cargas JSON crudas (API /users/<login> + /users/<login>/events/public)
+pub fn bot_radar_evaluar_json(user_json: str, events_json: str) -> i32 {
+    let own ring_ventana: *void = ring_crear(30);
+    defer ring_destruir(ring_ventana);
+
+    let mut resultado_prob: i32 = 0;
+    embed {
+        UplBotAuditReport rep;
+        memset(&rep, 0, sizeof(rep));
+
+        char bio_buf[512];
+        upl_radar_extract_json_str(user_json, "login", rep.login, sizeof(rep.login));
+        upl_radar_extract_json_str(user_json, "bio", bio_buf, sizeof(bio_buf));
+        upl_radar_extract_json_int64(user_json, "followers", &rep.followers);
+        upl_radar_extract_json_int64(user_json, "following", &rep.following);
+        upl_radar_extract_json_int64(user_json, "public_repos", &rep.public_repos);
+        upl_radar_extract_json_int64(user_json, "public_gists", &rep.public_gists);
+
+        rep.bio_spam = upl_radar_bio_has_spam(bio_buf);
+        rep.is_vip = upl_radar_is_vip(rep.login);
+
+        if (events_json && events_json[0] != '\0') {
+            rep.push_events          = (int64_t)upl_radar_count_substr(events_json, "\"PushEvent\"");
+            rep.pr_events            = (int64_t)upl_radar_count_substr(events_json, "\"PullRequestEvent\"");
+            rep.create_events        = (int64_t)upl_radar_count_substr(events_json, "\"CreateEvent\"");
+            rep.comment_events       = (int64_t)upl_radar_count_substr(events_json, "\"IssueCommentEvent\"");
+            rep.follow_events        = (int64_t)upl_radar_count_substr(events_json, "\"FollowEvent\"");
+            rep.distinct_event_repos = upl_radar_count_distinct_repos(events_json);
+        }
+
+        ring_push(ring_ventana, rep.push_events);
+        ring_push(ring_ventana, rep.comment_events);
+        ring_push(ring_ventana, rep.follow_events);
+
+        upl_radar_score_report(&rep);
+        resultado_prob = rep.bot_probability;
+    }
+    retornar resultado_prob;
+}
+
+// 3. Registrar posible bot en la Mini Base de Comprobacion de 5 Dias
+pub fn bot_radar_watchlist_registrar(db_path: str, login: str, followers: i64, following: i64, repos: i64, code_events: i64, score: i32, epoch_now: i64) -> i32 {
+    let own ring_op: *void = ring_crear(8);
+    defer ring_destruir(ring_op);
+    ring_push(ring_op, following);
+
+    let mut estado_salida: i32 = 1;
+    embed {
+        static UplWatchlistRecord records[UPL_WATCHLIST_MAX_ENTRIES];
+        int count = upl_watchlist_load_all(db_path, records, UPL_WATCHLIST_MAX_ENTRIES);
+        int64_t ts = (epoch_now > 0) ? epoch_now : (int64_t)time(NULL);
+
+        int idx = -1;
+        for (int i = 0; i < count; ++i) {
+            if (upl_str_ieq(records[i].login, login)) {
+                idx = i;
+                break;
+            }
+        }
+
+        if (idx >= 0) {
+            estado_salida = upl_watchlist_evaluate_behavior(&records[idx], followers, following, repos, code_events, ts);
+        } else if (count < UPL_WATCHLIST_MAX_ENTRIES) {
+            UplWatchlistRecord *r = &records[count++];
+            memset(r, 0, sizeof(*r));
+            snprintf(r->login, sizeof(r->login), "%s", login);
+            r->first_seen_epoch = ts;
+            r->last_check_epoch = ts;
+            r->checks_count     = 1;
+            r->t0_followers     = followers;
+            r->t0_following     = following;
+            r->t0_repos         = repos;
+            r->t0_code_events   = code_events;
+            r->cur_followers    = followers;
+            r->cur_following    = following;
+            r->cur_repos        = repos;
+            r->cur_code_events  = code_events;
+            r->initial_score    = score;
+            r->current_score    = score;
+            r->status           = UPL_STATUS_QUARANTINE_5D;
+            estado_salida       = r->status;
+        }
+        upl_watchlist_save_all(db_path, records, count);
+    }
+    retornar estado_salida;
+}
+
+// 4. Evaluar evolucion temporal (Delta hasta 5 dias = 432,000 s) de un perfil vigilado
+pub fn bot_radar_watchlist_evaluar_delta(db_path: str, login: str, cur_followers: i64, cur_following: i64, cur_repos: i64, cur_code_events: i64, epoch_now: i64) -> i32 {
+    retornar bot_radar_watchlist_registrar(db_path, login, cur_followers, cur_following, cur_repos, cur_code_events, 50, epoch_now);
+}
+
+// 5. Mostrar estado completo de la Mini Base de Comprobacion de 5 Dias
+pub fn bot_radar_watchlist_listar(db_path: str) -> i32 {
+    let own ring_vista: *void = ring_crear(16);
+    defer ring_destruir(ring_vista);
+
+    let mut total_registros: i32 = 0;
+    embed {
+        static UplWatchlistRecord records[UPL_WATCHLIST_MAX_ENTRIES];
+        int count = upl_watchlist_load_all(db_path, records, UPL_WATCHLIST_MAX_ENTRIES);
+        int64_t now_ts = (int64_t)time(NULL);
+        total_registros = count;
+
+        printf("\n================================================================================\n");
+        printf("  MINI BASE DE COMPROBACION CONDUCTUAL (VENTANA DE VIGILANCIA: 5.0 DIAS)\n");
+        printf("  Archivo: %s | Perfiles registrados: %d\n", db_path, count);
+        printf("================================================================================\n");
+        if (count == 0) {
+            printf("  [Vacia] Aun no hay posibles bots en observacion.\n");
+            printf("================================================================================\n");
+            return 0;
+        }
+
+        printf("  %-20s %-10s %-14s %-10s %-16s\n", "USUARIO", "DIAS/5.0d", "DELTA FOLLOWS", "SCORE", "ESTADO");
+        printf("  ------------------------------------------------------------------------------\n");
+        for (int i = 0; i < count; ++i) {
+            double days = (double)(now_ts - records[i].first_seen_epoch) / 86400.0;
+            if (days < 0.0) days = 0.0;
+            long long d_fng = (long long)(records[i].cur_following - records[i].t0_following);
+            ring_push(ring_vista, (int64_t)records[i].current_score);
+            printf("  @%-19s %5.1fd/5d  %+lld (%lld)      %3d%%       [%s]\n",
+                   records[i].login, days, d_fng, (long long)records[i].cur_following,
+                   records[i].current_score, upl_watchlist_status_label(records[i].status));
+        }
+        printf("================================================================================\n");
+    }
+    retornar total_registros;
+}
+
+// 6. Auditar usuario en vivo (y auto-registrar en vigilancia de 5 dias si es dudoso o force_watch)
+pub fn bot_radar_auditar_usuario_db(username: str, db_path: str, force_watch: bool) -> i32 {
+    let own ring_telemetria: *void = ring_crear(30);
+    defer ring_destruir(ring_telemetria);
+
+    let mut prob_final: i32 = -1;
+    embed {
+        static char user_buf[65536];
+        static char events_buf[131072];
+        char clean_user[128];
+        size_t ui = 0;
+        if (username) {
+            while (*username == ' ' || *username == '@') username++;
+            while (*username && *username != ' ' && *username != '\r' && *username != '\n' && ui + 1 < sizeof(clean_user)) {
+                clean_user[ui++] = *username++;
+            }
+        }
+        clean_user[ui] = '\0';
+
+        if (clean_user[0] == '\0') {
+            fprintf(stderr, "[ERROR] Nombre de usuario vacio.\n");
+            return -1;
+        }
+
+        char path_user[256];
+        char path_events[256];
+        snprintf(path_user, sizeof(path_user), "/users/%s", clean_user);
+        snprintf(path_events, sizeof(path_events), "/users/%s/events/public?per_page=30", clean_user);
+
+        int status_user = 0;
+        int status_events = 0;
+        bool ok_u = upl_radar_https_get_github(path_user, user_buf, sizeof(user_buf), &status_user);
+        if (!ok_u || status_user != 200) {
+            printf("  [!] No se pudo consultar '%s' en GitHub API (HTTP %d).\n", clean_user, status_user);
+            if (status_user == 403) {
+                printf("      Sugerencia: Define GITHUB_TOKEN para ampliar el limite de 60 a 5000 consultas/hora.\n");
+            }
+            return -1;
+        }
+
+        upl_radar_https_get_github(path_events, events_buf, sizeof(events_buf), &status_events);
+
+        UplBotAuditReport rep;
+        memset(&rep, 0, sizeof(rep));
+        char bio_buf[512];
+        upl_radar_extract_json_str(user_buf, "login", rep.login, sizeof(rep.login));
+        if (rep.login[0] == '\0') snprintf(rep.login, sizeof(rep.login), "%s", clean_user);
+        upl_radar_extract_json_str(user_buf, "bio", bio_buf, sizeof(bio_buf));
+        upl_radar_extract_json_int64(user_buf, "followers", &rep.followers);
+        upl_radar_extract_json_int64(user_buf, "following", &rep.following);
+        upl_radar_extract_json_int64(user_buf, "public_repos", &rep.public_repos);
+        upl_radar_extract_json_int64(user_buf, "public_gists", &rep.public_gists);
+
+        rep.bio_spam = upl_radar_bio_has_spam(bio_buf);
+        rep.is_vip = upl_radar_is_vip(clean_user);
+
+        if (status_events == 200) {
+            rep.push_events          = (int64_t)upl_radar_count_substr(events_buf, "\"PushEvent\"");
+            rep.pr_events            = (int64_t)upl_radar_count_substr(events_buf, "\"PullRequestEvent\"");
+            rep.create_events        = (int64_t)upl_radar_count_substr(events_buf, "\"CreateEvent\"");
+            rep.comment_events       = (int64_t)upl_radar_count_substr(events_buf, "\"IssueCommentEvent\"");
+            rep.follow_events        = (int64_t)upl_radar_count_substr(events_buf, "\"FollowEvent\"");
+            rep.distinct_event_repos = upl_radar_count_distinct_repos(events_buf);
+        }
+
+        int64_t total_code = rep.push_events + rep.pr_events + rep.create_events;
+        ring_push(ring_telemetria, rep.following);
+        ring_push(ring_telemetria, rep.followers);
+        upl_radar_score_report(&rep);
+
+        double ratio = (double)rep.following / (double)(rep.followers > 0 ? rep.followers : 1);
+
+        printf("\n====================================================================\n");
+        printf("  UPL+ GH-BOT-RADAR v2.3.0 | AUDITORIA DE CUENTA: @%s\n", clean_user);
+        printf("====================================================================\n");
+        printf("  [*] Seguidores (followers)     : %lld\n", (long long)rep.followers);
+        printf("  [*] Siguiendo  (following)     : %lld  (Ratio Follow/Seguidor: %.2fx)\n", (long long)rep.following, ratio);
+        printf("  [*] Repositorios Publicos      : %lld\n", (long long)rep.public_repos);
+        printf("  [*] Eventos Codigo (Push/PR)   : %lld en ultimos 30 eventos (%lld repos)\n",
+               (long long)total_code, (long long)rep.distinct_event_repos);
+        printf("  [*] Eventos Comentario/Follow  : %lld comentarios | %lld follows\n",
+               (long long)rep.comment_events, (long long)rep.follow_events);
+        printf("--------------------------------------------------------------------\n");
+        printf("  [>] PROBABILIDAD DE BOT        : %d%%\n", rep.bot_probability);
+        printf("  [>] INDICE DE AUTENTICIDAD     : %d%%\n", rep.authenticity_score);
+        printf("  [>] VEREDICTO INICIAL          : %s\n", rep.verdict);
+        printf("  [>] EVIDENCIA                  : %s\n", rep.reasons);
+
+        /* Si cae en zona de posible bot (35%-69%) o se pide vigilancia explicita,
+           se anade automaticamente a la Mini Base de Comprobacion de 5 Dias */
+        if (db_path && db_path[0] != '\0' && (force_watch || (rep.bot_probability >= 35 && rep.bot_probability < 70))) {
+            int32_t st = bot_radar_watchlist_registrar((char*)db_path, clean_user,
+                                                       rep.followers, rep.following,
+                                                       rep.public_repos, total_code,
+                                                       rep.bot_probability, 0);
+            printf("  [+] VIGILANCIA 5 DIAS          : Registrado en '%s' -> [%s]\n",
+                   db_path, upl_watchlist_status_label(st));
+        }
+        printf("====================================================================\n");
+
+        prob_final = rep.bot_probability;
+    }
+    retornar prob_final;
+}
+
+pub fn bot_radar_auditar_usuario(username: str) -> i32 {
+    retornar bot_radar_auditar_usuario_db(username, "gh_bot_watchlist.db", false);
+}
+
+// 7. Re-comprobar en vivo todos los perfiles en vigilancia de 5 dias
+pub fn bot_radar_watchlist_recomprobar_vivo(db_path: str) -> i32 {
+    let own ring_chk: *void = ring_crear(32);
+    defer ring_destruir(ring_chk);
+
+    let mut actualizados: i32 = 0;
+    embed {
+        static UplWatchlistRecord records[UPL_WATCHLIST_MAX_ENTRIES];
+        int count = upl_watchlist_load_all(db_path, records, UPL_WATCHLIST_MAX_ENTRIES);
+        if (count == 0) {
+            printf("  [*] No hay perfiles pendientes en '%s'.\n", db_path);
+            return 0;
+        }
+        printf("\n[*] Re-evaluando comportamiento temporal (5 dias) de %d perfiles en '%s'...\n", count, db_path);
+        for (int i = 0; i < count; ++i) {
+            if (records[i].status == UPL_STATUS_QUARANTINE_5D) {
+                bot_radar_auditar_usuario_db(records[i].login, (char*)db_path, true);
+                ring_push(ring_chk, (int64_t)i);
+                actualizados++;
+            }
+        }
+        bot_radar_watchlist_listar((char*)db_path);
+    }
+    retornar actualizados;
+}
+
+// 8. Escanear muestra de seguidores y enviar dudosos a la Mini Base de 5 Dias
+pub fn bot_radar_escanear_seguidores(target_user: str, max_muestra: i32) -> i32 {
+    let own ring_muestra: *void = ring_crear(64);
+    defer ring_destruir(ring_muestra);
+
+    let mut pct_bots_infiltrados: i32 = -1;
+    embed {
+        static char list_buf[131072];
+        char clean_target[128];
+        size_t ti = 0;
+        if (target_user) {
+            while (*target_user == ' ' || *target_user == '@') target_user++;
+            while (*target_user && *target_user != ' ' && *target_user != '\r' && *target_user != '\n' && ti + 1 < sizeof(clean_target)) {
+                clean_target[ti++] = *target_user++;
+            }
+        }
+        clean_target[ti] = '\0';
+        if (clean_target[0] == '\0') return -1;
+
+        int limit = (max_muestra > 0 && max_muestra <= 30) ? max_muestra : 15;
+        char path_followers[256];
+        snprintf(path_followers, sizeof(path_followers), "/users/%s/followers?per_page=%d", clean_target, limit);
+
+        int status = 0;
+        if (!upl_radar_https_get_github(path_followers, list_buf, sizeof(list_buf), &status) || status != 200) {
+            printf("  [!] No se pudo obtener la lista de seguidores de @%s (HTTP %d).\n", clean_target, status);
+            return -1;
+        }
+
+        printf("\n====================================================================\n");
+        printf("  ESCANEANDO MUESTRA DE SEGUIDORES DE @%s (Max %d cuentas)\n", clean_target, limit);
+        printf("====================================================================\n");
+
+        char logins[30][128];
+        int found = 0;
+        const char *p = list_buf;
+        while (found < limit && (p = strstr(p, "\"login\"")) != NULL) {
+            const char *c = p + 7;
+            while (*c == ' ' || *c == '\t' || *c == ':') c++;
+            if (*c == '"') {
+                c++;
+                size_t li = 0;
+                while (*c && *c != '"' && li + 1 < 128) {
+                    logins[found][li++] = *c++;
+                }
+                logins[found][li] = '\0';
+                if (li > 0) found++;
+            }
+            p += 7;
+        }
+
+        if (found == 0) {
+            printf("  [*] La cuenta @%s no tiene seguidores visibles o la lista esta vacia.\n", clean_target);
+            return 0;
+        }
+
+        int bots_detectados = 0;
+        int en_vigilancia_5d = 0;
+        int auditados = 0;
+        for (int i = 0; i < found; ++i) {
+            int prob = bot_radar_auditar_usuario_db(logins[i], "gh_bot_watchlist.db", false);
+            if (prob >= 0) {
+                auditados++;
+                ring_push(ring_muestra, (int64_t)prob);
+                if (prob >= 70) bots_detectados++;
+                else if (prob >= 35) en_vigilancia_5d++;
+            }
+        }
+
+        pct_bots_infiltrados = (auditados > 0) ? ((bots_detectados * 100) / auditados) : 0;
+        printf("\n********************************************************************\n");
+        printf("  RESUMEN GLOBAL DE SEGUIDORES DE @%s:\n", clean_target);
+        printf("  - Seguidores analizados                : %d\n", auditados);
+        printf("  - Bots / Granjas confirmadas (>=70%%)   : %d\n", bots_detectados);
+        printf("  - Enviados a Vigilancia 5 Dias (35-69%%): %d -> gh_bot_watchlist.db\n", en_vigilancia_5d);
+        printf("  - PORCENTAJE DE BOTS CONFIRMADOS       : %d%%\n", pct_bots_infiltrados);
+        printf("********************************************************************\n");
+    }
+    retornar pct_bots_infiltrados;
+}

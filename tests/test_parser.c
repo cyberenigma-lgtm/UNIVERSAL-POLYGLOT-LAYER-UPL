@@ -165,8 +165,21 @@ static void test_control_flow_bilingual(void) {
     UplAstNode *ret_stmt = stmt->as.stmt_if.else_branch->as.block.stmts->node;
     assert(ret_stmt->kind == AST_STMT_RETURN);
 
+    // Bucle for / para bilingüe
+    const char *for_src = "para (sea mut i: i32 = 0; i < 10; i += 1) { x += i; }";
+    Lexer lex_for;
+    lexer_init(&lex_for, for_src);
+    UplParser p_for;
+    upl_parser_init(&p_for, &lex_for, &arena);
+    UplAstNode *for_stmt = upl_parser_parse_statement(&p_for);
+    assert(!p_for.had_error);
+    assert(for_stmt != NULL && for_stmt->kind == AST_STMT_FOR);
+    assert(for_stmt->as.stmt_for.init != NULL && for_stmt->as.stmt_for.init->kind == AST_STMT_LET);
+    assert(for_stmt->as.stmt_for.cond != NULL && for_stmt->as.stmt_for.cond->kind == AST_EXPR_BINARY);
+    assert(for_stmt->as.stmt_for.step != NULL && for_stmt->as.stmt_for.step->kind == AST_EXPR_BINARY);
+
     upl_arena_free(&arena);
-    printf("  [PASS] 4. Estructuras de control de flujo (si/sino, mutabilidad)\n");
+    printf("  [PASS] 4. Estructuras de control de flujo (si/sino, para/for, mutabilidad)\n");
 }
 
 static void test_raw_embed_block_ast(void) {

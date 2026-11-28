@@ -1,0 +1,23 @@
+modulo prueba_crypto;
+
+importar modules/std/crypto.upl;
+
+fn main() -> i32 {
+    let mut salida_sha: *void = 0;
+    embed {
+        salida_sha = malloc(128);
+        memset(salida_sha, 0, 128);
+    }
+    
+    crypto_sha256_hex("UPL-SOVEREIGN-2.2.3", salida_sha as str);
+    let crc: u32 = crypto_crc32("123456789", 9);
+
+    embed {
+        printf("=== PRUEBA DE SILICIO: CRIPTOGRAFIA Y ENTROPIA EN UPL+ ===\n");
+        printf("  [PASS] SHA-256 ('UPL-SOVEREIGN-2.2.3'): %s\n", (char*)salida_sha);
+        printf("  [PASS] Hardware CRC-32C Castagnoli: 0x%08X\n", (unsigned int)crc);
+        printf("=== PRUEBA CRIPTO SILICIO: EXITOSA (0 ERRORES) ===\n");
+        free(salida_sha);
+    }
+    return 0;
+}

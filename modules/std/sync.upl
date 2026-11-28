@@ -1,0 +1,121 @@
+// ============================================================================
+// UPL STANDARD LIBRARY: HIERARCHICAL RANKED SYNCHRONIZATION (std::sync)
+// Language: Pure UPL+ / Native Systems Standard Library
+// Author: Jose Manuel Moreno (Noxferion)
+// ============================================================================
+// Mutexes with static and runtime lock rank enforcement to eliminate
+// lock-ordering deadlocks (ABBA Deadlocks). Inspired by CoreCLR Issue #128401.
+// ============================================================================
+
+modulo std_sync;
+
+embed {
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdbool.h>
+
+#ifdef _WIN32
+#  include <windows.h>
+#else
+#  include <pthread.h>
+#endif
+
+typedef struct {
+    int32_t rank;
+    volatile int32_t is_held;
+#ifdef _WIN32
+    CRITICAL_SECTION cs;
+#else
+    pthread_mutex_t mutex;
+#endif
+} UplRankedMutex;
+
+#if defined(_MSC_VER)
+static __declspec(thread) int32_t t_current_highest_rank = 0;
+#else
+static __thread int32_t t_current_highest_rank = 0;
+#endif
+}
+
+// 1. Crear mutex con rango de jerarquía explícito
+pub fn mutex_crear(rango: i32) -> *void {
+    let mut ptr: *void = 0;
+    embed {
+        UplRankedMutex *m = (UplRankedMutex*)calloc(1, sizeof(UplRankedMutex));
+        if (m) {
+            m->rank = rango;
+            m->is_held = 0;
+#ifdef _WIN32
+            InitializeCriticalSection(&m->cs);
+#else
+            pthread_mutex_init(&m->mutex, NULL);
+#endif
+        }
+        return (void*)m;
+    }
+    retornar ptr;
+}
+
+// 2. Adquirir lock verificando la ausencia de inversión de jerarquía
+pub fn mutex_adquirir(m: *void) -> bool {
+    embed {
+        UplRankedMutex *mutex = (UplRankedMutex*)m;
+        if (!mutex) return false;
+
+        /* Regla de Jerarquía: Un hilo que sostiene un lock de rango N solo puede
+           adquirir locks de rango M estrictamente mayor que N (M > N).
+           Si intenta adquirir un rango menor o igual, se detecta DEADLOCK INMINENTE */
+        if (t_current_highest_rank > 0 && mutex->rank <= t_current_highest_rank) {
+            fprintf(stderr, "[ERROR FATAL DEADLOCK] Inversion de rango de bloqueo detectada!\n");
+            fprintf(stderr, "                      Rango actual sostenido: %d, intento adquirir rango: %d\n",
+                    t_current_highest_rank, mutex->rank);
+            return false;
+        }
+
+#ifdef _WIN32
+        EnterCriticalSection(&mutex->cs);
+#else
+        pthread_mutex_lock(&mutex->mutex);
+#endif
+        mutex->is_held = 1;
+        t_current_highest_rank = mutex->rank;
+        return true;
+    }
+    retornar false;
+}
+
+// 3. Liberar lock y restaurar jerarquía
+pub fn mutex_liberar(m: *void) -> bool {
+    embed {
+        UplRankedMutex *mutex = (UplRankedMutex*)m;
+        if (!mutex || !mutex->is_held) return false;
+
+        mutex->is_held = 0;
+        t_current_highest_rank = 0; /* Reset de rango al salir de la sección crítica */
+#ifdef _WIN32
+        LeaveCriticalSection(&mutex->cs);
+#else
+        pthread_mutex_unlock(&mutex->mutex);
+#endif
+        return true;
+    }
+    retornar true;
+}
+
+// 4. Destruir mutex
+pub fn mutex_destruir(m: *void) -> bool {
+    embed {
+        UplRankedMutex *mutex = (UplRankedMutex*)m;
+        if (!mutex) return false;
+
+#ifdef _WIN32
+        DeleteCriticalSection(&mutex->cs);
+#else
+        pthread_mutex_destroy(&mutex->mutex);
+#endif
+        free(mutex);
+        return true;
+    }
+    retornar true;
+}

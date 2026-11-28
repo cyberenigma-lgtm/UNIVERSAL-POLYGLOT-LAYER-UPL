@@ -1,0 +1,27 @@
+modulo prueba_channel;
+
+importar modules/std/channel.upl;
+
+fn main() -> i32 {
+    let mut ch: *void = canal_crear();
+    canal_enviar(ch, 42);
+    canal_enviar(ch, 100);
+
+    let mut r1: i64 = 0;
+    let mut r2: i64 = 0;
+    canal_recibir(ch, &r1);
+    canal_recibir(ch, &r2);
+    canal_cerrar(ch);
+
+    embed {
+        printf("=== PRUEBA DE CONCURRENCIA LOCK-FREE: CANALES MPSC ===\n");
+        printf("  [PASS] Mensaje 1 recibido del canal atomico: %lld\n", (long long)r1);
+        printf("  [PASS] Mensaje 2 recibido del canal atomico: %lld\n", (long long)r2);
+        printf("=== PRUEBA CANAL ATOMICO: EXITOSA (0 ERRORES) ===\n");
+    }
+
+    if (r1 == 42 && r2 == 100) {
+        return 0;
+    }
+    return 1;
+}

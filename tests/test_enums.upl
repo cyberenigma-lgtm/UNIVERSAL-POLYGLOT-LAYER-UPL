@@ -1,0 +1,33 @@
+modulo prueba_enums;
+
+enum EstadoServidor {
+    Apagado = 0,
+    Iniciando = 1,
+    Activo = 2,
+    Mantenimiento = 5
+}
+
+enumeracion ModoEjecucion {
+    Depuracion,
+    Produccion,
+    Soberano = 777
+}
+
+fn main() -> i32 {
+    let mut s: EstadoServidor = 2;
+    let modo: ModoEjecucion = 777;
+
+    incrustar {
+        printf("=== PRUEBA DE ENUMS BILINGUES EN UPL+ (Dragon Book) ===\n");
+    }
+
+    if (s == 2 && modo == 777) {
+        incrustar {
+            printf("  [PASS] Enum 'EstadoServidor' resuelto a valor nativo C99: 2\n");
+            printf("  [PASS] Enumeracion 'ModoEjecucion' con asignacion explicita: 777\n");
+            printf("=== PRUEBA ENUMS: EXITOSA (0 ERRORES) ===\n");
+        }
+        return 0;
+    }
+    return 1;
+}

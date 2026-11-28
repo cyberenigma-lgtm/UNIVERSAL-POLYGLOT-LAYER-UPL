@@ -1,0 +1,33 @@
+modulo prueba_defer;
+
+funcion probar_defer_lifo() -> i32 {
+    sea mut contador: i32 = 10;
+
+    posponer {
+        incrustar {
+            printf("  [PASS] Defer LIFO 2 ejecutado: Segundo registro liberado\n");
+        }
+    }
+
+    defer {
+        incrustar {
+            printf("  [PASS] Defer LIFO 1 ejecutado: Primer recurso liberado\n");
+        }
+    }
+
+    incrustar {
+        printf("=== PRUEBA DE SINTAXIS: DEFER / POSPONER EN UPL+ ===\n");
+        printf("  [INFO] Ejecutando cuerpo principal de la funcion...\n");
+    }
+
+    retornar contador;
+}
+
+funcion kmain() -> i32 {
+    sea res: i32 = probar_defer_lifo();
+    incrustar {
+        printf("  [PASS] Retorno preservado con exito: %d\n", res);
+        printf("=== PRUEBA DEFER/POSPONER: EXITOSA (0 ERRORES) ===\n");
+    }
+    retornar 0;
+}

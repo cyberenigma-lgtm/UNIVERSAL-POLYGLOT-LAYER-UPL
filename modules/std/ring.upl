@@ -1,0 +1,116 @@
+// ============================================================================
+// UPL STANDARD LIBRARY: BOUNDED RING BUFFER (std::ring)
+// Language: Pure UPL+ / Native Systems Standard Library
+// Author: Jose Manuel Moreno (Noxferion)
+// ============================================================================
+// Zero-allocation, O(1) deterministically bounded ring buffer with automatic
+// eviction of oldest elements. Designed to eliminate unbounded memory growth
+// and memory leaks in streaming/logging systems.
+// ============================================================================
+
+modulo std_ring;
+
+embed {
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+#include <stdbool.h>
+
+#define UPL_RING_DEFAULT_CAP 256
+
+typedef struct {
+    int64_t data[UPL_RING_DEFAULT_CAP];
+    size_t head;
+    size_t tail;
+    size_t count;
+    size_t capacity;
+    uint64_t total_evictions;
+} UplRingBuffer;
+}
+
+// Estructura representativa en UPL
+pub struct RingBuffer {
+    capacity: u64,
+    count: u64,
+    total_evictions: u64
+}
+
+// 1. Inicializar ring buffer acotado en memoria plana
+pub fn ring_crear(capacidad: u64) -> *void {
+    let mut ptr: *void = 0;
+    embed {
+        UplRingBuffer *ring = (UplRingBuffer*)calloc(1, sizeof(UplRingBuffer));
+        if (ring) {
+            ring->capacity = (capacidad > 0 && capacidad <= UPL_RING_DEFAULT_CAP) ? capacidad : UPL_RING_DEFAULT_CAP;
+            ring->head = 0;
+            ring->tail = 0;
+            ring->count = 0;
+            ring->total_evictions = 0;
+        }
+        return (void*)ring;
+    }
+    retornar ptr;
+}
+
+// 2. Insertar elemento en O(1) con desalojo determinista si está lleno
+pub fn ring_push(r: *void, val: i64) -> bool {
+    embed {
+        UplRingBuffer *ring = (UplRingBuffer*)r;
+        if (!ring) return false;
+
+        if (ring->count == ring->capacity) {
+            /* Desalojo automatico del elemento mas antiguo (evita fugas) */
+            ring->head = (ring->head + 1) % ring->capacity;
+            ring->total_evictions++;
+        } else {
+            ring->count++;
+        }
+
+        ring->data[ring->tail] = val;
+        ring->tail = (ring->tail + 1) % ring->capacity;
+        return true;
+    }
+    retornar false;
+}
+
+// 3. Extraer elemento en O(1) LIFO/FIFO
+pub fn ring_pop(r: *void, out_val: *i64) -> bool {
+    embed {
+        UplRingBuffer *ring = (UplRingBuffer*)r;
+        if (!ring || ring->count == 0) return false;
+
+        if (out_val) {
+            *out_val = ring->data[ring->head];
+        }
+        ring->head = (ring->head + 1) % ring->capacity;
+        ring->count--;
+        return true;
+    }
+    retornar false;
+}
+
+// 4. Consultar desalojos acumulados (garantía de cota fija)
+pub fn ring_evicciones(r: *void) -> u64 {
+    let mut evic: u64 = 0;
+    embed {
+        UplRingBuffer *ring = (UplRingBuffer*)r;
+        if (ring) return (uint64_t)ring->total_evictions;
+        return 0;
+    }
+    retornar evic;
+}
+
+// 5. Destruir y liberar ring buffer
+pub fn ring_destruir(r: *void) -> bool {
+    embed {
+        UplRingBuffer *ring = (UplRingBuffer*)r;
+        if (ring) {
+            free(ring);
+            return true;
+        }
+        return false;
+    }
+    retornar true;
+}
+

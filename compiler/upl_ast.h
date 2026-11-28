@@ -44,6 +44,7 @@ typedef enum {
     AST_STMT_RETURN,
     AST_STMT_IF,
     AST_STMT_WHILE,
+    AST_STMT_FOR,
     AST_STMT_EXPR,
     AST_STMT_BLOCK,
     AST_STMT_EMBED,
@@ -59,6 +60,8 @@ typedef enum {
     AST_DECL_FN,
     AST_DECL_FIELD,
     AST_DECL_STRUCT,
+    AST_DECL_ENUM,
+    AST_DECL_ENUM_VARIANT,
     AST_DECL_MODULE,
     AST_DECL_IMPORT,
     AST_PROGRAM
@@ -169,6 +172,14 @@ struct UplAstNode {
             UplAstNode *body;
         } stmt_while;
 
+        // Sentencia For (for / para)
+        struct {
+            UplAstNode *init;
+            UplAstNode *cond;
+            UplAstNode *step;
+            UplAstNode *body;
+        } stmt_for;
+
         // Sentencia Return
         struct {
             UplAstNode *expr;
@@ -229,6 +240,18 @@ struct UplAstNode {
             UplAstNode *type;
         } decl_field;
 
+        // Declaración de enum
+        struct {
+            const char *name;
+            UplAstList *variants;
+        } decl_enum;
+
+        // Variante de enum
+        struct {
+            const char *name;
+            UplAstNode *value_expr; // Puede ser NULL si se auto-incrementa
+        } decl_enum_variant;
+
         // Módulo e importación
         struct { const char *name; } decl_module;
         struct { const char *path; } decl_import;
@@ -263,6 +286,7 @@ UplAstNode* upl_ast_new_cast(UPL_Arena *arena, UplAstNode *expr, UplAstNode *tar
 UplAstNode* upl_ast_new_stmt_let(UPL_Arena *arena, const char *name, UplAstNode *type, UplAstNode *init_expr, bool is_mut, size_t line, size_t col);
 UplAstNode* upl_ast_new_stmt_if(UPL_Arena *arena, UplAstNode *cond, UplAstNode *then_block, UplAstNode *else_branch, size_t line, size_t col);
 UplAstNode* upl_ast_new_stmt_while(UPL_Arena *arena, UplAstNode *cond, UplAstNode *body, size_t line, size_t col);
+UplAstNode* upl_ast_new_stmt_for(UPL_Arena *arena, UplAstNode *init, UplAstNode *cond, UplAstNode *step, UplAstNode *body, size_t line, size_t col);
 UplAstNode* upl_ast_new_stmt_return(UPL_Arena *arena, UplAstNode *expr, size_t line, size_t col);
 UplAstNode* upl_ast_new_stmt_expr(UPL_Arena *arena, UplAstNode *expr, size_t line, size_t col);
 UplAstNode* upl_ast_new_block(UPL_Arena *arena, UplAstList *stmts, size_t line, size_t col);
@@ -277,6 +301,8 @@ UplAstNode* upl_ast_new_decl_param(UPL_Arena *arena, const char *name, UplAstNod
 UplAstNode* upl_ast_new_decl_fn(UPL_Arena *arena, const char *name, UplAstList *params, UplAstNode *ret_type, UplAstNode *body, bool is_pub, size_t line, size_t col);
 UplAstNode* upl_ast_new_decl_field(UPL_Arena *arena, const char *name, UplAstNode *type, size_t line, size_t col);
 UplAstNode* upl_ast_new_decl_struct(UPL_Arena *arena, const char *name, UplAstList *fields, size_t line, size_t col);
+UplAstNode* upl_ast_new_decl_enum(UPL_Arena *arena, const char *name, UplAstList *variants, size_t line, size_t col);
+UplAstNode* upl_ast_new_decl_enum_variant(UPL_Arena *arena, const char *name, UplAstNode *value_expr, size_t line, size_t col);
 UplAstNode* upl_ast_new_decl_module(UPL_Arena *arena, const char *name, size_t line, size_t col);
 UplAstNode* upl_ast_new_decl_import(UPL_Arena *arena, const char *path, size_t line, size_t col);
 UplAstNode* upl_ast_new_program(UPL_Arena *arena, UplAstList *items, size_t line, size_t col);

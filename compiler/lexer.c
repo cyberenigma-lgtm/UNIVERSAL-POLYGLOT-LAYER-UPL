@@ -97,7 +97,8 @@ static TokenType match_keyword(const char* lexeme) {
     if (strcmp(lexeme, "return") == 0 || strcmp(lexeme, "retornar") == 0) return TOKEN_KEYWORD_RETURN;
     if (strcmp(lexeme, "break") == 0 || strcmp(lexeme, "romper") == 0) return TOKEN_KEYWORD_BREAK;
     if (strcmp(lexeme, "continue") == 0 || strcmp(lexeme, "continuar") == 0) return TOKEN_KEYWORD_CONTINUE;
-    if (strcmp(lexeme, "defer") == 0 || strcmp(lexeme, "diferir") == 0) return TOKEN_KEYWORD_DEFER;
+    if (strcmp(lexeme, "defer") == 0 || strcmp(lexeme, "diferir") == 0 || strcmp(lexeme, "posponer") == 0) return TOKEN_KEYWORD_DEFER;
+    if (strcmp(lexeme, "enum") == 0 || strcmp(lexeme, "enumeracion") == 0) return TOKEN_KEYWORD_ENUM;
     if (strcmp(lexeme, "match") == 0 || strcmp(lexeme, "segun") == 0) return TOKEN_KEYWORD_MATCH;
     if (strcmp(lexeme, "case") == 0 || strcmp(lexeme, "caso") == 0) return TOKEN_KEYWORD_CASE;
     if (strcmp(lexeme, "default") == 0 || strcmp(lexeme, "defecto") == 0) return TOKEN_KEYWORD_DEFAULT;
@@ -116,6 +117,13 @@ static TokenType match_keyword(const char* lexeme) {
     // Bloques nativos e inline
     if (strcmp(lexeme, "asm") == 0 || strcmp(lexeme, "ensamblador") == 0) return TOKEN_KEYWORD_ASM;
     if (strcmp(lexeme, "embed") == 0 || strcmp(lexeme, "incrustar") == 0) return TOKEN_KEYWORD_EMBED;
+
+    // Extensiones Soberanas v2.3.0 (Tipos Afines, Concurrencia y Jerarquia de Locks)
+    if (strcmp(lexeme, "own") == 0 || strcmp(lexeme, "propio") == 0) return TOKEN_KEYWORD_OWN;
+    if (strcmp(lexeme, "move") == 0 || strcmp(lexeme, "mover") == 0) return TOKEN_KEYWORD_MOVE;
+    if (strcmp(lexeme, "lock_rank") == 0 || strcmp(lexeme, "rango_bloqueo") == 0) return TOKEN_KEYWORD_LOCK_RANK;
+    if (strcmp(lexeme, "shared") == 0 || strcmp(lexeme, "compartido") == 0) return TOKEN_KEYWORD_SHARED;
+    if (strcmp(lexeme, "readonly") == 0 || strcmp(lexeme, "solo_lectura") == 0) return TOKEN_KEYWORD_READONLY;
     
     return TOKEN_IDENTIFIER;
 }
@@ -425,10 +433,16 @@ const char* token_type_name(TokenType type) {
         case TOKEN_KEYWORD_BREAK:  return "TOKEN_KEYWORD_BREAK";
         case TOKEN_KEYWORD_CONTINUE: return "TOKEN_KEYWORD_CONTINUE";
         case TOKEN_KEYWORD_DEFER:  return "TOKEN_KEYWORD_DEFER";
+        case TOKEN_KEYWORD_ENUM:   return "TOKEN_KEYWORD_ENUM";
         case TOKEN_KEYWORD_MATCH:  return "TOKEN_KEYWORD_MATCH";
         case TOKEN_KEYWORD_CASE:   return "TOKEN_KEYWORD_CASE";
         case TOKEN_KEYWORD_DEFAULT:return "TOKEN_KEYWORD_DEFAULT";
         case TOKEN_FAT_ARROW:      return "TOKEN_FAT_ARROW";
+        case TOKEN_KEYWORD_OWN:    return "TOKEN_KEYWORD_OWN";
+        case TOKEN_KEYWORD_MOVE:   return "TOKEN_KEYWORD_MOVE";
+        case TOKEN_KEYWORD_LOCK_RANK: return "TOKEN_KEYWORD_LOCK_RANK";
+        case TOKEN_KEYWORD_SHARED: return "TOKEN_KEYWORD_SHARED";
+        case TOKEN_KEYWORD_READONLY: return "TOKEN_KEYWORD_READONLY";
         case TOKEN_OP_ASSIGN:      return "TOKEN_OP_ASSIGN";
         case TOKEN_OP_EQUAL:       return "TOKEN_OP_EQUAL";
         case TOKEN_OP_NOT_EQUAL:   return "TOKEN_OP_NOT_EQUAL";

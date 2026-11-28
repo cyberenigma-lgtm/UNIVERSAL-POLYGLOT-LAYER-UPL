@@ -37,10 +37,18 @@ typedef enum {
     TOKEN_KEYWORD_BREAK,    /* break / romper */
     TOKEN_KEYWORD_CONTINUE, /* continue / continuar */
     TOKEN_KEYWORD_DEFER,    /* defer / diferir */
+    TOKEN_KEYWORD_ENUM,     /* enum / enumeracion */
     TOKEN_KEYWORD_MATCH,    /* match / segun */
     TOKEN_KEYWORD_CASE,     /* case / caso */
     TOKEN_KEYWORD_DEFAULT,  /* default / defecto */
     TOKEN_FAT_ARROW,        /* => */
+
+    /* Extensiones Soberanas v2.3.0 (Sistemas, Concurrencia y Propiedad) */
+    TOKEN_KEYWORD_OWN,       /* own / propio */
+    TOKEN_KEYWORD_MOVE,      /* move / mover */
+    TOKEN_KEYWORD_LOCK_RANK, /* lock_rank / rango_bloqueo */
+    TOKEN_KEYWORD_SHARED,    /* shared / compartido */
+    TOKEN_KEYWORD_READONLY,  /* readonly / solo_lectura */
 
     /* Operadores Aritméticos y Lógicos */
     TOKEN_OP_ASSIGN,        /* = */

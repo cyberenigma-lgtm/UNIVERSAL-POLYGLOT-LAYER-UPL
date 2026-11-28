@@ -97,7 +97,15 @@ static void test_comp3_comparisons(void) {
     upl_comp3_from_str(b, sizeof(b), "1.00", 6, 2);
     assert(upl_comp3_cmp(a, b, 6) < 0);
 
-    printf("  [PASS] 4. Comparaciones algebraicas deterministas con signos (<, ==, >)\n");
+    // Verificacion de normalizacion de cero negativo (-100.00 + 100.00 == +0.00)
+    uint8_t zero_pos[8] = {0}, zero_res[8] = {0};
+    upl_comp3_from_str(a, sizeof(a), "-100.00", 6, 2);
+    upl_comp3_from_str(b, sizeof(b), "100.00", 6, 2);
+    upl_comp3_from_str(zero_pos, sizeof(zero_pos), "0.00", 6, 2);
+    assert(upl_comp3_add(zero_res, a, b, 6));
+    assert(upl_comp3_cmp(zero_res, zero_pos, 6) == 0);
+
+    printf("  [PASS] 4. Comparaciones algebraicas deterministas con signos (<, ==, > y -0.00==+0.00)\n");
 }
 
 int main(void) {

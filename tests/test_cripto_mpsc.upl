@@ -1,0 +1,192 @@
+// ============================================================================
+// UPL+ SUITE DE VERIFICACION CONCURRENTE v2.2.3
+// Caso de Prueba de Estres: Canales Lock-Free MPSC + SHA-256 en Silicio
+// Dialecto: Espanol Nativo Bilingue UPL+
+// Autor: Jose Manuel Moreno Cano (Noxferion)
+// ============================================================================
+
+modulo test_cripto_mpsc;
+
+importar modules/std/channel.upl;
+importar modules/std/crypto.upl;
+
+incrustar "c" {
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+#include <stdint.h>
+#include <stdbool.h>
+
+#ifdef _WIN32
+#  include <windows.h>
+#else
+#  include <pthread.h>
+#  include <sched.h>
+#endif
+
+// Estructura C interna para la carga util del mensaje
+typedef struct {
+    int32_t id_productor;
+    char    datos_crudos[65];
+    char    hash_esperado[65];
+} MensajeHashC;
+
+// Contexto compartido entre hilos productores y canal MPSC
+typedef struct {
+    void *canal;
+    int32_t id_hilo;
+    int32_t iteraciones;
+} ProductorContexto;
+
+// Declaraciones adelantadas de funciones UPL exportadas en C
+bool canal_enviar(void* c, int64_t val);
+bool crypto_sha256_hex(const char* texto, const char* salida_hex);
+
+// Funcion ejecutada concurrentemente por cada hilo productor
+#ifdef _WIN32
+static DWORD WINAPI productor_worker_thread(LPVOID arg)
+#else
+static void* productor_worker_thread(void *arg)
+#endif
+{
+    ProductorContexto *ctx = (ProductorContexto*)arg;
+    void *ch = ctx->canal;
+    int32_t id = ctx->id_hilo;
+    int32_t max_it = ctx->iteraciones;
+
+    for (int it = 0; it < max_it; ++it) {
+        MensajeHashC *msg = (MensajeHashC*)malloc(sizeof(MensajeHashC));
+        if (!msg) continue;
+
+        msg->id_productor = id;
+        for (int i = 0; i < 64; ++i) {
+            msg->datos_crudos[i] = 'A' + ((id * 17 + it * 7 + i) % 26);
+        }
+        msg->datos_crudos[64] = '\0';
+
+        // Calcular SHA-256 determinista
+        crypto_sha256_hex((const char*)msg->datos_crudos, msg->hash_esperado);
+
+        // Saturar el canal lock-free sin mutexes (enviar puntero como i64)
+        while (!canal_enviar(ch, (int64_t)(intptr_t)msg)) {
+#ifdef _WIN32
+            Sleep(1);
+#else
+            sched_yield();
+#endif
+        }
+    }
+
+    free(ctx);
+#ifdef _WIN32
+    return 0;
+#else
+    return NULL;
+#endif
+}
+}
+
+// Estructura de Mensaje tipada en UPL
+publico estructura MensajeHash {
+    id_productor: i32,
+    datos_len: i32
+}
+
+funcion principal() -> i32 {
+    incrustar "c" {
+        printf("====================================================================\n");
+        printf("  [UPL+ v2.2.3] SUITE CONCURRENTE: SHA-256 + CANALES LOCK-FREE MPSC\n");
+        printf("  Verificando Inmunidad a Condiciones de Carrera y Desincronizacion\n");
+        printf("====================================================================\n");
+    }
+
+    // 1. Inicializar canal atómico MPSC
+    sea mut ch: *void = canal_crear();
+    sea num_productores: i32 = 4;
+    sea iteraciones_por_hilo: i32 = 100;
+    sea total_esperado: i32 = 400; // 4 * 100
+
+    incrustar "c" {
+        printf("[*] Canal Lock-Free MPSC inicializado en memoria contigua PML4.\n");
+        printf("[*] Lanzando %d hilos concurrentes (%d mensajes/hilo = %d total)...\n",
+               num_productores, iteraciones_por_hilo, total_esperado);
+
+#ifdef _WIN32
+        HANDLE hilos[4];
+        for (int t = 0; t < num_productores; ++t) {
+            ProductorContexto *ctx = (ProductorContexto*)malloc(sizeof(ProductorContexto));
+            ctx->canal = ch;
+            ctx->id_hilo = t + 1;
+            ctx->iteraciones = iteraciones_por_hilo;
+            hilos[t] = CreateThread(NULL, 0, productor_worker_thread, ctx, 0, NULL);
+        }
+#else
+        pthread_t hilos[4];
+        for (int t = 0; t < num_productores; ++t) {
+            ProductorContexto *ctx = (ProductorContexto*)malloc(sizeof(ProductorContexto));
+            ctx->canal = ch;
+            ctx->id_hilo = t + 1;
+            ctx->iteraciones = iteraciones_por_hilo;
+            pthread_create(&hilos[t], NULL, productor_worker_thread, ctx);
+        }
+#endif
+    }
+
+    // 2. Fase de Consumo y Verificación en el hilo principal
+    sea mut mensajes_procesados: i32 = 0;
+    sea mut fallos_integridad: i32 = 0;
+
+    mientras mensajes_procesados < total_esperado {
+        sea mut val_ptr: i64 = 0;
+        sea exito: bool = canal_recibir(ch, &val_ptr);
+
+        si exito {
+            incrustar "c" {
+                MensajeHashC *msg_in = (MensajeHashC*)(intptr_t)val_ptr;
+                if (msg_in) {
+                    char hash_recalculado[65];
+                    crypto_sha256_hex((const char*)msg_in->datos_crudos, hash_recalculado);
+
+                    if (strcmp(msg_in->hash_esperado, hash_recalculado) != 0) {
+                        fallos_integridad++;
+                    }
+                    free(msg_in);
+                }
+            }
+            mensajes_procesados = mensajes_procesados + 1;
+        } sino {
+            incrustar "c" {
+#ifdef _WIN32
+                Sleep(1);
+#else
+                usleep(1000);
+#endif
+            }
+        }
+    }
+
+    incrustar "c" {
+#ifdef _WIN32
+        WaitForMultipleObjects(num_productores, hilos, TRUE, INFINITE);
+        for (int t = 0; t < num_productores; ++t) CloseHandle(hilos[t]);
+#else
+        for (int t = 0; t < num_productores; ++t) pthread_join(hilos[t], NULL);
+#endif
+
+        printf("[+] Mensajes procesados con exito: %d / %d\n", mensajes_procesados, total_esperado);
+        printf("[+] Corrupciones o desincronizaciones detectadas: %d\n", fallos_integridad);
+
+        assert(mensajes_procesados == total_esperado);
+        assert(fallos_integridad == 0);
+
+        printf("====================================================================\n");
+        printf("  [PASS] VERIFICACION CONCURRENTE v2.2.3: 100%% HOMEOSTASIS\n");
+        printf("  CANALES MPSC INMUNES A CONDICIONES DE CARRERA (0 MUTEX CONTENCION)\n");
+        printf("====================================================================\n");
+    }
+
+    canal_cerrar(ch);
+    retornar 0;
+}
+

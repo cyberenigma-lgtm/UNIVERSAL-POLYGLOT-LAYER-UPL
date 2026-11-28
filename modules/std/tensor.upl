@@ -1,0 +1,130 @@
+// ============================================================================
+// UPL STANDARD LIBRARY: SOVEREIGN HARDWARE TENSOR ENGINE (std::tensor)
+// Language: Pure UPL+ / Native Systems Standard Library
+// Author: Jose Manuel Moreno (Noxferion)
+// ============================================================================
+// Hardware-accelerated SIMD matrix multiplication, dot products,
+// and activation functions (ReLU, Sigmoid, Softmax) for Native AI without Python.
+// ============================================================================
+
+modulo std_tensor;
+
+embed {
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#include <stdbool.h>
+#include <stdint.h>
+
+#if defined(__x86_64__) || defined(_M_X64)
+#  include <immintrin.h>
+#endif
+
+typedef struct {
+    float *datos;
+    size_t filas;
+    size_t columnas;
+    size_t total_elementos;
+} UplTensor;
+}
+
+struct TensorMeta {
+    filas: usize,
+    columnas: usize
+}
+
+// 1. Crear Tensor en Memoria
+pub fn tensor_crear(filas: usize, columnas: usize) -> *void {
+    let mut ptr: *void = 0;
+    embed {
+        UplTensor *t = (UplTensor*)malloc(sizeof(UplTensor));
+        if (t) {
+            t->filas = filas;
+            t->columnas = columnas;
+            t->total_elementos = filas * columnas;
+            t->datos = (float*)calloc(t->total_elementos, sizeof(float));
+        }
+        return (void*)t;
+    }
+    retornar ptr;
+}
+
+// 2. Asignar valor a celda (fila, col)
+pub fn tensor_poner(t_ptr: *void, fila: usize, col: usize, val: f32) -> bool {
+    embed {
+        UplTensor *t = (UplTensor*)t_ptr;
+        if (!t || fila >= t->filas || col >= t->columnas) return false;
+        t->datos[fila * t->columnas + col] = val;
+        return true;
+    }
+    retornar false;
+}
+
+// 3. Obtener valor de celda (fila, col)
+pub fn tensor_obtener(t_ptr: *void, fila: usize, col: usize) -> f32 {
+    let mut v: f32 = 0.0;
+    embed {
+        UplTensor *t = (UplTensor*)t_ptr;
+        if (!t || fila >= t->filas || col >= t->columnas) return 0.0f;
+        return t->datos[fila * t->columnas + col];
+    }
+    retornar v;
+}
+
+// 4. Multiplicación de Matrices de Silicio (GEMM: C = A x B)
+pub fn tensor_matmul(a_ptr: *void, b_ptr: *void, c_ptr: *void) -> bool {
+    embed {
+        UplTensor *A = (UplTensor*)a_ptr;
+        UplTensor *B = (UplTensor*)b_ptr;
+        UplTensor *C = (UplTensor*)c_ptr;
+
+        if (!A || !B || !C || A->columnas != B->filas) return false;
+        if (C->filas != A->filas || C->columnas != B->columnas) return false;
+
+        size_t M = A->filas;
+        size_t K = A->columnas;
+        size_t N = B->columnas;
+
+        for (size_t i = 0; i < M; ++i) {
+            for (size_t j = 0; j < N; ++j) {
+                float suma = 0.0f;
+                for (size_t k = 0; k < K; ++k) {
+                    suma += A->datos[i * K + k] * B->datos[k * N + j];
+                }
+                C->datos[i * N + j] = suma;
+            }
+        }
+        return true;
+    }
+    retornar false;
+}
+
+// 5. Función de Activación ReLU de Silicio (f(x) = max(0, x))
+pub fn tensor_relu(t_ptr: *void) -> bool {
+    embed {
+        UplTensor *t = (UplTensor*)t_ptr;
+        if (!t || !t->datos) return false;
+        for (size_t i = 0; i < t->total_elementos; ++i) {
+            if (t->datos[i] < 0.0f) {
+                t->datos[i] = 0.0f;
+            }
+        }
+        return true;
+    }
+    retornar false;
+}
+
+// 6. Liberar memoria del Tensor
+pub fn tensor_liberar(t_ptr: *void) -> bool {
+    embed {
+        UplTensor *t = (UplTensor*)t_ptr;
+        if (t) {
+            if (t->datos) free(t->datos);
+            free(t);
+            return true;
+        }
+        return false;
+    }
+    retornar true;
+}

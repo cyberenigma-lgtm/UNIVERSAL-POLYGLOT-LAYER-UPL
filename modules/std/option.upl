@@ -1,0 +1,39 @@
+// ============================================================================
+// UPL STANDARD LIBRARY: OPTION MONAD (std::option / std::opcion)
+// Language: Pure UPL+ / Native Systems Standard Library
+// Author: Jose Manuel Moreno (Noxferion)
+// ============================================================================
+// Null-safe sovereign optional values for systems programming.
+// ============================================================================
+
+modulo std_option;
+
+struct Opcion {
+    hay_valor: bool,
+    valor: i64
+}
+
+pub fn opcion_algo(val: i64) -> Opcion {
+    let mut op: Opcion;
+    op.hay_valor = true;
+    op.valor = val;
+    retornar op;
+}
+
+pub fn opcion_nada() -> Opcion {
+    let mut op: Opcion;
+    op.hay_valor = false;
+    op.valor = 0;
+    retornar op;
+}
+
+pub fn opcion_tiene_valor(op: Opcion) -> bool {
+    retornar op.hay_valor;
+}
+
+pub fn opcion_desenvolver_o(op: Opcion, valor_defecto: i64) -> i64 {
+    if (op.hay_valor) {
+        retornar op.valor;
+    }
+    retornar valor_defecto;
+}

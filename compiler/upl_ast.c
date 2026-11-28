@@ -163,6 +163,17 @@ UplAstNode* upl_ast_new_stmt_while(UPL_Arena *arena, UplAstNode *cond, UplAstNod
     return n;
 }
 
+UplAstNode* upl_ast_new_stmt_for(UPL_Arena *arena, UplAstNode *init, UplAstNode *cond, UplAstNode *step, UplAstNode *body, size_t line, size_t col) {
+    UplAstNode *n = alloc_node(arena, AST_STMT_FOR, line, col);
+    if (n) {
+        n->as.stmt_for.init = init;
+        n->as.stmt_for.cond = cond;
+        n->as.stmt_for.step = step;
+        n->as.stmt_for.body = body;
+    }
+    return n;
+}
+
 UplAstNode* upl_ast_new_stmt_return(UPL_Arena *arena, UplAstNode *expr, size_t line, size_t col) {
     UplAstNode *n = alloc_node(arena, AST_STMT_RETURN, line, col);
     if (n) n->as.stmt_return.expr = expr;
@@ -259,6 +270,24 @@ UplAstNode* upl_ast_new_decl_struct(UPL_Arena *arena, const char *name, UplAstLi
     return n;
 }
 
+UplAstNode* upl_ast_new_decl_enum(UPL_Arena *arena, const char *name, UplAstList *variants, size_t line, size_t col) {
+    UplAstNode *n = alloc_node(arena, AST_DECL_ENUM, line, col);
+    if (n) {
+        n->as.decl_enum.name = upl_arena_strdup(arena, name);
+        n->as.decl_enum.variants = variants;
+    }
+    return n;
+}
+
+UplAstNode* upl_ast_new_decl_enum_variant(UPL_Arena *arena, const char *name, UplAstNode *value_expr, size_t line, size_t col) {
+    UplAstNode *n = alloc_node(arena, AST_DECL_ENUM_VARIANT, line, col);
+    if (n) {
+        n->as.decl_enum_variant.name = upl_arena_strdup(arena, name);
+        n->as.decl_enum_variant.value_expr = value_expr;
+    }
+    return n;
+}
+
 UplAstNode* upl_ast_new_decl_module(UPL_Arena *arena, const char *name, size_t line, size_t col) {
     UplAstNode *n = alloc_node(arena, AST_DECL_MODULE, line, col);
     if (n) n->as.decl_module.name = upl_arena_strdup(arena, name);
@@ -325,16 +354,22 @@ const char* upl_ast_kind_name(UplAstKind kind) {
         case AST_STMT_RETURN:    return "StmtReturn";
         case AST_STMT_IF:        return "StmtIf";
         case AST_STMT_WHILE:     return "StmtWhile";
+        case AST_STMT_FOR:       return "StmtFor";
         case AST_STMT_EXPR:      return "StmtExpr";
         case AST_STMT_BLOCK:     return "StmtBlock";
         case AST_STMT_EMBED:     return "StmtEmbed";
         case AST_STMT_ASM:       return "StmtAsm";
         case AST_STMT_BREAK:     return "StmtBreak";
         case AST_STMT_CONTINUE:  return "StmtContinue";
+        case AST_STMT_DEFER:     return "StmtDefer";
+        case AST_STMT_MATCH:     return "StmtMatch";
+        case AST_MATCH_CASE:     return "MatchCase";
         case AST_DECL_PARAM:     return "DeclParam";
         case AST_DECL_FN:        return "DeclFn";
         case AST_DECL_FIELD:     return "DeclField";
         case AST_DECL_STRUCT:    return "DeclStruct";
+        case AST_DECL_ENUM:      return "DeclEnum";
+        case AST_DECL_ENUM_VARIANT: return "DeclEnumVariant";
         case AST_DECL_MODULE:    return "DeclModule";
         case AST_DECL_IMPORT:    return "DeclImport";
         case AST_PROGRAM:        return "Program";
