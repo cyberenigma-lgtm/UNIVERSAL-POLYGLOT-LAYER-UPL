@@ -1,0 +1,127 @@
+--- a/src/modules/MouseWithoutBorders/App/Core/InitAndCleanup.cs
++++ b/src/modules/MouseWithoutBorders/App/Core/InitAndCleanup.cs
+@@ -150,6 +150,11 @@
+             Logger.TelemetryLogTrace($"{nameof(SystemEvents_PowerModeChanged)}: {e.Mode}", SeverityLevel.Information);
+             LastResumeSuspendTime = DateTime.UtcNow;
+             MachineStuff.SwitchToMultipleMode(false, true);
++
++            if (e.Mode == PowerModes.Resume && PleaseReopenSocket == 0)
++            {
++                PleaseReopenSocket = 10;
++            }
+         }
+     }
+ 
+--- a/src/modules/MouseWithoutBorders/App/Service/Worker.cs
++++ b/src/modules/MouseWithoutBorders/App/Service/Worker.cs
+@@ -157,10 +157,6 @@
+                         LogDebug($"successRunCount(3) = {successRunCount}, processCount = {processCount}");
+                     }
+                 }
+-                else
+-                {
+-                    RunMeUnderSystemAccount(noOfTry, null, userLocalAppDataPath);
+-                }
+             }
+             catch (Exception ex)
+             {
+--- a/src/modules/MouseWithoutBorders/App/Class/SocketStuff.cs
++++ b/src/modules/MouseWithoutBorders/App/Class/SocketStuff.cs
+@@ -901,9 +901,9 @@
+ 
+                 Logger.LogDebug("Connecting to: " + machineName);
+ 
+-                if (!string.IsNullOrEmpty(Setting.Values.Name2IP))
+-                {
+-                    string combinedName2ipList = Setting.Values.Name2IpPolicyList + Separator + Setting.Values.Name2IP;
++                if (!string.IsNullOrEmpty(Setting.Values.Name2IP) || !string.IsNullOrEmpty(Setting.Values.Name2IpPolicyList))
++                {
++                    string combinedName2ipList = string.Join(Separator[0], Setting.Values.Name2IpPolicyList ?? string.Empty, Setting.Values.Name2IP ?? string.Empty);
+                     string[] name2ip = combinedName2ipList.Split(Separator, StringSplitOptions.RemoveEmptyEntries);
+                     string[] nameNip;
+ 
+--- a/src/modules/MouseWithoutBorders/App/Class/InputSimulation.cs
++++ b/src/modules/MouseWithoutBorders/App/Class/InputSimulation.cs
+@@ -79,11 +79,21 @@
+                     input64.mi.dwExtraInfo = input.mi.dwExtraInfo;
+                 }
+ 
++                bool injected = false;
+                 if (input.type == 0 && (input.mi.dwFlags & (int)NativeMethods.MOUSEEVENTF.MOVE) != 0 && NativeMethods.InjectMouseInputAvailable)
+                 {
+-                    Injector.InjectMouseInput(new[] { MouseInputToInjectedInputMouseInfo(input64.mi) });
+-                }
+-                else
++                    try
++                    {
++                        Injector.InjectMouseInput(new[] { MouseInputToInjectedInputMouseInfo(input64.mi) });
++                        injected = true;
++                    }
++                    catch (System.Exception ex) when (ex is COMException || ex is System.UnauthorizedAccessException)
++                    {
++                        Logger.LogDebug($"InjectMouseInput failed (0x{ex.HResult:X8}), falling back to SendInput64.");
++                    }
++                }
++
++                if (!injected)
+                 {
+                     NativeMethods.INPUT64[] inputs = { input64 };
+                     rv = NativeMethods.SendInput64(1, inputs, Marshal.SizeOf(input64));
+@@ -91,11 +101,21 @@
+             }
+             else
+             {
++                bool injected = false;
+                 if (input.type == 0 && (input.mi.dwFlags & (int)NativeMethods.MOUSEEVENTF.MOVE) != 0 && NativeMethods.InjectMouseInputAvailable)
+                 {
+-                    Injector.InjectMouseInput(new[] { MouseInputToInjectedInputMouseInfo(input.mi) });
+-                }
+-                else
++                    try
++                    {
++                        Injector.InjectMouseInput(new[] { MouseInputToInjectedInputMouseInfo(input.mi) });
++                        injected = true;
++                    }
++                    catch (System.Exception ex) when (ex is COMException || ex is System.UnauthorizedAccessException)
++                    {
++                        Logger.LogDebug($"InjectMouseInput failed (0x{ex.HResult:X8}), falling back to SendInput.");
++                    }
++                }
++
++                if (!injected)
+                 {
+                     NativeMethods.INPUT[] inputs = { input };
+                     rv = NativeMethods.SendInput(1, inputs, Marshal.SizeOf(input));
+--- a/src/settings-ui/Settings.UI/ViewModels/MouseWithoutBordersViewModel.cs
++++ b/src/settings-ui/Settings.UI/ViewModels/MouseWithoutBordersViewModel.cs
+@@ -515,19 +515,19 @@
+                             {
+                                 foreach (var machine in machineMatrixString)
+                                 {
+-                                    if (states.TryGetValue(machine.Item.Name, out var state))
++                                    var nextStatus = states.TryGetValue(machine.Item.Name, out var state)
++                                        ? state.Status
++                                        : SocketStatus.NA;
++                                    _uiDispatcherQueue.TryEnqueue(DispatcherQueuePriority.Normal, () =>
+                                     {
+-                                        _uiDispatcherQueue.TryEnqueue(DispatcherQueuePriority.Normal, () =>
++                                        try
+                                         {
+-                                            try
+-                                            {
+-                                                machine.Item.StatusBrush = StatusColors[state.Status];
+-                                            }
+-                                            catch (Exception)
+-                                            {
+-                                            }
+-                                        });
+-                                    }
++                                            machine.Item.StatusBrush = StatusColors[nextStatus];
++                                        }
++                                        catch (Exception)
++                                        {
++                                        }
++                                    });
+                                 }
+                             }
+                         }
