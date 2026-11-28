@@ -39,6 +39,8 @@ Thumbs.db
 # UPL Temporary/Auditory
 AUDITORIA.asm
 AUDITORIA_CLI.upl
+gh_bot_watchlist.db
+*.watchlist.db
 *.tmp
 *.log
 *.upl.c
@@ -57,6 +59,7 @@ bin/
 *.exp
 *.bin
 *.iso
+*.vsix
 *.qcow2
 *.vmdk
 *.img
@@ -97,4 +100,23 @@ PROPRIETARY*/
 *.deb
 *.rpm
 *.apk
+
+# Local / Private / Unrelated Workspace Files (Hardened Isolation)
+followers.json
+siv_janitor*
+staging_cv/
+staging_profile/
+CV_Noxferion_README.md
+cv_readme.md
+profile_readme.md
+cyberenigma_lgtm_README.md
+SUBIR_README_GITHUB.cmd
+Noxferion_AI_Video_Suite/
+Microsoft/
+neuro_kwin*
+neuro_upl_probe*
+control_panel_dump.txt
+cp_app_body.txt
+mobile/
+upl.lock
 
