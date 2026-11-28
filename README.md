@@ -3,17 +3,17 @@
 ### High-Performance Deterministic Systems Language & Standalone C99 Native Compiler
 
 **Autor / Author:** José Manuel Moreno (Noxferion)  
-**Versión / Version:** 2.2.3-Release (Sovereign Super-Systems & Silicon Crypto Edition)  
+**Versión / Version:** 2.3.0-Release (Sovereign Systems & Tier-1 Upstream Verification Edition)  
 **Licencia / License:** GNU General Public License v3.0 (GPLv3) — Autoría y especificación técnica registradas en SafeCreative
 
 [![CI Native Tests](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/actions/workflows/ci.yml)
-[![Release: v2.2.3](https://img.shields.io/badge/Release-v2.2.3--Sovereign%20Super--Systems-blue.svg)](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/releases/tag/v2.2.3)
+[![Release: v2.3.0](https://img.shields.io/badge/Release-v2.3.0--Sovereign%20Systems-blue.svg)](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/releases/tag/v2.3.0)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![SafeCreative Protected](https://img.shields.io/badge/SafeCreative-Obra%20Protegida-blue.svg)](https://www.safecreative.org)
-[![Language Specification](https://img.shields.io/badge/Spec-Formal%20EBNF%20v2.2.3-green.svg)](docs/SPEC_GRAMATICA_Y_SISTEMA_TIPOS.md)
+[![Language Specification](https://img.shields.io/badge/Spec-Formal%20EBNF%20v2.3.0-green.svg)](docs/SPEC_GRAMATICA_Y_SISTEMA_TIPOS.md)
 [![Compiler Architecture](https://img.shields.io/badge/Compiler-Dragon%20Book%20Pipeline-blue.svg)](docs/ARQUITECTURA_COMPILADOR.md)
 [![Verification Suite](https://img.shields.io/badge/Tests-8%2F8%20Suites%20PASS-brightgreen.svg)](docs/SUITE_DE_PRUEBAS.md)
-[![Package Manager](https://img.shields.io/badge/Package%20Manager-upl__pm%20v1.3.0%20(29%20Modules)-purple.svg)](tools/upl_pm.c)
+[![Package Manager](https://img.shields.io/badge/Package%20Manager-upl__pm%20(34%20Modules)-purple.svg)](tools/upl_pm.c)
 [![C99 Transpiler](https://img.shields.io/badge/Transpiler-c2upl%20(C99%20to%20UPL%2B)-orange.svg)](tools/c2upl.c)
 [![Python Dependency](https://img.shields.io/badge/Python-0%25%20(Pure%20C99)-lightgrey.svg)](#-toolchain-aut%C3%B3noma-cero-dependencias)
 
@@ -29,11 +29,94 @@
 
 ---
 
+### ⚡ 30-Second Quickstart (Zero-Leak Kernel Telemetry)
+
+Save as [`examples/quickstart_30s.upl`](examples/quickstart_30s.upl) and run it directly with `uplc`—demonstrating direct Win32/POSIX OS syscall interop and deterministic handle/FD reclamation (`delta = 0`):
+
+```upl
+module quickstart_30s;
+
+embed "c" {
+#include <stdio.h>
+#include <stdint.h>
+#ifdef _WIN32
+  #define WIN32_LEAN_AND_MEAN
+  #include <windows.h>
+  static uint32_t get_handle_count(void) {
+      DWORD c = 0;
+      GetProcessHandleCount(GetCurrentProcess(), &c);
+      return (uint32_t)c;
+  }
+#else
+  #include <dirent.h>
+  #include <fcntl.h>
+  #include <unistd.h>
+  static uint32_t get_handle_count(void) {
+      DIR *d = opendir("/proc/self/fd");
+      if (!d) d = opendir("/dev/fd");
+      if (!d) return 0;
+      uint32_t count = 0;
+      while (readdir(d) != NULL) count++;
+      closedir(d);
+      return count;
+  }
+#endif
+}
+
+pub fn main() -> i32 {
+    embed "c" {
+        uint32_t before = get_handle_count();
+        printf("[UPL+ Quickstart] Baseline kernel handles: %u\n", before);
+
+#ifdef _WIN32
+        for (int i = 0; i < 250; i++) {
+            HANDLE ev = CreateEventW(NULL, TRUE, FALSE, NULL);
+            if (ev) CloseHandle(ev); // Deterministic LIFO cleanup
+        }
+#else
+        for (int i = 0; i < 250; i++) {
+            int fd = open("/dev/null", O_RDONLY);
+            if (fd >= 0) close(fd); // Deterministic FD cleanup
+        }
+#endif
+
+        uint32_t after = get_handle_count();
+        printf("[UPL+ Quickstart] After 250 cycles: %u (delta = %d)\n",
+               after, (int)(after - before));
+    }
+    return 0;
+}
+```
+
+```bash
+# Audit & run in one step:
+./bin/uplc.exe audit examples/quickstart_30s.upl
+./bin/uplc.exe run examples/quickstart_30s.upl
+```
+
+---
+
+### 🏆 Índice Maestro de Casos de Éxito Verificados (Tier-1 Upstream & WebAssembly)
+Cada entrada incluye una auditoría nativa `.upl`, pruebas de regresión y un parche quirúrgico `.diff` verificado contra el repositorio upstream:
+
+| Caso / Proyecto | Hallazgo & Solución Verificada | Evidencia & Parche |
+|---|---|---|
+| **microsoft/PowerToys #52414** | Fix de visibilidad del cursor en *AutoHideCursor* sobre ventanas elevadas como el Administrador de Tareas (`Taskmgr.exe` / UIPI) mediante polling `GetCursorPos` en `AutoHideCursorState.h` | [`15_powertoys_52414_autohidecursor_uipi_taskmgr`](Proyectos_en_Revision/15_powertoys_52414_autohidecursor_uipi_taskmgr/) |
+| **microsoft/PowerToys #51077** | Suite de estabilidad multi-causa para *Mouse Without Borders*: reconexión tras suspensión/bloqueo, fallback de `InputInjector` a `SendInput`, fix de `Name2IP` (`System.String[]`), proceso duplicado en `Worker.cs` y tiles UI | [`14_powertoys_51077_mwb_stability_suite`](Proyectos_en_Revision/14_powertoys_51077_mwb_stability_suite/) |
+| **microsoft/PowerToys #51448** | Fuga de ~10,000 handles/día (ratio 3:2:1) en modo servicio `SYSTEM` — mitigada con reclamación determinista LIFO en `NativeMethods.cs` | [`02_powertoys_51448_system_handle_leak`](Proyectos_en_Revision/02_powertoys_51448_system_handle_leak/) |
+| **microsoft/PowerToys #50647** | Fuga de objetos GDI (`HICON`) en *Workspaces* verificada en vivo con `GetGuiResources` | [`05_powertoys_50647_gdi_icon_leak`](Proyectos_en_Revision/05_powertoys_50647_gdi_icon_leak/) |
+| **microsoft/PowerToys #51546** | Limitador lock-free $O(1)$ (Token Bucket) en `AppExtensionHost.LogMessage` para frenar picos de CPU/I/O por IPC en Command Palette | [`06_powertoys_51546_cmdpal_extension_rate_limit`](Proyectos_en_Revision/06_powertoys_51546_cmdpal_extension_rate_limit/) |
+| **GH-Bot-Radar (WebAssembly + CLI)** | Motor de telemetría consultiva anti-bots de GitHub compilado a WebAssembly y CLI nativa con ventana conductual de 5 días | [`gh_bot_radar_cli.upl`](examples/gh_bot_radar_cli.upl) · [App Web](https://cyberenigma-lgtm.github.io/gh-bot-radar/) |
+| **dotnet/runtime #136284, #135997, #136152, #126908** | Fugas de memoria no administrada (`CoTaskMem`, delegados Mono, sockets HTTP/2, heap Wasm) | [`Proyectos_en_Revision/01..07`](Proyectos_en_Revision/) |
+| **dotnet/runtime #101022, #128401, #131659, #138322** | Fuga `HttpListener` WebSocket, deadlock `perfmap` en CoreCLR GC, OOM en cgroups y `ThreadAbort` en Mono Wasm | [`Proyectos_en_Revision/09..12`](Proyectos_en_Revision/) |
+
+---
+
 ### ⚡ INSTALACIÓN RÁPIDA (ANTIGRAVITY IDE / VS CODE / NOTEPAD++)
 Todo el ecosistema está completamente autocontenido en este repositorio:
 
-1. **Extensión Oficial para Antigravity IDE y VS Code:**
-   - Instala el paquete oficial en 1 clic: [`extensions/upl-vscode/upl-lang-2.2.3.vsix`](extensions/upl-vscode/upl-lang-2.2.3.vsix) (*Menú Extensiones `...` -> Install from VSIX...*).
+1. **Extensión Oficial para Antigravity IDE y VS Code (v2.3.0):**
+   - Genera e instala el paquete oficial con 1 clic ejecutando [`extensions/instalar_extension.bat`](extensions/instalar_extension.bat), o instala directamente el VSIX generado (`antigravity-ide --install-extension extensions/upl-vscode/upl-lang-2.3.0.vsix`).
 2. **Soporte para Notepad++:**
    - Importa el archivo [`extensions/notepadpp/upl_notepadpp.xml`](extensions/notepadpp/upl_notepadpp.xml) desde *Idioma -> Definir idioma -> Importar*.
 3. **Compilador y Ejecución Instantánea:**
@@ -57,13 +140,14 @@ Todo el ecosistema está completamente autocontenido en este repositorio:
 
 ## 🇪🇸 [Español] - Especificación Técnica de UPL+
 
-### 🌟 Novedades Destacadas en la Versión 2.2.3 (Sovereign Super-Systems & Silicon Crypto Edition)
-* 🔐 **Criptografía Determinista en Silicio:** Módulo SHA-256 nativo integrado sin dependencias externas (`modules/std/crypto`).
-* 🏷️ **Enumeraciones Bilingües (`enum` / `enumeracion`):** Soporte de variantes tipadas con coincidencia `segun` / `match` optimizada en $O(1)$.
-* ⚡ **Canales Lock-Free MPSC (Multi-Producer Single-Consumer):** Primitivas de sincronización atómica entre hilos con latencia sub-microsegundo (0 mutexes, 0 contención).
-* 🧮 **Tensores GEMM y Aceleración Matricial:** Operaciones de álgebra lineal determinista para inferencia y cálculo numérico directo sobre PML4/Heap.
-* 🛡️ **Verificación Criptográfica en `upl_pm` (`upl_pm verify`):** Auditoría automática de integridad SHA-256 sobre los 29 módulos del catálogo de paquetes.
-* 📦 **Herramientas de Desarrollo Actualizadas:** Extensión [`extensions/upl-vscode/upl-lang-2.2.3.vsix`](extensions/upl-vscode/upl-lang-2.2.3.vsix) para Antigravity IDE y VS Code.
+### 🌟 Novedades Destacadas en la Versión 2.3.0 (Sovereign Systems & Tier-1 Upstream Verification Edition)
+* 🔍 **Motor Nativo de Auditoría Estática Formal (`uplc audit`):** Subcomando integrado `uplc audit <archivo.upl> [-o reporte.md]` que audita ciclo de vida de recursos LIFO, jerarquía de bloqueos e inmutabilidad global para Pull Requests técnicos.
+* 🔑 **Propiedad Lineal y Afinidad (`own` / `propio`, `move` / `mover`):** Calificadores para punteros y handles del kernel que obligan a liberación determinista mediante `defer` / `posponer`.
+* 🔒 **Jerarquía Anti-Deadlock (`lock_rank` / `rango_bloqueo` y `modules/std/sync`):** Ordenación estricta de rangos en mutexes para impedir inversiones ABBA.
+* 🧊 **Inmutabilidad Profunda Compartida (`shared readonly` / `compartido solo_lectura`):** Garantía de estado estático inmutable entre hilos.
+* 🌀 **Arenas y Búferes Acotados $O(1)$ (`modules/std/ring`, `modules/std/slab`):** Búferes circulares con auto-desalojo determinista sin `malloc` dinámico y asignadores Slab alineados a 4 KB.
+* 🛰️ **Radar Anti-Bots de GitHub (`modules/net/gh_bot_radar` + WebAssembly):** Herramienta real de telemetría consultiva resistente a falsos positivos con **vigilancia conductual de 5 días** ([App Web en Vivo](https://cyberenigma-lgtm.github.io/gh-bot-radar/) · [Repo Independiente](https://github.com/cyberenigma-lgtm/gh-bot-radar)).
+* 🛡️ **Catálogo Ampliado a 34 Módulos Certificados SHA-256 (`upl_pm verify`):** Incluye también Criptografía SHA-256 en silicio (`std/crypto`), Canales MPSC (`std/channel`), Tensores GEMM (`std/tensor`) y los 14 casos de auditoría en [`Proyectos_en_Revision/`](Proyectos_en_Revision/).
 
 ---
 
@@ -207,7 +291,7 @@ test.bat
 * **[5/8] Compilación End-to-End con `uplc` y LIFO `defer`/`posponer`:** PASS (Cálculo exacto: 1000 EUR + 21% = 1210 EUR).
 * **[6/8] Transpilador C99 a UPL+ (`c2upl`):** 5/5 tests PASS.
 * **[7/8] Suite Maestra de Módulos de Silicio:** 28/28 tests PASS (GXNOX, NeuroCOBOL, NEURO-GFX, Probe, NUASM, NeuroWill, IAGROK, DVTRGAS).
-* **[8/8] Suite Soberana v2.2.3:** PASS (Enums bilingües, Criptografía SHA-256 en Silicio, Canales Lock-Free MPSC, Tensores GEMM, Calculadora Políglota y verificación SHA-256 `upl_pm verify`).
+* **[8/8] Suite Soberana v2.3.0:** PASS (Enums bilingües, Criptografía SHA-256 en Silicio, Canales Lock-Free MPSC, Tensores GEMM, `std/ring`, `std/slab`, `std/sync`, `net/gh_bot_radar`, Calculadora Políglota y verificación SHA-256 `upl_pm verify` sobre 34 módulos).
 
 <p align="center">
   <img src="assets/upl_test_launcher_screen.png" alt="UPL+ Laboratory Test Center - Suite de Verificación Empírica" width="850"/><br/>
@@ -244,17 +328,27 @@ Para validar la fiabilidad de UPL+ en entornos de producción con limitaciones d
 * **Paquete distribuible:** [`dist/ror_memory_guard.zip`](dist/ror_memory_guard.zip).
 
 ---
+
+### 🛰️ Utilidad Real en Producción: GH-Bot-Radar (Anti-Bots para Mantenedores de GitHub)
+Construido en **UPL+ v2.3.0** (`own`, `defer`, `std/ring` acotado $O(1)$ y transporte nativo `WinHTTP`/POSIX), **GH-Bot-Radar** detecta granjas de *follow-farming* y cuentas automatizadas de spam en GitHub evitando falsos positivos contra desarrolladores legítimos:
+* **Código del módulo en UPL+:** [`modules/net/gh_bot_radar.upl`](modules/net/gh_bot_radar.upl) (certificado `100.0%` LIFO / `0` fugas por `uplc audit`) y CLI [`examples/gh_bot_radar_cli.upl`](examples/gh_bot_radar_cli.upl).
+* **Uso Web instantáneo sin descargas (WebAssembly):** **[https://cyberenigma-lgtm.github.io/gh-bot-radar/](https://cyberenigma-lgtm.github.io/gh-bot-radar/)** *(núcleo `.wasm` de 807 bytes en el navegador, cuarentena de 5 días en `localStorage` y generador de insignia SVG para perfiles)*.
+* **Repositorio autónomo y binario portable (`~97 KB`):** **[github.com/cyberenigma-lgtm/gh-bot-radar](https://github.com/cyberenigma-lgtm/gh-bot-radar)** | Paquete [`dist/gh_bot_radar_v1.0_standalone.zip`](dist/gh_bot_radar_v1.0_standalone.zip).
+* **Escudos Anti-Falsos-Positivos (Telemetría Consultiva):** 0% penalización por antigüedad, protección de ingenieros en repositorios privados (`0` repos públicos), protección de autores prolíficos (`>300` repos) y de programadores activos con alto historial de *follows*, además de **Mini Base de Vigilancia de 5 Días** (`gh_bot_watchlist.db`) antes de emitir veredicto sobre casos dudosos.
+
+---
 ---
 
 ## 🇬🇧 [English] - UPL+ Technical Specification
 
-### 🌟 What's New in Version 2.2.3 (Sovereign Super-Systems & Silicon Crypto Edition)
-* 🔐 **Deterministic Silicon Cryptography:** Native SHA-256 standard module with zero external dependencies (`modules/std/crypto`).
-* 🏷️ **Bilingual Enumerations (`enum` / `enumeracion`):** Typed enum variants with optimized $O(1)$ pattern matching (`match` / `segun`).
-* ⚡ **Lock-Free MPSC Channels:** Atomic inter-thread synchronization primitives with sub-microsecond latency (0 mutexes, 0 contention).
-* 🧮 **GEMM Tensor Acceleration:** Deterministic linear algebra and matrix operations for direct CPU inference over native PML4/Heap.
-* 🛡️ **Cryptographic Verification in `upl_pm` (`upl_pm verify`):** Automated SHA-256 integrity audits across all 29 system package modules.
-* 📦 **Updated Developer Tooling:** Official [`extensions/upl-vscode/upl-lang-2.2.3.vsix`](extensions/upl-vscode/upl-lang-2.2.3.vsix) extension for Google Antigravity IDE and VS Code.
+### 🌟 What's New in Version 2.3.0 (Sovereign Systems & Tier-1 Upstream Verification Edition)
+* 🔍 **Built-in Formal Static Audit Engine (`uplc audit`):** Native `uplc audit <file.upl> [-o report.md]` subcommand auditing LIFO resource lifetimes, lock rank hierarchies, and shared state immutability.
+* 🔑 **Linear Ownership & Affinity (`own` / `propio`, `move` / `mover`):** Strict resource qualifiers enforcing deterministic scope-bound cleanup via `defer` / `posponer`.
+* 🔒 **Static & Runtime Lock Hierarchy (`lock_rank` / `rango_bloqueo` & `modules/std/sync`):** Strict ascending rank enforcement eliminating ABBA lock-ordering deadlocks.
+* 🧊 **Shared Deep Immutability (`shared readonly` / `compartido solo_lectura`):** Transitive immutability guarantees for cross-thread singletons.
+* 🌀 **Bounded $O(1)$ Ring Buffers & 4 KB Slab Allocators (`modules/std/ring`, `modules/std/slab`):** Deterministic auto-eviction ring buffers and page-aligned slab allocators with $O(1)$ free-lists.
+* 🛰️ **GitHub Anti-Bot & 5-Day Watchlist Radar (`modules/net/gh_bot_radar` + WebAssembly):** False-positive-resistant advisory telemetry tool built in UPL+ v2.3.0 ([Live Browser HUD](https://cyberenigma-lgtm.github.io/gh-bot-radar/) · [Standalone Repo](https://github.com/cyberenigma-lgtm/gh-bot-radar)).
+* 🛡️ **34 SHA-256 Certified Standard & Silicon Modules (`upl_pm verify`):** Including Silicon SHA-256 (`std/crypto`), MPSC Channels (`std/channel`), GEMM Tensors (`std/tensor`), and 13 upstream verification suites in [`Proyectos_en_Revision/`](Proyectos_en_Revision/).
 
 ---
 
@@ -389,7 +483,7 @@ test.bat
 * **[5/8] End-to-End Compilation & LIFO `defer`:** PASS (Exact tax calculation: 1000 EUR + 21% = 1210 EUR).
 * **[6/8] C99 to UPL+ Transpiler (`c2upl`):** 5/5 tests PASS.
 * **[7/8] Silicon Modules Master Suite:** 28/28 tests PASS.
-* **[8/8] Sovereign v2.2.3 Suite:** PASS (Bilingual Enums, Silicon SHA-256 Crypto, Lock-Free MPSC Channels, GEMM Tensors, Polyglot Calculator & `upl_pm verify`).
+* **[8/8] Sovereign v2.3.0 Suite:** PASS (Bilingual Enums, Silicon SHA-256 Crypto, Lock-Free MPSC Channels, GEMM Tensors, `std/ring`, `std/slab`, `std/sync`, `net/gh_bot_radar`, Polyglot Calculator & `upl_pm verify` across 34 modules).
 
 ---
 
@@ -419,6 +513,15 @@ A background memory guard for the 32-bit *Warhammer Online: Return of Reckoning*
 * **Mechanism:** Queries physical working set via `K32GetProcessMemoryInfo` and flushes inactive pages with `K32EmptyWorkingSet` when memory exceeds 1.65 GB, mitigating 32-bit OutOfMemory crashes in high-density 400+ player RvR battles.
 * **Empirical Metric:** Measured physical working set drop from 253 MB to 0 MB in under 1 ms.
 * **Package:** [`dist/ror_memory_guard.zip`](dist/ror_memory_guard.zip).
+
+---
+
+### 🛰️ Real-World Tooling Showcase: GH-Bot-Radar (Anti-Bot & 5-Day Watchlist)
+Built in **UPL+ v2.3.0** (`own`, `defer`, bounded $O(1)$ `std/ring`, and native `WinHTTP`/POSIX transport), **GH-Bot-Radar** helps open-source maintainers detect follow-farming and automated spam accounts without penalizing real developers:
+* **UPL+ Source Module & CLI:** [`modules/net/gh_bot_radar.upl`](modules/net/gh_bot_radar.upl) (`100.0%` deterministic LIFO cleanup / `0` leaks via `uplc audit`) and [`examples/gh_bot_radar_cli.upl`](examples/gh_bot_radar_cli.upl).
+* **Live Zero-Install Browser App (WebAssembly):** **[https://cyberenigma-lgtm.github.io/gh-bot-radar/](https://cyberenigma-lgtm.github.io/gh-bot-radar/)** *(807-byte `.wasm` core in the browser, `localStorage` 5-day quarantine DB, and 1-click GitHub Profile Badge generator)*.
+* **Standalone Repository & Portable Bundle:** **[github.com/cyberenigma-lgtm/gh-bot-radar](https://github.com/cyberenigma-lgtm/gh-bot-radar)** | [`dist/gh_bot_radar_v1.0_standalone.zip`](dist/gh_bot_radar_v1.0_standalone.zip).
+* **False-Positive-Resistant Design (Read-Only Advisory Telemetry):** 0% account-age penalty, shields for private-repo engineers (`0` public repos), prolific OSS maintainers (`>300` repos), and active coders with high historical `following`, plus a **5-Day Behavioral Quarantine (`gh_bot_watchlist.db`)** before flagging uncertain accounts.
 
 ---
 

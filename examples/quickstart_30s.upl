@@ -1,0 +1,53 @@
+module quickstart_30s;
+
+embed "c" {
+#include <stdio.h>
+#include <stdint.h>
+#ifdef _WIN32
+  #define WIN32_LEAN_AND_MEAN
+  #include <windows.h>
+  static uint32_t get_handle_count(void) {
+      DWORD c = 0;
+      GetProcessHandleCount(GetCurrentProcess(), &c);
+      return (uint32_t)c;
+  }
+#else
+  #include <dirent.h>
+  #include <fcntl.h>
+  #include <unistd.h>
+  static uint32_t get_handle_count(void) {
+      DIR *d = opendir("/proc/self/fd");
+      if (!d) d = opendir("/dev/fd");
+      if (!d) return 0;
+      uint32_t count = 0;
+      while (readdir(d) != NULL) count++;
+      closedir(d);
+      return count;
+  }
+#endif
+}
+
+pub fn main() -> i32 {
+    embed "c" {
+        uint32_t before = get_handle_count();
+        printf("[UPL+ Quickstart] Baseline kernel handles: %u\n", before);
+
+#ifdef _WIN32
+        for (int i = 0; i < 250; i++) {
+            HANDLE ev = CreateEventW(NULL, TRUE, FALSE, NULL);
+            if (ev) CloseHandle(ev); // Deterministic LIFO cleanup
+        }
+#else
+        for (int i = 0; i < 250; i++) {
+            int fd = open("/dev/null", O_RDONLY);
+            if (fd >= 0) close(fd); // Deterministic FD cleanup
+        }
+#endif
+
+        uint32_t after = get_handle_count();
+        printf("[UPL+ Quickstart] After 250 cycles: %u (delta = %d)\n",
+               after, (int)(after - before));
+    }
+    return 0;
+}
+

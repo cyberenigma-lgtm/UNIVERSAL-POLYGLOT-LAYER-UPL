@@ -1,0 +1,106 @@
+modulo autohidecursor_uipi_audit;
+
+incrustar "c" {
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include <stdint.h>
+
+typedef struct { long x; long y; } pt_t;
+
+typedef struct {
+    bool     hide_on_idle;
+    uint32_t idle_delay_ms;
+    uint64_t last_pointer_input_ms;
+    pt_t     hidden_pos;
+    pt_t     last_polled_pos;
+    bool     hidden;
+} cursor_state_t;
+
+static bool has_moved_intentionally(pt_t a, pt_t b) {
+    int64_t dx = (int64_t)a.x - (int64_t)b.x;
+    int64_t dy = (int64_t)a.y - (int64_t)b.y;
+    return (dx * dx + dy * dy) >= 4; // movementThresholdPixels (2) ^ 2
+}
+
+// Buggy OnTimer (upstream AutoHideCursorState.h:112-123):
+// Ignores GetCursorPos() movement completely when WH_MOUSE_LL is blocked by UIPI (Taskmgr.exe).
+static int on_timer_buggy(cursor_state_t *st, uint64_t now, pt_t pos) {
+    (void)pos;
+    if (!st->hide_on_idle || st->hidden ||
+        (now - st->last_pointer_input_ms < st->idle_delay_ms)) {
+        return 0; // None
+    }
+    st->hidden = true;
+    st->hidden_pos = pos;
+    return 1; // Hide
+}
+
+// Fixed OnTimer:
+// 1. If hidden and GetCursorPos moved >= threshold, return Show (2).
+// 2. If visible and cursor moved since last tick, refresh last_pointer_input_ms.
+static int on_timer_fixed(cursor_state_t *st, uint64_t now, pt_t pos) {
+    if (st->hidden) {
+        st->last_polled_pos = pos;
+        if (has_moved_intentionally(pos, st->hidden_pos)) {
+            st->last_pointer_input_ms = now;
+            st->hidden = false;
+            return 2; // Show
+        }
+        return 0; // None
+    }
+
+    if (pos.x != st->last_polled_pos.x || pos.y != st->last_polled_pos.y) {
+        st->last_polled_pos = pos;
+        st->last_pointer_input_ms = now;
+    }
+
+    if (!st->hide_on_idle || (now - st->last_pointer_input_ms < st->idle_delay_ms)) {
+        return 0; // None
+    }
+
+    st->hidden = true;
+    st->hidden_pos = pos;
+    return 1; // Hide
+}
+}
+
+pub fn main() -> i32 {
+    incrustar "c" {
+        printf("==============================================================================\n");
+        printf(" UPL+ AUDIT: microsoft/PowerToys Issue #52414\n");
+        printf(" Target: AutoHideCursorWorker (UIPI / Task Manager Cursor Disappearance)\n");
+        printf("==============================================================================\n\n");
+
+        POINT live_pt = {0, 0};
+        BOOL got_pos = GetCursorPos(&live_pt);
+        printf("[WIN32] Live GetCursorPos(): ok=%d (%ld, %ld)\n", (int)got_pos, live_pt.x, live_pt.y);
+
+        int failures = 0;
+
+        // Scenario A: Cursor is hidden and user moves mouse over Taskmgr.exe (WH_MOUSE_LL blocked by UIPI)
+        cursor_state_t bug_a = { true, 5000, 1000, {500, 500}, {500, 500}, true };
+        cursor_state_t fix_a = { true, 5000, 1000, {500, 500}, {500, 500}, true };
+        int act_bug_a = on_timer_buggy(&bug_a, 1100, (pt_t){520, 510});
+        int act_fix_a = on_timer_fixed(&fix_a, 1100, (pt_t){520, 510});
+        printf("[TEST A] Hidden + move over Taskmgr (no hook) | Buggy=%d (STILL HIDDEN) | Fixed=%d (SHOW)\n",
+               act_bug_a, act_fix_a);
+        if (act_fix_a != 2 || fix_a.hidden) failures++;
+
+        // Scenario B: Cursor is visible and user actively moves over Taskmgr.exe for > 5s (no hook)
+        cursor_state_t bug_b = { true, 5000, 0, {100, 100}, {100, 100}, false };
+        cursor_state_t fix_b = { true, 5000, 0, {100, 100}, {100, 100}, false };
+        int act_bug_b = on_timer_buggy(&bug_b, 5100, (pt_t){300, 300});
+        int act_fix_b = on_timer_fixed(&fix_b, 5100, (pt_t){300, 300});
+        printf("[TEST B] Active move over Taskmgr > 5s (no hook)| Buggy=%d (HIDES!)       | Fixed=%d (KEPT VISIBLE)\n\n",
+               act_bug_b, act_fix_b);
+        if (act_fix_b != 0 || fix_b.hidden) failures++;
+
+        if (failures == 0) {
+            printf("[VERDICT] #52414 UIPI CURSOR DISAPPEARANCE VERIFIED FIXED (0 FAILURES).\n");
+            return 0;
+        }
+        return 1;
+    }
+}

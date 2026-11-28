@@ -1,0 +1,55 @@
+--- a/src/modules/MouseUtils/AutoHideCursor/AutoHideCursorState.h
++++ b/src/modules/MouseUtils/AutoHideCursor/AutoHideCursorState.h
+@@ -46,7 +46,8 @@
+         State(Configuration configuration, std::uint64_t now, Point cursorPosition) noexcept :
+             m_configuration{ NormalizeConfiguration(configuration) },
+             m_lastPointerInputTime{ now },
+-            m_hiddenPosition{ cursorPosition }
++            m_hiddenPosition{ cursorPosition },
++            m_lastPolledPosition{ cursorPosition }
+         {
+         }
+ 
+@@ -95,6 +96,7 @@
+         CursorAction OnMouseInput(std::uint64_t now, Point cursorPosition, MouseInputKind inputKind) noexcept
+         {
+             m_lastPointerInputTime = now;
++            m_lastPolledPosition = cursorPosition;
+             if (!m_hidden)
+             {
+                 return CursorAction::None;
+@@ -111,7 +113,25 @@
+ 
+         CursorAction OnTimer(std::uint64_t now, Point cursorPosition) noexcept
+         {
+-            if (!m_configuration.hideOnIdle || m_hidden ||
++            if (m_hidden)
++            {
++                m_lastPolledPosition = cursorPosition;
++                if (HasMovedIntentionally(cursorPosition))
++                {
++                    m_lastPointerInputTime = now;
++                    m_hidden = false;
++                    return CursorAction::Show;
++                }
++                return CursorAction::None;
++            }
++
++            if (cursorPosition.x != m_lastPolledPosition.x || cursorPosition.y != m_lastPolledPosition.y)
++            {
++                m_lastPolledPosition = cursorPosition;
++                m_lastPointerInputTime = now;
++            }
++
++            if (!m_configuration.hideOnIdle ||
+                 now - m_lastPointerInputTime < m_configuration.idleDelayMs)
+             {
+                 return CursorAction::None;
+@@ -161,6 +181,7 @@
+         Configuration m_configuration;
+         std::uint64_t m_lastPointerInputTime;
+         Point m_hiddenPosition;
++        Point m_lastPolledPosition;
+         bool m_hidden = false;
+     };
+ }
