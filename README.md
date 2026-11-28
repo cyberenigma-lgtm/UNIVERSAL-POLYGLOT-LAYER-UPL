@@ -528,6 +528,22 @@ Built in **UPL+ v2.3.0** (`own`, `defer`, bounded $O(1)$ `std/ring`, and native 
 
 ---
 
+## 🌐 Documentación Multilingüe / Multilingual Documentation
+
+La documentación oficial de UPL+ está disponible en 5 idiomas / Official UPL+ documentation is available in 5 languages:
+
+| Idioma / Language | Inicio Rápido | Arquitectura | Sintaxis |
+|-------------------|---------------|--------------|---------|
+| 🇪🇸 **Español** | [Guía de Sintaxis](docs/GUIA_OFICIAL_SINTAXIS_Y_COMANDOS_UPL.md) | [Arquitectura](docs/ARQUITECTURA_COMPILADOR.md) | [Gramática](docs/SPEC_GRAMATICA_Y_SISTEMA_TIPOS.md) |
+| 🇬🇧 **English** | [Quickstart](docs/en/QUICKSTART.md) | [Architecture](docs/en/COMPILER_ARCHITECTURE.md) | [Syntax](docs/en/SYNTAX_AND_GRAMMAR.md) |
+| 🇨🇳 **中文** | [快速入门](docs/zh/QUICKSTART.md) | [编译器架构](docs/zh/COMPILER_ARCHITECTURE.md) | [语法规范](docs/zh/SYNTAX_AND_GRAMMAR.md) |
+| 🇫🇷 **Français** | [Démarrage Rapide](docs/fr/QUICKSTART.md) | [Architecture](docs/fr/COMPILER_ARCHITECTURE.md) | [Syntaxe](docs/fr/SYNTAX_AND_GRAMMAR.md) |
+| 🇵🇹 **Português** | [Início Rápido](docs/pt/QUICKSTART.md) | [Arquitetura](docs/pt/COMPILER_ARCHITECTURE.md) | [Sintaxe](docs/pt/SYNTAX_AND_GRAMMAR.md) |
+
+📚 **[→ Índice Completo de Documentación / Full Documentation Index](docs/INDEX.md)**
+
+---
+
 ## 📁 Estructura del Repositorio / Repository Layout
 
 ```
