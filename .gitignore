@@ -1,5 +1,8 @@
 # UPL Sovereign Repository .gitignore
 
+# Local agent config (private, never publish)
+.agents/
+
 # Python
 __pycache__/
 *.py[cod]
