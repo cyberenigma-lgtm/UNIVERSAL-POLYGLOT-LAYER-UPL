@@ -348,7 +348,7 @@ Construido en **UPL+ v2.3.0** (`own`, `defer`, `std/ring` acotado $O(1)$ y trans
 * 🧊 **Shared Deep Immutability (`shared readonly` / `compartido solo_lectura`):** Transitive immutability guarantees for cross-thread singletons.
 * 🌀 **Bounded $O(1)$ Ring Buffers & 4 KB Slab Allocators (`modules/std/ring`, `modules/std/slab`):** Deterministic auto-eviction ring buffers and page-aligned slab allocators with $O(1)$ free-lists.
 * 🛰️ **GitHub Anti-Bot & 5-Day Watchlist Radar (`modules/net/gh_bot_radar` + WebAssembly):** False-positive-resistant advisory telemetry tool built in UPL+ v2.3.0 ([Live Browser HUD](https://cyberenigma-lgtm.github.io/gh-bot-radar/) · [Standalone Repo](https://github.com/cyberenigma-lgtm/gh-bot-radar)).
-* 🛡️ **34 SHA-256 Certified Standard & Silicon Modules (`upl_pm verify`):** Including Silicon SHA-256 (`std/crypto`), MPSC Channels (`std/channel`), GEMM Tensors (`std/tensor`), and 13 upstream verification suites in [`Proyectos_en_Revision/`](Proyectos_en_Revision/).
+* 🛡️ **34 SHA-256 Certified Standard & Silicon Modules (`upl_pm verify`):** Including Silicon SHA-256 (`std/crypto`), MPSC Channels (`std/channel`), GEMM Tensors (`std/tensor`), and 15 upstream verification suites in [`Proyectos_en_Revision/`](Proyectos_en_Revision/).
 
 ---
 
