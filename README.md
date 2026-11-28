@@ -147,7 +147,7 @@ Todo el ecosistema está completamente autocontenido en este repositorio:
 * 🧊 **Inmutabilidad Profunda Compartida (`shared readonly` / `compartido solo_lectura`):** Garantía de estado estático inmutable entre hilos.
 * 🌀 **Arenas y Búferes Acotados $O(1)$ (`modules/std/ring`, `modules/std/slab`):** Búferes circulares con auto-desalojo determinista sin `malloc` dinámico y asignadores Slab alineados a 4 KB.
 * 🛰️ **Radar Anti-Bots de GitHub (`modules/net/gh_bot_radar` + WebAssembly):** Herramienta real de telemetría consultiva resistente a falsos positivos con **vigilancia conductual de 5 días** ([App Web en Vivo](https://cyberenigma-lgtm.github.io/gh-bot-radar/) · [Repo Independiente](https://github.com/cyberenigma-lgtm/gh-bot-radar)).
-* 🛡️ **Catálogo Ampliado a 34 Módulos Certificados SHA-256 (`upl_pm verify`):** Incluye también Criptografía SHA-256 en silicio (`std/crypto`), Canales MPSC (`std/channel`), Tensores GEMM (`std/tensor`) y los 14 casos de auditoría en [`Proyectos_en_Revision/`](Proyectos_en_Revision/).
+* 🛡️ **Catálogo Ampliado a 34 Módulos Certificados SHA-256 (`upl_pm verify`):** Incluye también Criptografía SHA-256 en silicio (`std/crypto`), Canales MPSC (`std/channel`), Tensores GEMM (`std/tensor`) y los 15 casos de auditoría en [`Proyectos_en_Revision/`](Proyectos_en_Revision/).
 
 ---
 
@@ -198,14 +198,14 @@ Mediante los bloques `embed "c" { ... }` o `incrustar "c" { ... }`, UPL+ puede i
 
 ```mermaid
 graph TD
-    A[Código Fuente .upl] --> B[Analizador Léxico: lexer.c / lexer.h]
-    B --> C[Asignador por Bloques: upl_arena.c / upl_arena.h]
-    C --> D[Analizador Sintáctico Pratt / AST: upl_parser.c / upl_ast.c]
-    D --> E[Motor Aritmético COMP-3 BCD: runtime/upl_comp3.c]
-    E --> F[Generador de Código C99: upl_codegen.c / upl_codegen.h]
-    F --> G{Opciones de Salida}
-    G -->|--emit-c| H[Código ANSI C99 Estándar]
-    G -->|Salida Binaria| I[Compilador C del Sistema GCC/Clang -> Ejecutable Nativo]
+    A["Código Fuente .upl"] --> B["Analizador Léxico: lexer.c / lexer.h"]
+    B --> C["Asignador por Bloques: upl_arena.c / upl_arena.h"]
+    C --> D["Analizador Sintáctico Pratt / AST: upl_parser.c / upl_ast.c"]
+    D --> E["Motor Aritmético COMP-3 BCD: runtime/upl_comp3.c"]
+    E --> F["Generador de Código C99: upl_codegen.c / upl_codegen.h"]
+    F --> G{"Opciones de Salida"}
+    G -->|"--emit-c"| H["Código ANSI C99 Estándar"]
+    G -->|"Salida Binaria"| I["Compilador C del Sistema GCC/Clang -> Ejecutable Nativo"]
 ```
 
 ---
@@ -397,14 +397,14 @@ Using `embed "c" { ... }`, developers can directly invoke operating system APIs 
 
 ```mermaid
 graph TD
-    A[Source Code .upl] --> B[Lexical Analyzer: lexer.c / lexer.h]
-    B --> C[Arena Allocator: upl_arena.c / upl_arena.h]
-    C --> D[Pratt Parser & AST: upl_parser.c / upl_ast.c]
-    D --> E[COMP-3 BCD Decimal Engine: runtime/upl_comp3.c]
-    E --> F[C99 Code Generator: upl_codegen.c / upl_codegen.h]
-    F --> G{Output Options}
-    G -->|--emit-c| H[ANSI C99 Standard Source]
-    G -->|Binary Output| I[Host C Compiler GCC/Clang -> Standalone Native Executable]
+    A["Source Code .upl"] --> B["Lexical Analyzer: lexer.c / lexer.h"]
+    B --> C["Arena Allocator: upl_arena.c / upl_arena.h"]
+    C --> D["Pratt Parser & AST: upl_parser.c / upl_ast.c"]
+    D --> E["COMP-3 BCD Decimal Engine: runtime/upl_comp3.c"]
+    E --> F["C99 Code Generator: upl_codegen.c / upl_codegen.h"]
+    F --> G{"Output Options"}
+    G -->|"--emit-c"| H["ANSI C99 Standard Source"]
+    G -->|"Binary Output"| I["Host C Compiler GCC/Clang -> Standalone Native Executable"]
 ```
 
 ---
