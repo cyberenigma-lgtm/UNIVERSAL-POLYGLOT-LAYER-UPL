@@ -149,6 +149,9 @@ Todo el ecosistema está completamente autocontenido en este repositorio:
 * 🛰️ **Radar Anti-Bots de GitHub (`modules/net/gh_bot_radar` + WebAssembly):** Herramienta real de telemetría consultiva resistente a falsos positivos con **vigilancia conductual de 5 días** ([App Web en Vivo](https://cyberenigma-lgtm.github.io/gh-bot-radar/) · [Repo Independiente](https://github.com/cyberenigma-lgtm/gh-bot-radar)).
 * 🛡️ **Catálogo Ampliado a 34 Módulos Certificados SHA-256 (`upl_pm verify`):** Incluye también Criptografía SHA-256 en silicio (`std/crypto`), Canales MPSC (`std/channel`), Tensores GEMM (`std/tensor`) y los 15 casos de auditoría en [`Proyectos_en_Revision/`](Proyectos_en_Revision/).
 
+> [!NOTE]
+> **🚧 Próxima Release `v2.4.0` (En Evolución y Testing Local):** Estamos validando en `main` la exportación **SARIF v2.1.0** (`uplc audit --format sarif`), el destino directo **`--target wasm32`**, los subcomandos unificados **`uplc mlasm`** (MultiLang-ASM), **`uplc cobol`** (NeuroCOBOL) y **`uplc urep`**, el servidor MCP **`upl_mcp`** (`upl_audit`), e instaladores de 1 línea (`install.sh` / `install.ps1`). Consulta el estado y checklist de pruebas en [`docs/ROADMAP_v2.4.0.md`](docs/ROADMAP_v2.4.0.md). La release estable publicada sigue siendo [**v2.3.0**](https://github.com/cyberenigma-lgtm/UNIVERSAL-POLYGLOT-LAYER-UPL/releases/tag/v2.3.0).
+
 ---
 
 ### 📌 Descripción General
